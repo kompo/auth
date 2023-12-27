@@ -1,6 +1,6 @@
 <?php
 
-namespace Condoedge\Auth;
+namespace Kompo\Auth;
 
 use Illuminate\Support\ServiceProvider;
 

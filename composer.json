@@ -1,10 +1,10 @@
 {
-    "name": "condoedge/auth",
+    "name": "kompo/auth",
     "description": "Authentication and teams to your kompo application",
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Condoedge\\Auth\\": "src/"
+            "Kompo\\Auth\\": "src/"
         }
     },
     "minimum-stability": "stable",
@@ -16,7 +16,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Condoedge\\Auth\\Providers\\KompoAuthServiceProvider"
+                "Kompo\\Auth\\Providers\\KompoAuthServiceProvider"
             ]
         }
     },

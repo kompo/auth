@@ -14,7 +14,9 @@
         "kompo/kompo": "^3.0",
         "laravel/fortify": "^1.19",
         "lab404/laravel-impersonate": "^1.7",
-        "arcanedev/log-viewer": "^10.0"
+        "arcanedev/log-viewer": "^10.0",
+        "spatie/laravel-backup": "^8.1",
+        "spatie/laravel-mail-preview": "^6.0"
     },
     "extra": {
         "laravel": {

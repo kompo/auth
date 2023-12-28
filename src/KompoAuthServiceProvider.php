@@ -16,12 +16,16 @@ class KompoAuthServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->loadHelpers();
-        
+
+        $this->registerPolicies();
+
         $this->extendRouting(); //otherwise Route::layout doesn't work
 
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
 
         $this->loadJSONTranslationsFrom(__DIR__.'/../../resources/lang');
+
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
         //$this->loadViewsFrom(__DIR__.'/../../resources/views', 'kompo');
 
@@ -55,5 +59,16 @@ class KompoAuthServiceProvider extends ServiceProvider
                 require_once $path;
             }
         });
+    }
+
+    protected function registerPolicies()
+    {
+        $policies = [
+            \Kompo\Auth\Models\Teams\Team::class => \Kompo\Auth\Policies\TeamPolicy::class,
+        ];
+
+        foreach ($policies as $key => $value) {
+            \Gate::policy($key, $value);
+        }
     }
 }

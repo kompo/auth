@@ -6,6 +6,8 @@ use Illuminate\Support\ServiceProvider;
 
 class KompoAuthServiceProvider extends ServiceProvider
 {
+    use \Kompo\Routing\Mixins\ExtendsRoutingTrait;
+
     /**
      * Bootstrap services.
      *
@@ -13,9 +15,11 @@ class KompoAuthServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //$this->mergeConfigFrom(__DIR__.'/../../config/kompo.php', 'kompo');
+        $this->loadHelpers();
+        
+        $this->extendRouting(); //otherwise Route::layout doesn't work
 
-        //$this->loadRoutesFrom(__DIR__.'/../../routes/web.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
 
         $this->loadJSONTranslationsFrom(__DIR__.'/../../resources/lang');
 
@@ -35,5 +39,21 @@ class KompoAuthServiceProvider extends ServiceProvider
     public function register()
     {
 
+    }
+
+    protected function loadHelpers()
+    {
+        $helpersDir = __DIR__.'/Helpers';
+
+        $autoloadedHelpers = collect(\File::allFiles($helpersDir))->map(fn($file) => $file->getRealPath());
+
+        $packageHelpers = [
+        ];
+
+        $autoloadedHelpers->concat($packageHelpers)->each(function ($path) {
+            if (file_exists($path)) {
+                require_once $path;
+            }
+        });
     }
 }

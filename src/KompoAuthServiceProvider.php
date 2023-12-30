@@ -21,7 +21,7 @@ class KompoAuthServiceProvider extends ServiceProvider
 
         $this->extendRouting(); //otherwise Route::layout doesn't work
 
-        $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        //$this->loadRoutesFrom(__DIR__.'/../routes/web.php');
 
         $this->loadJSONTranslationsFrom(__DIR__.'/../../resources/lang');
 
@@ -42,7 +42,10 @@ class KompoAuthServiceProvider extends ServiceProvider
      */
     public function register()
     {
-
+        //Best way to load routes. This ensures loading at the very end (after fortifies' routes for ex.)
+        $this->booted(function () {
+            \Route::middleware('web')->group(__DIR__.'/../routes/web.php');
+        });
     }
 
     protected function loadHelpers()

@@ -33,6 +33,17 @@ function _TitleMini($label)
     return _Html($label)->titleMini();
 }
 
+/* LABELS AND VALUES */
+function _LabelMiniValue($label = '', $value = null)
+{
+    $value = $value instanceof \Kompo\Elements\Element ? $value : _Html($value);
+
+    return _Rows(
+        _Html($label)->class('text-sm font-medium'),
+        $value,
+    );
+}
+
 /* DESCRIPTIONS AND OTHER */
 \Kompo\Elements\Element::macro('textSm', fn() => $this->class('text-sm'));
 \Kompo\Elements\Element::macro('textSmGray', fn() => $this->textSm()->class('text-level2'));

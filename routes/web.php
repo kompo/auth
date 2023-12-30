@@ -24,9 +24,26 @@ Route::layout('layouts.dashboard')->middleware(['auth'])->group(function(){
 });
 
 
-Route::layout('layouts.guest')->middleware(['guest:web'])->group(function(){
+Route::layout('layouts.guest')->middleware(['guest'])->group(function(){
 
 	Route::get('team-invitations/{invitation}', Kompo\Auth\Teams\TeamInvitationRegisterForm::class)->name('team-invitations.accept')
         ->middleware(['signed']);
         
+});
+
+//ACCOUNT
+Route::layout('layouts.dashboard')->middleware(['auth'])->group(function(){
+
+	Route::get('user/profile', Kompo\Auth\Account\ProfileInformationForm::class)->name('profile.show');
+
+	Route::get('user/password', Kompo\Auth\Account\UpdatePasswordForm::class)->name('password.update.form');
+
+});
+
+
+//CORE
+Route::layout('layouts.dashboard')->middleware(['auth'])->group(function(){
+
+    Route::get('mail-preview-local', Kompo\Auth\Admin\AdminMailPreviewTable::class)->name('admin.mail-preview');
+
 });

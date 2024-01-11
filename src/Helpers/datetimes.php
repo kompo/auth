@@ -38,6 +38,11 @@ function _HtmlDate($dateStr)
 	return _Html(carbonDate($dateStr)?->translatedFormat('d M Y'));
 }
 
+function _HtmlTime($dateStr)
+{
+	return _Html(carbonDateTime($dateStr)?->translatedFormat('H:i'));
+}
+
 function _HtmlTimeRange($startDate, $endDate)
 {
 	return _Html($startDate->format('H:i').'<br>'.$endDate->format('H:i'));

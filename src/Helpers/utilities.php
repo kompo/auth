@@ -29,6 +29,5 @@ function refreshCurrentTeam()
 }
 
 function currentTeamId() {
-    return 1;
 	return auth()->user()?->current_team_id;
 }

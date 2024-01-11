@@ -23,7 +23,7 @@ class KompoAuthServiceProvider extends ServiceProvider
 
         //$this->loadRoutesFrom(__DIR__.'/../routes/web.php');
 
-        $this->loadJSONTranslationsFrom(__DIR__.'/../../resources/lang');
+        $this->loadTranslationsFrom(__DIR__.'/../../resources/lang', 'auth');
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 

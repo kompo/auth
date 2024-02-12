@@ -8,20 +8,12 @@ use Kompo\Auth\Models\Teams\BaseRoles\TeamOwnerRole;
 
 
 class TeamRole extends Model
-{    
+{
+    use \Kompo\Auth\Models\Teams\BelongsToTeamTrait;
+
     protected $table = 'team_user';
 
-    /**
-     * Set the roles of your application here.
-     *
-     * @var string
-     */
-    public const ROLE_SUPERADMIN = 'super-admin'; //Can only be set manually 
-    public const ROLE_OWNER = 'owner';
-    public const ROLE_MANAGER = 'manager';
-    public const ROLE_EMPLOYEE = 'employee';
-    public const ROLE_ASSISTANT = 'assistant';
-    public const ROLE_CUSTOMER = 'customer';
+    public const ROLES_DELIMITER = ',';
 
     /* CALCULATED FIELDS */
     public static function getUsableRoleClasses()
@@ -44,6 +36,14 @@ class TeamRole extends Model
         return $allRoles;
     }
 
+    public static function baseRoles()
+    {
+        return [
+            SuperAdminRole::class,
+            TeamOwnerRole::class,
+        ];
+    }
+
     public static function usableRoles()
     {
         return static::getUsableRoleClasses()->mapWithKeys(fn($class) => [
@@ -56,6 +56,11 @@ class TeamRole extends Model
         return static::getUsableRoleClasses()->mapWithKeys(fn($class) => [
             $class::ROLE_KEY => $class::ROLE_DESCRIPTION,
         ]);
+    }
+
+    public static function teamRoleRules()
+    {
+        return ['required', 'array', 'in:'.implode(',', array_keys(TeamRole::usableRoles()->toArray()))];
     }
 
     /* RELATIONS */
@@ -74,10 +79,10 @@ class TeamRole extends Model
     /* ELEMENTS */
     public static function buttonGroupField()
     {
-        return _ButtonGroup('Role')->name('role')->selectedClass('bg-dom-300 font-medium', '')
+        return _MultiSelect('Role')->name('roles')
             ->options(
                 static::buttonOptions()
-            )->vertical();
+            );
     }
 
     public static function buttonOptions()

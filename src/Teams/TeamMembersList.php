@@ -16,7 +16,8 @@ class TeamMembersList extends Query
 
     public function query()
     {
-        return $this->team->teamRoles()->with('user');
+        return $this->team->teamRoles()->with('user')
+            ->selectRaw('user_id, GROUP_CONCAT(role) as role')->groupBy('user_id');
     }
 
     public function render($teamRole)
@@ -32,7 +33,7 @@ class TeamMembersList extends Query
                 
                 auth()->user()->can('addTeamMember', $this->team) ? 
                     _Link($teamRole->role)->class('text-sm text-gray-400 underline')
-                        ->selfUpdate('getRoleManagementModal', ['membership_id' => $teamRole->id])
+                        ->selfUpdate('getRoleManagementModal', ['user_id' => $teamRole->user_id])
                         ->inModal() : 
                     _Html($teamRole->role)->class('text-sm text-gray-400'),
 
@@ -46,9 +47,9 @@ class TeamMembersList extends Query
         )->class('py-4');
     }
 
-    public function getRoleManagementModal($membershipId)
+    public function getRoleManagementModal($userId)
     {
-        return new RoleManagementModal($membershipId);
+        return new RoleManagementModal($userId);
     }
 
     public function getLeaveTeamModal()

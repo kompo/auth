@@ -4,6 +4,7 @@ namespace Kompo\Auth\Models\Teams;
 
 use Kompo\Auth\Models\Teams\BaseRoles\SuperAdminRole;
 use Kompo\Auth\Models\Teams\BaseRoles\TeamOwnerRole;
+use Kompo\Auth\Models\Teams\TeamRole;
 
 trait HasTeamsTrait
 {
@@ -41,14 +42,9 @@ trait HasTeamsTrait
             return collect();
         }
 
-        $availableRoles = explode($this->delimiterForAvailableRoles(), $this->available_roles);
+        $availableRoles = explode(TeamRole::ROLES_DELIMITER, $this->available_roles);
 
         return collect($availableRoles);
-    }
-
-    protected function delimiterForAvailableRoles()
-    {
-        return ','; //To replace with trait constants one day...
     }
 
 	/* ACTIONS */
@@ -84,12 +80,35 @@ trait HasTeamsTrait
         $this->forceFill([
             'current_team_id' => $team->id,
             'current_role' => $rolesArray->first(),
-            'available_roles' => $rolesArray->implode($this->delimiterForAvailableRoles()),
         ])->save();
+
+        $this->setAvailableRoles();
 
         $this->setRelation('currentTeam', $team);
 
         return true;
+    }
+
+    public function switchRole($role)
+    {
+        $availableRole = $this->teamRoles()->where('team_id', $this->current_team_id)->where('role', $role)->first();
+
+        if (!$availableRole) {
+            abort(403, __('This role is not available to this user!'));
+        }
+
+        $this->forceFill([
+            'current_role' => $role,
+        ])->save();
+    }
+
+    public function setAvailableRoles()
+    {
+        $rolesArray = $this->teamRoles()->where('team_id', $this->current_team_id)->pluck('role');
+
+        $this->forceFill([
+            'available_roles' => $rolesArray->implode(TeamRole::ROLES_DELIMITER),
+        ])->save();
     }
 
     public function isMemberOfTeam($team)

@@ -74,7 +74,7 @@ class ResetPasswordForm extends Form
         return [
             'token' => 'required',
             'email' => 'required|email',
-            'password' => passwordRule(),
+            'password' => passwordRules(),
         ];
     }
 

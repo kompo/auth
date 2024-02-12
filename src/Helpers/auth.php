@@ -16,15 +16,20 @@ function registerRules()
 {
 	return [
         'name' => ['required', 'string', 'max:255'],
-        'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-        'password' => passwordRule(),
+        'email' => array_merge(baseEmailRules(), ['unique:users']),
+        'password' => passwordRules(),
         'terms' => ['required', 'accepted'],
     ];
 }
 
-function passwordRule()
+function passwordRules()
 {
 	$passwordRules = new \Laravel\Fortify\Rules\Password();
 
     return ['required', 'string', $passwordRules->requireUppercase()->requireNumeric()->requireSpecialCharacter(), 'confirmed'];
+}
+
+function baseEmailRules()
+{
+    return ['required', 'string', 'email', 'max:255'];
 }

@@ -2,8 +2,9 @@
 
 namespace Kompo\Auth\Teams;
 
-use Kompo\Auth\Models\Teams\TeamInvitation;
 use App\Models\User;
+use Kompo\Auth\Models\Teams\TeamInvitation;
+use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Form;
 
 class TeamInvitationRegisterForm extends Form
@@ -34,7 +35,9 @@ class TeamInvitationRegisterForm extends Form
 
     public function afterSave()
     {
-        $this->model->createTeamRole($this->team, $this->invitation->role);
+        $roles = explode(TeamRole::ROLES_DELIMITER, $this->invitation->role);
+
+        collect($roles)->each(fn($role) => $this->model->createTeamRole($this->team, $role));
         
         $this->model->switchTeam($this->team);
 

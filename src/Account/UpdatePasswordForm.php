@@ -56,7 +56,7 @@ class UpdatePasswordForm extends Form
     {
         return [
             'current_password' => ['required', 'string'],
-            'password' => passwordRule(),
+            'password' => passwordRules(),
         ];
     }
 }

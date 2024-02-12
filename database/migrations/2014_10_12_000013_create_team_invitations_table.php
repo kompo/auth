@@ -20,8 +20,6 @@ class CreateTeamInvitationsTable extends Migration
             $table->foreignId('team_id')->constrained()->cascadeOnDelete();
             $table->string('email');
             $table->string('role')->nullable();
-
-            $table->unique(['team_id', 'email']);
         });
     }
 

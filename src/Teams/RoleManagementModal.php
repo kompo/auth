@@ -4,10 +4,11 @@ namespace Kompo\Auth\Teams;
 
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Modal;
+use App\Models\User;
 
 class RoleManagementModal extends Modal
 {
-	public $model = TeamRole::class;
+	public $model = User::class;
 
 	protected $_Title = 'Manage Role';
 	protected $_Icon = 'user-circle';
@@ -21,10 +22,31 @@ class RoleManagementModal extends Modal
 		return auth()->user()->can('addTeamMember', $this->team);
 	}
 
+	public function handle()
+	{
+		$newRoles = collect(request('roles') ?: []);
+
+		$oldRoles = $this->model->teamRoles()->forTeam($this->team->id)->whereNotIn('role', TeamRole::baseRoles())->get();
+
+		//Delete different roles
+		$oldRoles->each(
+			fn($teamRole) => !$newRoles->contains($teamRole->role) ? $teamRole->delete() : null
+		);
+
+		//Add new roles
+        $newRoles->each(
+        	fn($role) => !$oldRoles->pluck('role')->contains($role) ? $this->model->createTeamRole($this->team, $role) : null
+        );
+
+        $this->model->setAvailableRoles();
+
+        $this->model->switchRole($newRoles->first());
+	}
+
 	public function body()
 	{
 		return [
-            TeamRole::buttonGroupField(),
+            TeamRole::buttonGroupField()->value($this->model->collectAvailableRoles()),
 		];
 	}
 
@@ -39,7 +61,7 @@ class RoleManagementModal extends Modal
 	public function rules()
 	{
 		return [
-			'role' => 'required',
+			'roles' => TeamRole::teamRoleRules(),
 		];
 	}
 }

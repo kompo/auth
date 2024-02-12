@@ -2,12 +2,10 @@
 
 namespace Kompo\Auth\Teams;
 
-use Kompo\Auth\Mail\TeamInvitationMail;
-use Kompo\Auth\Models\Teams\TeamRole;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
+use Kompo\Auth\Mail\TeamInvitationMail;
+use Kompo\Auth\Models\Teams\TeamInvitation;
+use Kompo\Auth\Models\Teams\TeamRole;
 
 class TeamInvitationForm extends TeamBaseForm
 {
@@ -19,18 +17,24 @@ class TeamInvitationForm extends TeamBaseForm
         $user = auth()->user();
         $team = $user->currentTeam;
         $email = request('email');
-        $role = request('role');
+        $roles = request('roles') ?: [];
 
         Gate::forUser($user)->authorize('addTeamMember', $team);
 
-        $this->validate($team, $email, $role);
+        if (TeamInvitation::where('team_id', currentTeamId())->where('email', $email)->count()) {
+            throwValidationError ('email', 'This user has already been invited to the team. Please cancel invitation to reinvite');
+        }
+
+        if ($team->hasUserWithEmail($email)) {
+            throwValidationError ('email', 'This user already belongs to the team.');
+        }
 
         $invitation = $team->teamInvitations()->forceCreate([
             'email' => $email,
-            'role' => $role,
+            'role' => implode(TeamRole::ROLES_DELIMITER, $roles),
         ]);
 
-        Mail::to($email)->send(new TeamInvitationMail($invitation));
+        \Mail::to($email)->send(new TeamInvitationMail($invitation));
     }
 
     protected function body()
@@ -47,57 +51,11 @@ class TeamInvitationForm extends TeamBaseForm
         ];
     }
 
-    /**
-     * Validate the invite member operation.
-     *
-     * @param  mixed  $team
-     * @param  string  $email
-     * @param  string|null  $role
-     * @return void
-     */
-    protected function validate($team, string $email, ?string $role)
+    public function rules()
     {
-        Validator::make([
-            'email' => $email,
-            'role' => $role,
-        ], $this->invitationRules($team), [
-            'email.unique' => __('This user has already been invited to the team.'),
-        ])->after(
-            $this->ensureUserIsNotAlreadyOnTeam($team, $email)
-        )->validateWithBag('addTeamMember');
-    }
-
-    /**
-     * Get the validation rules for inviting a team member.
-     *
-     * @param  mixed  $team
-     * @return array
-     */
-    protected function invitationRules($team)
-    {
-        return array_filter([
-            'email' => ['required', 'email', Rule::unique('team_invitations')->where(function ($query) use ($team) {
-                $query->where('team_id', $team->id);
-            })],
-            'role' => ['required', 'string', 'in:'.implode(',', array_keys(TeamRole::usableRoles()->toArray()))]
-        ]);
-    }
-
-    /**
-     * Ensure that the user is not already on the team.
-     *
-     * @param  mixed  $team
-     * @param  string  $email
-     * @return \Closure
-     */
-    protected function ensureUserIsNotAlreadyOnTeam($team, string $email)
-    {
-        return function ($validator) use ($team, $email) {
-            $validator->errors()->addIf(
-                $team->hasUserWithEmail($email),
-                'email',
-                __('This user already belongs to the team.')
-            );
-        };
+        return [
+            'email' => baseEmailRules(),
+            'roles' => TeamRole::teamRoleRules(),
+        ];
     }
 }

@@ -4,7 +4,7 @@ namespace Kompo\Auth\Models\Traits;
 
 use App\Models\User;
 
-trait BelongsToUser
+trait BelongsToUserTrait
 {
     /* RELATIONS */
     public function user()

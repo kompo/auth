@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 
 //AUTH
-Route::layout('layouts.guest')->middleware(['guest'])->group(function(){
+Route::layout('layouts.guest')->middleware(['guest:web'])->group(function(){
 
 	Route::get('login', Kompo\Auth\Auth\LoginForm::class)->name('login');
 

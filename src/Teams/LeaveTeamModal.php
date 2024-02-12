@@ -11,7 +11,7 @@ class LeaveTeamModal extends Modal
 
 	public function handle()
 	{
-		auth()->user()->currentTeam->removeTeamMember(auth()->user());
+		auth()->user()->currentTeam->detachFromTeam(auth()->user());
 
         \Auth::guard()->logout();
 

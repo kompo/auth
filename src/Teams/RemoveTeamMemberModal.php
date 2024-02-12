@@ -34,7 +34,7 @@ class RemoveTeamMemberModal extends Modal
 			abort(403, __('You may not leave a team that you created.'));
 		}
 
-		$this->team->removeTeamMember($this->user);
+		$this->team->detachFromTeam($this->user);
 
 		return __('Team member removed!');
 	}

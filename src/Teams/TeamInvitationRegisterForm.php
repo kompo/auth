@@ -35,15 +35,8 @@ class TeamInvitationRegisterForm extends Form
 
     public function afterSave()
     {
-        $this->team->users()->attach([
-            $this->model->id => [
-                'role' => $this->invitation->role,
-            ]
-        ]);
-    }
-
-    public function completed()
-    {
+        $this->model->createTeamRole($this->team, $this->invitation->role);
+        
         $this->model->switchTeam($this->team);
 
         $this->invitation->delete();

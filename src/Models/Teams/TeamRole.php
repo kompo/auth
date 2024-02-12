@@ -1,8 +1,10 @@
 <?php
 
 namespace Kompo\Auth\Models\Teams;
-use Kompo\Auth\Models\Model;
 use App\Models\User;
+use Kompo\Auth\Models\Model;
+use Kompo\Auth\Models\Teams\BaseRoles\SuperAdminRole;
+use Kompo\Auth\Models\Teams\BaseRoles\TeamOwnerRole;
 
 
 class TeamRole extends Model
@@ -22,26 +24,38 @@ class TeamRole extends Model
     public const ROLE_CUSTOMER = 'customer';
 
     /* CALCULATED FIELDS */
-    public static function roles()
+    public static function getUsableRoleClasses()
     {
-        return [
-            static::ROLE_OWNER => 'Team owner',
-            static::ROLE_MANAGER => 'Manager',
-            static::ROLE_EMPLOYEE => 'Employee',
-            static::ROLE_ASSISTANT => 'Assitant',
-            static::ROLE_CUSTOMER => 'Customer',
-        ];
+        $appRolesDir = app_path('Models/Roles');
+
+        $allRoles = collect([
+            //SuperAdminRole::class,
+            TeamOwnerRole::class,
+        ]);
+
+        if (is_dir($appRolesDir)) {
+
+            $appRoles = collect(\File::allFiles($appRolesDir))
+                ->map(fn($file) => 'App\\Models\\Roles\\'.$file->getFilenameWithoutExtension());
+
+            $allRoles = $allRoles->concat($appRoles);
+        }
+
+        return $allRoles;
     }
 
-    public static function descriptions()
+    public static function usableRoles()
     {
-        return [
-            static::ROLE_OWNER => 'Owner users can perform any action.',
-            static::ROLE_MANAGER => 'Manager users have the editor\'s abilities and managing team members.',
-            static::ROLE_EMPLOYEE => 'Employee users have the ability to read, create, and update.',
-            static::ROLE_ASSISTANT => 'Assistants have the ability to read, create, and update.',
-            static::ROLE_CUSTOMER => 'Customer of the team. They see a different dashboard with only their restricted information.',
-        ];
+        return static::getUsableRoleClasses()->mapWithKeys(fn($class) => [
+            $class::ROLE_KEY => $class::ROLE_NAME,
+        ]);
+    }
+
+    public static function roleDescriptions()
+    {
+        return static::getUsableRoleClasses()->mapWithKeys(fn($class) => [
+            $class::ROLE_KEY => $class::ROLE_DESCRIPTION,
+        ]);
     }
 
     /* RELATIONS */
@@ -56,14 +70,6 @@ class TeamRole extends Model
     }
 
     /* ACTIONS */
-    public static function createTeamRole($role, $team, $user)
-    {
-        $teamRole = new static();
-        $teamRole->team_id = $team->id;
-        $teamRole->user_id = $user->id;
-        $teamRole->role = $role;
-        $teamRole->save();
-    }
 
     /* ELEMENTS */
     public static function buttonGroupField()
@@ -76,11 +82,11 @@ class TeamRole extends Model
 
     public static function buttonOptions()
     {
-        return collect(static::roles())->mapWithKeys(function ($role, $roleKey) {
+        return collect(static::usableRoles())->mapWithKeys(function ($role, $roleKey) {
             return [
                 $roleKey => _Rows(
-                    _Html(static::roles()[$roleKey])->class('text-sm text-gray-600'),
-                    _Html(static::descriptions()[$roleKey])->class('mt-2 text-xs text-gray-600'),
+                    _Html(static::usableRoles()[$roleKey])->class('text-sm text-gray-600'),
+                    _Html(static::roleDescriptions()[$roleKey])->class('mt-2 text-xs text-gray-600'),
                 )->class('p-4')
             ];
         });

@@ -2,20 +2,14 @@
 
 namespace Kompo\Auth\Models\Teams;
 
+use Kompo\Auth\Models\Teams\BaseRoles\SuperAdminRole;
+use Kompo\Auth\Models\Teams\BaseRoles\TeamOwnerRole;
+
 trait HasTeamsTrait
 {
 	/* RELATIONS */
     public function currentTeam()
 	{
-		if (is_null($this->current_team_id) && $this->id) {
-
-			if (!$this->teamRoles()->count()) {
-				$this->createPersonalTeam();
-			}
-
-            $this->switchTeam($this->teamRoles()->first()->team);
-        }
-
 		return $this->belongsTo(Team::class, 'current_team_id');
 	}
 
@@ -40,26 +34,57 @@ trait HasTeamsTrait
         return $query->whereHas('teams', fn($q) => $q->where('team_id', $teamId ?: currentTeamId()));
     }
 
+    /* CALCULATED FIELDS */
+    public function collectAvailableRoles()
+    {
+        if (!$this->available_roles) {
+            return collect();
+        }
+
+        $availableRoles = explode($this->delimiterForAvailableRoles(), $this->available_roles);
+
+        return collect($availableRoles);
+    }
+
+    protected function delimiterForAvailableRoles()
+    {
+        return ','; //To replace with trait constants one day...
+    }
+
 	/* ACTIONS */
-	protected function createPersonalTeam()
+	public function createPersonalTeamAndOwnerRole()
     {
         $team = Team::forceCreate([
             'user_id' => $this->id,
             'name' => explode(' ', $this->name, 2)[0]."'s Team",
         ]);
 
-        TeamRole::createTeamRole(TeamRole::ROLE_OWNER, $team, $this);
+        $this->createTeamRole($team, TeamOwnerRole::ROLE_KEY);
+
+        return $team;
+    }
+
+    public function createTeamRole($team, $role)
+    {
+        $teamRole = new TeamRole();
+        $teamRole->team_id = $team->id;
+        $teamRole->user_id = $this->id;
+        $teamRole->role = $role;
+        $teamRole->save();
     }
 
     public function switchTeam($team)
     {
-        if (!$this->belongsToTeam($team)) {
+        if (!$this->isMemberOfTeam($team)) {
             return false;
         }
 
+        $rolesArray = $team->teamRoles()->where('user_id', $this->id)->pluck('role');
+
         $this->forceFill([
             'current_team_id' => $team->id,
-            'current_role' => $team->teamRoles()->where('user_id', $this->id)->value('role'),
+            'current_role' => $rolesArray->first(),
+            'available_roles' => $rolesArray->implode($this->delimiterForAvailableRoles()),
         ])->save();
 
         $this->setRelation('currentTeam', $team);
@@ -67,7 +92,7 @@ trait HasTeamsTrait
         return true;
     }
 
-    public function belongsToTeam($team)
+    public function isMemberOfTeam($team)
     {
     	return $this->teamRoles()->where('team_id', $team->id)->count();
     }
@@ -89,7 +114,7 @@ trait HasTeamsTrait
 
     public function isSuperAdmin()
     {
-        return $this->hasCurrentRole(TeamRole::ROLE_SUPERADMIN);
+        return $this->hasCurrentRole(SuperAdminRole::ROLE_KEY);
     }
 
     public function hasCurrentRole($role)

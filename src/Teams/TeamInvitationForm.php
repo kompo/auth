@@ -79,7 +79,7 @@ class TeamInvitationForm extends TeamBaseForm
             'email' => ['required', 'email', Rule::unique('team_invitations')->where(function ($query) use ($team) {
                 $query->where('team_id', $team->id);
             })],
-            'role' => ['required', 'string', 'in:'.implode(',', array_keys(TeamRole::roles()))]
+            'role' => ['required', 'string', 'in:'.implode(',', array_keys(TeamRole::usableRoles()))]
         ]);
     }
 

@@ -16,6 +16,10 @@ class RegisterForm extends Form
 
     public function completed()
     {
+        $team = $this->model->createPersonalTeamAndOwnerRole();
+
+        $this->model->switchTeam($team);
+
         event(new Registered($this->model));
 
         auth()->guard()->login($this->model);
@@ -29,16 +33,11 @@ class RegisterForm extends Form
 	public function render()
 	{
 		return [
-			_Input('auth.name')
-                ->name('name'),
-            _Input('auth.email')
-                ->name('email'),
-			_Password('auth.password-auth')
-                ->name('password'),
-			_Password('auth.password-auth-confirmation')
-                ->name('password_confirmation', false),
-            _Checkbox('auth.i-agree-to-the-terms-of-service-and-privacy-policy')
-                ->name('terms', false),
+			_Input('auth.name')->name('name'),
+            _Input('auth.email')->name('email'),
+			_Password('auth.password-auth')->name('password'),
+			_Password('auth.password-auth-confirmation')->name('password_confirmation', false),
+            _Checkbox('auth.i-agree-to-the-terms-of-service-and-privacy-policy')->name('terms', false),
 			_SubmitButton('auth.register')->class('mb-4'),
             _LinkAlreadyHaveAccount(),
 		];

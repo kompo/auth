@@ -35,7 +35,7 @@ class Team extends Model
     }
 
 	/* ACTIONS */
-	public function removeTeamMember($user)
+	public function detachFromTeam($user)
 	{
 		if ($user->current_team_id === $this->id) {
             $user->forceFill([
@@ -44,6 +44,10 @@ class Team extends Model
         }
 
         $this->users()->detach($this->user);
+
+        if (!$this->user->teams()->count()) {
+            // code...
+        }
 	}
 
 	/* ELEMENTS */

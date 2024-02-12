@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Models\Teams;
 
-trait BelongsToTeam
+trait BelongsToTeamTrait
 {
     /* RELATIONS */
     public function team()

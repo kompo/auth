@@ -2,7 +2,6 @@
 
 namespace Kompo\Auth\Auth;
 
-use Kompo\Auth\RegisterForm;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Contracts\Auth\PasswordBroker;
 use Illuminate\Support\Facades\Hash;
@@ -75,7 +74,7 @@ class ResetPasswordForm extends Form
         return [
             'token' => 'required',
             'email' => 'required|email',
-            'password' => RegisterForm::passwordRules(),
+            'password' => passwordRule(),
         ];
     }
 

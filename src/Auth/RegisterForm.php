@@ -45,16 +45,6 @@ class RegisterForm extends Form
 
     public function rules()
     {
-        return [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => static::passwordRules(),
-            'terms' => ['required', 'accepted'],
-        ];
-    }
-
-    public static function passwordRules() //Extracted into it's own method to reuse in ResetPasswordForm
-    {
-        return ['required', 'string', new Password, 'confirmed'];
+        return registerRules();
     }
 }

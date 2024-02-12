@@ -2,7 +2,6 @@
 
 namespace Kompo\Auth\Account;
 
-use Kompo\Auth\Auth\RegisterForm;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Kompo\Form;
@@ -57,7 +56,7 @@ class UpdatePasswordForm extends Form
     {
         return [
             'current_password' => ['required', 'string'],
-            'password' => RegisterForm::passwordRules(),
+            'password' => passwordRule(),
         ];
     }
 }

@@ -11,6 +11,10 @@ class AdminMailPreviewTable extends Table
 	{
 		$emailsPath = storage_path('email-previews');
 
+		if (!is_dir($emailsPath)) {
+			mkdir($emailsPath);
+		}
+
 		return collect(\File::allFiles($emailsPath))
 			->filter(function ($file) {
 	            return in_array($file->getExtension(), ['html']);
@@ -22,7 +26,7 @@ class AdminMailPreviewTable extends Table
 
     public function top()
 	{
-		return _MedTitleAddButton(
+		return _FlexBetween(
 			_Html('campaign.sent-mails')->class('text-level3'),
 			_FlexEnd4(
 

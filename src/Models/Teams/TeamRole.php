@@ -30,7 +30,7 @@ class TeamRole extends Model
 
         $allRoles = collect([
             //SuperAdminRole::class,
-            TeamOwnerRole::class,
+            //TeamOwnerRole::class, //there can be only one team owner
         ]);
 
         if (is_dir($appRolesDir)) {

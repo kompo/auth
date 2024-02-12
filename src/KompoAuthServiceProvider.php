@@ -27,7 +27,7 @@ class KompoAuthServiceProvider extends ServiceProvider
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
-        //$this->loadViewsFrom(__DIR__.'/../../resources/views', 'kompo');
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'kompo-auth');
 
          //Usage: php artisan vendor:publish --provider="Kompo\KompoServiceProvider"
         $this->publishes([

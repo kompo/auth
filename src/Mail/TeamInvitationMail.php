@@ -26,7 +26,7 @@ class TeamInvitationMail extends Mailable
      */
     public function build()
     {
-        return $this->markdown('mail.team-invitation', ['acceptUrl' => URL::signedRoute('team-invitations.accept', [
+        return $this->markdown('kompo-auth::mail.team-invitation', ['acceptUrl' => URL::signedRoute('team-invitations.accept', [
             'invitation' => $this->invitation,
         ])])->subject(__('Team Invitation'));
     }

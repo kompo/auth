@@ -2,7 +2,6 @@
 
 namespace Kompo\Auth\Teams;
 
-use Kompo\Auth\RegisterForm;
 use Kompo\Auth\Models\Teams\TeamInvitation;
 use App\Models\User;
 use Kompo\Form;
@@ -68,6 +67,6 @@ class TeamInvitationRegisterForm extends Form
 
     public function rules()
     {
-        return RegisterForm::registerRules();
+        return registerRules();
     }
 }

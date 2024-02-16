@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Kompo\Library;
+namespace Kompo\Auth\Files;
 
-use App\Models\Library\File;
+use Kompo\Auth\Models\Files\File;
 use Kompo\Table;
 
 class FilesCardTable extends Table

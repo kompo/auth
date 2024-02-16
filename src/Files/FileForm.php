@@ -1,10 +1,9 @@
 <?php
 
-namespace App\Kompo\Library;
+namespace Kompo\Auth\Files;
 
-use App\Kompo\Common\Modal;
-use App\Models\Library\File;
-use Kompo\Core\FileHandler;
+use Kompo\Auth\Common\Modal;
+use Kompo\Auth\Models\Files\File;
 
 class FileForm extends Modal
 {

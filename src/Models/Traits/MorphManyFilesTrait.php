@@ -1,8 +1,8 @@
 <?php 
 
-namespace App\Models\Library;
+namespace Kompo\Auth\Models\Traits;
 
-use App\Models\Library\File;
+use Kompo\Auth\Models\Files\File;
 
 trait MorphManyFilesTrait
 {

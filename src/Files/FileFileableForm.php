@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Kompo\Library;
+namespace Kompo\Auth\Files;
 
-use App\Models\Library\File;
+use Kompo\Auth\Models\Files\File;
 use Kompo\Form;
 
 class FileFileableForm extends Form
 {
-    public $model = \App\Models\Library\File::class;
+    public $model = File::class;
 
     public $style = 'max-height:95vh; min-width: 350px;';
 

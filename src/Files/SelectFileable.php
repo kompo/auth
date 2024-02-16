@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Kompo\Library;
+namespace Kompo\Auth\Files;
 
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Kompo\Form;

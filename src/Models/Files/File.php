@@ -1,8 +1,7 @@
 <?php
 
-namespace App\Models\Library;
+namespace Kompo\Auth\Models\Files;
 
-use App\View\File\FileLibraryAttachmentQuery;
 use Kompo\Auth\Models\Contracts\Searchable;
 use Kompo\Auth\Models\Files\FileVisibilityEnum;
 use Kompo\Auth\Models\Model;

@@ -12,6 +12,13 @@ class LoginForm extends Form
     public $containerClass = 'container min-h-screen flex flex-col sm:justify-center items-center';
     public $class = 'sm:mx-auto sm:w-full sm:max-w-md';
 
+    protected $email;
+    
+    public function created()
+    {
+        $this->email = $this->prop('email');
+    }
+
 	public function render()
 	{
 		return [
@@ -19,7 +26,7 @@ class LoginForm extends Form
                 _Html(session('status'))->class('mb-4 p-4 font-medium text-sm bg-green-100 text-green-600') :
                 null,
 
-			_Input('Email')->name('email'),
+			_Input('Email')->name('email')->default($this->email),
 			_Password('Password')->name('password'),
             _Checkbox('Remember me')->name('remember'),
 			_FlexEnd(

@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateTeamsTable extends Migration
+class CreateEmailRequestsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,13 +13,12 @@ class CreateTeamsTable extends Migration
      */
     public function up()
     {
-        Schema::create('teams', function (Blueprint $table) {
+        Schema::create('email_requests', function (Blueprint $table) {
 
             addMetaData($table);
             
-            $table->foreignId('user_id')->constrained();
-            $table->string('name');
-            $table->foreignId('parent_team_id')->nullable()->constrained('teams');
+            $table->string('email');
+            $table->timestamp('email_verified_at')->nullable();
         });
     }
 
@@ -30,6 +29,6 @@ class CreateTeamsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('teams');
+        Schema::dropIfExists('email_requests');
     }
 }

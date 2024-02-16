@@ -2,9 +2,9 @@
 
 namespace Kompo\Auth\Models\Teams;
 
-use Kompo\Auth\Models\Model;
+use Kompo\Auth\Models\ModelBase;
 
-class TeamInvitation extends Model
+class TeamInvitation extends ModelBase
 {
     public function team()
     {

@@ -16,7 +16,6 @@ function registerRules()
 {
 	return [
         'name' => ['required', 'string', 'max:255'],
-        'email' => array_merge(baseEmailRules(), ['unique:users']),
         'password' => passwordRules(),
         'terms' => ['required', 'accepted'],
     ];

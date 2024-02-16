@@ -5,9 +5,19 @@ use Illuminate\Support\Facades\Route;
 //AUTH
 Route::layout('layouts.guest')->middleware(['guest:web'])->group(function(){
 
-	Route::get('login', Kompo\Auth\Auth\LoginForm::class)->name('login');
+	Route::get('login', Kompo\Auth\Auth\BaseEmailForm::class)->name('login');
 
-	Route::get('register', Kompo\Auth\Auth\RegisterForm::class)->name('register');
+	Route::get('login-password/{email?}', Kompo\Auth\Auth\LoginForm::class)->name('login.password');
+
+	Route::get('check-to-verify-email', Kompo\Auth\Auth\CheckToVerifyEmailForm::class)->name('check.verify.email');
+
+	Route::middleware(['signed', 'throttle:6,1'])->group(function(){
+
+		Route::get('register/{email_request_id}', Kompo\Auth\Auth\RegisterForm::class)->name('register');
+
+		Route::get('email/verify/{hash}', [VerifyEmailController::class, '__invoke'])->name('verification.verify');
+
+	});
 
 	Route::get('forgot-password', Kompo\Auth\Auth\ForgotPasswordForm::class)->name('password.request');
 

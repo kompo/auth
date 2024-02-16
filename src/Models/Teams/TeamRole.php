@@ -21,9 +21,9 @@ class TeamRole extends Model
         $appRolesDir = app_path('Models/Roles');
 
         $allRoles = collect([
-            //SuperAdminRole::class,
+            isSuperAdmin() ? SuperAdminRole::class : null,
             //TeamOwnerRole::class, //there can be only one team owner
-        ]);
+        ])->filter();
 
         if (is_dir($appRolesDir)) {
 

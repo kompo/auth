@@ -56,7 +56,8 @@ class TeamInvitationRegisterForm extends Form
     public function render()
     {
         return [
-            _Input('Email (reaonly)')->name('email')->readOnly()->value($this->invitation->email)->inputClass('bg-gray-50 rounded-xl'),
+            _Input('Your invitation email')->name('show_email', false)->readOnly()
+                ->value($this->invitation->email)->inputClass('bg-gray-50 rounded-xl'),
 
             _Input('general.name')->name('name'),
             _Password('Password')->name('password'),

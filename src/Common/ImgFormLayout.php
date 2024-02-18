@@ -6,7 +6,7 @@ use Kompo\Form;
 
 abstract class ImgFormLayout extends Form
 {
-    public $containerClass = '';
+    public $containerClass = 'container-fluid';
 
     protected $imgUrl = 'images/left-column-image.png';
 
@@ -14,10 +14,12 @@ abstract class ImgFormLayout extends Form
 	{
 		return _Columns(
             _Div(
-                _Img($this->imgUrl)->class('h-full w-full bg-cover'),
+                _Img($this->imgUrl)->class('h-screen w-full')->bgCover()->style('margin: 0 -15px'),
             )->class('hidden md:block')->col('col-md-7'),
             _Rows(
-                $this->rightColumnBody(),
+                _Div(
+                    $this->rightColumnBody(),
+                )->class('h-screen overflow-auto p-6'),
             )->col('col-12 col-md-5'),
 		);
 	}

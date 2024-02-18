@@ -8,6 +8,8 @@ use Kompo\Auth\Models\Teams\EmailRequest;
 
 class BaseEmailForm extends ImgFormLayout
 {
+    protected $imgUrl = 'images/base-email-image.png';
+
     public function handle()
     {
         $email = request('email');
@@ -36,8 +38,8 @@ class BaseEmailForm extends ImgFormLayout
 	public function rightColumnBody()
 	{
 		return _Rows(
-            _Input('auth.email')->name('email'),
-            _SubmitButton('auth.base-email-btn'),
+            _Input('ka::auth.email')->name('email'),
+            _SubmitButton('ka::auth.base-email-btn'),
         );
 	}
 

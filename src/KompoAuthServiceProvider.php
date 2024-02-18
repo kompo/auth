@@ -33,6 +33,8 @@ class KompoAuthServiceProvider extends ServiceProvider
          //Usage: php artisan vendor:publish --provider="Kompo\KompoServiceProvider"
         $this->publishes([
             __DIR__.'/../../config/kompo.php' => config_path('kompo.php'),
+            __DIR__ . '/../config/kompo-auth.php' => config_path('kompo-auth.php'),
+            __DIR__ . '/../config/kompo-files.php' => config_path('kompo-files.php'),
         ]);
     }
 

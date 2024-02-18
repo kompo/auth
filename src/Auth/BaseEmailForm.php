@@ -26,7 +26,7 @@ class BaseEmailForm extends ImgFormLayout
 
                 $emailRequest->sendEmailVerificationNotification();
 
-                return redirect()->route('check.verify.email');
+                return redirect()->to(\Url::signedRoute('check.verify.email', ['id' => $emailRequest]));
 
             } else {
 
@@ -37,10 +37,10 @@ class BaseEmailForm extends ImgFormLayout
 
 	public function rightColumnBody()
 	{
-		return _Rows(
+		return [
             _Input('ka::auth.email')->name('email'),
             _SubmitButton('ka::auth.base-email-btn'),
-        );
+        ];
 	}
 
     public function rules()

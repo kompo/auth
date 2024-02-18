@@ -9,6 +9,8 @@ class TeamInvitationsList extends Query
 {
     protected $team;
 
+    public $id = 'team-invitations-list';
+
     public function created()
     {
         $this->team = auth()->user()->currentTeam;
@@ -16,7 +18,7 @@ class TeamInvitationsList extends Query
 
     public function query()
     {
-        return $this->team->teamInvitations();
+        return $this->team->teamInvitations()->latest();
     }
 
     public function render($teamInvitation)

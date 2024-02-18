@@ -3,15 +3,14 @@
 namespace Kompo\Auth\Auth;
 
 use App\Models\User;
+use Kompo\Auth\Common\ImgFormLayout;
 use Kompo\Auth\Models\Teams\EmailRequest;
-use Kompo\Form;
 
-class RegisterForm extends Form
+class RegisterForm extends ImgFormLayout
 {
     public $model = User::class;
 
-    public $containerClass = 'container min-h-screen flex flex-col sm:justify-center items-center';
-    public $class = 'sm:mx-auto sm:w-full sm:max-w-md';
+    protected $imgUrl = 'images/register-image.png';
 
     public function created()
     {
@@ -43,18 +42,18 @@ class RegisterForm extends Form
         return redirect()->route('dashboard');
     }
 
-	public function render()
+	public function rightColumnBody()
 	{
 		return [
             _Rows(
                 _Html($this->emailRequest->getEmailForVerification()),
-                _Html('Your email has been verified!'),
+                _Html('ka::auth.Your email has been verified!'),
             ),
-			_Input('auth.name')->name('name'),
-			_Password('auth.password-auth')->name('password'),
-			_Password('auth.password-auth-confirmation')->name('password_confirmation', false),
-            _Checkbox('auth.i-agree-to-the-terms-of-service-and-privacy-policy')->name('terms', false),
-			_SubmitButton('auth.register')->class('mb-4'),
+			_Input('ka::auth.name')->name('name'),
+			_Password('ka::auth.password-auth')->name('password'),
+			_Password('ka::auth.password-auth-confirmation')->name('password_confirmation', false),
+            _Checkbox('ka::auth.i-agree-to-the-terms-of-service-and-privacy-policy')->name('terms', false),
+			_SubmitButton('ka::auth.register')->class('mb-4'),
             _LinkAlreadyHaveAccount(),
 		];
 	}

@@ -2,7 +2,9 @@
 
 namespace Kompo\Auth\Models\Teams;
 
+use Illuminate\Support\Carbon;
 use Kompo\Auth\Models\ModelBase;
+use App\Models\User;
 
 class EmailRequest extends ModelBase
 {
@@ -19,9 +21,18 @@ class EmailRequest extends ModelBase
 
     public function getRegisterRoute()
     {
-        return \URL::temporarySignedRoute('register', [
-            'email_request_id' => $this->id,
-        ]);
+        return \URL::temporarySignedRoute(
+            'register', 
+            Carbon::now()->addMinutes(30),
+            [
+                'email_request_id' => $this->id,
+            ]
+        );
+    }
+
+    public function getRelatedUser()
+    {
+        return User::where('email', $this->email)->first();
     }
 
     /* ACTIONS */

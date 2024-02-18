@@ -12,6 +12,8 @@ class TeamManagementPage extends Form
 
             new TeamInfoForm(),
 
+            new TeamsJoinedView(),
+
             auth()->user()->can('addTeamMember', auth()->user()->currentTeam) ?
                 new TeamInvitationForm() : 
                 null,

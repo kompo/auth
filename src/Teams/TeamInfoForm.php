@@ -9,7 +9,7 @@ class TeamInfoForm extends TeamBaseForm
 
     protected function body()
     {
-        $teamOwner = auth()->user()->currentTeam->owner;
+        $teamOwner = currentTeam()->owner;
 
         return [
             _Html('Team Owner')->class('vlFormLabel'),

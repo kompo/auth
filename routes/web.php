@@ -2,6 +2,9 @@
 
 use Illuminate\Support\Facades\Route;
 
+//PACKAGES
+Route::impersonate();
+
 //AUTH
 Route::layout('layouts.guest')->middleware(['guest:web'])->group(function(){
 
@@ -9,9 +12,9 @@ Route::layout('layouts.guest')->middleware(['guest:web'])->group(function(){
 
 	Route::get('login-password/{email?}', Kompo\Auth\Auth\LoginForm::class)->name('login.password');
 
-	Route::get('check-to-verify-email', Kompo\Auth\Auth\CheckToVerifyEmailForm::class)->name('check.verify.email');
+	Route::middleware(['signed', 'throttle:10,1'])->group(function(){
 
-	Route::middleware(['signed', 'throttle:6,1'])->group(function(){
+		Route::get('check-to-verify-email/{id}', Kompo\Auth\Auth\CheckToVerifyEmailForm::class)->name('check.verify.email');
 
 		Route::get('register/{email_request_id}', Kompo\Auth\Auth\RegisterForm::class)->name('register');
 
@@ -27,19 +30,23 @@ Route::layout('layouts.guest')->middleware(['guest:web'])->group(function(){
 
 
 //TEAMS
+Route::middleware(['signed', 'throttle:10,1'])->group(function(){
+
+	Route::get('accept-invitation/{id}', Kompo\Auth\Http\Controllers\TeamInvitationAcceptController::class)->name('team-invitations.accept');
+
+	Route::layout('layouts.guest')->middleware(['guest'])->group(function(){
+
+		Route::get('team-invitations/{invitation}', Kompo\Auth\Teams\TeamInvitationRegisterForm::class)->name('team-invitations.register');
+	        
+	});
+});
+
 Route::layout('layouts.dashboard')->middleware(['auth'])->group(function(){
 
 	Route::get('teams/manage', Kompo\Auth\Teams\TeamManagementPage::class)->name('teams.manage');
 
 });
 
-
-Route::layout('layouts.guest')->middleware(['guest'])->group(function(){
-
-	Route::get('team-invitations/{invitation}', Kompo\Auth\Teams\TeamInvitationRegisterForm::class)->name('team-invitations.accept')
-        ->middleware(['signed']);
-        
-});
 
 //ACCOUNT
 Route::layout('layouts.dashboard')->middleware(['auth'])->group(function(){

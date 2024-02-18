@@ -2,15 +2,14 @@
 
 namespace Kompo\Auth\Auth;
 
-use Kompo\Form;
+use Kompo\Auth\Common\ImgFormLayout;
 
-class LoginForm extends Form
+class LoginForm extends ImgFormLayout
 {
     public $submitTo = 'login';
     public $redirectTo = 'dashboard';
 
-    public $containerClass = 'container min-h-screen flex flex-col sm:justify-center items-center';
-    public $class = 'sm:mx-auto sm:w-full sm:max-w-md';
+    protected $imgUrl = 'images/login-image.png';
 
     protected $email;
     
@@ -19,7 +18,7 @@ class LoginForm extends Form
         $this->email = $this->prop('email');
     }
 
-	public function render()
+	public function rightColumnBody()
 	{
 		return [
             session('status') ? //See ResetPasswordForm: to confirm the password has been reset...

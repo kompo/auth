@@ -46,7 +46,7 @@ class TeamInvitationForm extends TeamBaseForm
             _Input('Email')->name('email')->type('email'),
             TeamRole::buttonGroupField(),
             _FlexEnd(
-                _SubmitButton('Send invite')->alert('Invite Sent!')->refresh()
+                _SubmitButton('Send invite')->alert('Invite Sent!')->refresh()->refresh('team-invitations-list'),
             )
         ];
     }

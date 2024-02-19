@@ -6,7 +6,6 @@ use Kompo\Auth\Models\Teams\TeamInvitation;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\URL;
 
 class TeamInvitationMail extends Mailable
 {
@@ -26,8 +25,9 @@ class TeamInvitationMail extends Mailable
      */
     public function build()
     {
-        return $this->markdown('kompo-auth::mail.team-invitation', ['acceptUrl' => URL::signedRoute('team-invitations.accept', [
-            'invitation' => $this->invitation,
-        ])])->subject(__('Team Invitation'));
+        return $this->subject(__('Team Invitation'))
+            ->markdown('kompo-auth::mail.team-invitation', [
+                'acceptUrl' => $this->invitation->getAcceptInvitationRoute(),
+            ]);
     }
 }

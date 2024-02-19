@@ -13,6 +13,11 @@ class Team extends Model
 		return $this->belongsTo(User::class, 'user_id');
 	}
 
+    public function parentTeam()
+    {
+        return $this->belongsTo(Team::class, 'parent_team_id');
+    }
+
     public function users()
     {
         return $this->belongsToMany(User::class, TeamRole::class)->withPivot('role')->withTimestamps();

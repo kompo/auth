@@ -10,6 +10,12 @@ trait BelongsToTeamTrait
         return $this->belongsTo(Team::class);
     }
 
+    /* CALCULATED FIELDS */
+    public function getTeamName()
+    {
+        return $this->team->name;
+    }
+
     /* ACTIONS */
     public function setTeamId($teamId = null)
     {

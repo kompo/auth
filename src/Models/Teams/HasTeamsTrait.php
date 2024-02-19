@@ -69,6 +69,34 @@ trait HasTeamsTrait
         $teamRole->save();
     }
 
+    public function createSuperAdminRole($team)
+    {
+        $this->createTeamRole($team, SuperAdminRole::ROLE_KEY);
+    }
+
+    public function createTeamOwnerRole($team)
+    {
+        $this->createTeamRole($team, TeamOwnerRole::ROLE_KEY);
+    }
+
+    public function createRolesFromInvitation($invitation)
+    {
+        $team = $invitation->team;
+
+        $roles = explode(TeamRole::ROLES_DELIMITER, $invitation->role);
+
+        collect($roles)->each(fn($role) => $this->createTeamRole($team, $role));
+        
+        $this->switchTeam($team);
+
+        $invitation->delete();
+    }
+
+    public function switchToFirstTeam()
+    {
+        return $this->switchTeam(TeamRole::where('user_id', $this->id)->first()->team);
+    }
+
     public function switchTeam($team)
     {
         if (!$this->isMemberOfTeam($team)) {
@@ -85,6 +113,8 @@ trait HasTeamsTrait
         $this->setAvailableRoles();
 
         $this->setRelation('currentTeam', $team);
+
+        refreshCurrentTeam();
 
         return true;
     }
@@ -107,7 +137,7 @@ trait HasTeamsTrait
         $rolesArray = $this->teamRoles()->where('team_id', $this->current_team_id)->pluck('role');
 
         $this->forceFill([
-            'available_roles' => $rolesArray->implode(TeamRole::ROLES_DELIMITER),
+            'available_roles' => $rolesArray->unique()->implode(TeamRole::ROLES_DELIMITER),
         ])->save();
     }
 

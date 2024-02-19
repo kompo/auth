@@ -3,19 +3,17 @@
 namespace Kompo\Auth\Teams;
 
 use App\Models\User;
+use Kompo\Auth\Common\ImgFormLayout;
 use Kompo\Auth\Models\Teams\TeamInvitation;
-use Kompo\Auth\Models\Teams\TeamRole;
-use Kompo\Form;
 
-class TeamInvitationRegisterForm extends Form
+class TeamInvitationRegisterForm extends ImgFormLayout
 {
+    protected $imgUrl = 'images/register-image.png';
+
     public $model = User::class;
 
     protected $invitation;
     protected $team;
-
-    public $containerClass = 'container min-h-screen flex flex-col sm:justify-center items-center';
-    public $class = 'sm:mx-auto sm:w-full sm:max-w-md';
 
     public function created()
     {
@@ -35,13 +33,7 @@ class TeamInvitationRegisterForm extends Form
 
     public function afterSave()
     {
-        $roles = explode(TeamRole::ROLES_DELIMITER, $this->invitation->role);
-
-        collect($roles)->each(fn($role) => $this->model->createTeamRole($this->team, $role));
-        
-        $this->model->switchTeam($this->team);
-
-        $this->invitation->delete();
+        $this->model->createRolesFromInvitation($this->invitation);
 
         //event(new Registered($this->model)); //uncomment if needed
 
@@ -53,7 +45,7 @@ class TeamInvitationRegisterForm extends Form
         return redirect()->route('dashboard');
     }
 
-    public function render()
+    public function rightColumnBody()
     {
         return [
             _Input('Your invitation email')->name('show_email', false)->readOnly()

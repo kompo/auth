@@ -36,6 +36,11 @@ class TeamRole extends Model
         return $allRoles;
     }
 
+    public static function getAllRoleClasses()
+    {
+        return static::getUsableRoleClasses()->push(TeamOwnerRole::class);
+    }
+
     public static function baseRoles()
     {
         return [
@@ -56,6 +61,11 @@ class TeamRole extends Model
         return static::getUsableRoleClasses()->mapWithKeys(fn($class) => [
             $class::ROLE_KEY => $class::ROLE_DESCRIPTION,
         ]);
+    }
+
+    public function getRelatedRoleClass()
+    {
+        return static::getAllRoleClasses()->first(fn($class) => $this->role == $class::ROLE_KEY);
     }
 
     public static function teamRoleRules()

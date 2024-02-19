@@ -24,7 +24,6 @@ class FileUploadModalManager extends Modal
         } else {
             $this->model->fileable_type = request('fileable_type');
             $this->model->fileable_id = request('fileable_id');
-            if(request('tags')) $this->model->tags()->sync(request('tags'));
             $this->model->save();
         }
 	}
@@ -34,9 +33,6 @@ class FileUploadModalManager extends Modal
 		return _Rows(
             $this->model->id ? null : _MultiFile()->name('files')->placeholder('file.upload-one-multiple-files')
                 ->class('text-gray-600 large-file-upload mb-10'),
-            _Rows(
-                _TagsMultiSelect()->class('mb-10'),
-            ),
             _Rows(
                 _Html('file.fileable')->class('text-lg font-semibold mb-2'),
                 new FileFileableForm($this->model->id),

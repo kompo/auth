@@ -1,29 +1,39 @@
 <?php 
 
 /* GENERAL CONVENTIONS */
-function authUser()
-{
-	return auth()->user();
+if(!function_exists('authUser')) {
+	function authUser()
+	{
+		return auth()->user();
+	}
 }
 
-function authId()
-{
-	return auth()->id();
+if(!function_exists('authId')) {
+	function authId()
+	{
+		return auth()->id();
+	}
 }
 
 /* ROLES */
-function isTeamOwner()
-{
-	return authUser()?->isTeamOwner();
+if(!function_exists('isTeamOwner')) {
+	function isTeamOwner()
+	{
+		return authUser()?->isTeamOwner();
+	}
 }
 
-function isSuperAdmin()
-{
-	return authUser()?->isSuperAdmin();
+if(!function_exists('isSuperAdmin')) {
+	function isSuperAdmin()
+	{
+		return authUser()?->isSuperAdmin();
+	}
 }
 
 /* OTHER HELPERS */
-function isImpersonated()
-{
-    return authUser()?->isImpersonated();
+if(!function_exists('isImpersonated')) {
+	function isImpersonated()
+	{
+		return authUser()?->isImpersonated();
+	}
 }

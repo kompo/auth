@@ -151,7 +151,6 @@ class File extends Model implements Searchable
 
     public static function typesOptions()
     {
-
         return config('kompo-files.types');
     }
 
@@ -194,14 +193,48 @@ class File extends Model implements Searchable
         );
     }
 
+    protected static function yearlyMonthlyLinkGroup()
+    {
+        if ($year = request('year')) {
+            return _Flex4(
+                _Link(__('Year').' '.$year)->class('text-level1 font-bold')->icon('arrow-left')
+                    ->getElements('getYearsMonthsFilter')->inPanel('file-manager-year-month-filter'),
+                _LinkGroup()->name('month', false)->class('mb-0')
+                    ->options(
+                        static::getFilesCountFor($year)->mapWithKeys(fn($stat) => [
+                            $stat->label => static::yearMonthOption(carbon($stat->label.'-01', 'Y-m-d')->translatedFormat('M'), $stat->cn)
+                        ])
+                    )->selectedClass('text-level3 border-b-2 border-level3', 'text-level3 border-b-2 border-transparent')
+                    ->filter()
+            )->class('mb-4');
+        }
+
+        return _Flex4(
+            _Html('file.filter-by-year')->class('text-level1 font-medium'),
+            _LinkGroup()->name('year', false)->class('mb-0')
+                ->options(
+                    static::getFilesCountFor()->mapWithKeys(fn($stat) => [
+                        $stat->label => static::yearMonthOption($stat->label, $stat->cn)
+                    ])
+                )->selectedClass('text-level1 border-b-2 border-level1', 'text-level1 border-b-2 border-transparent')
+                ->filter()
+                ->onSuccess(fn($e) => $e->getElements('getYearsMonthsFilter')->inPanel('file-manager-year-month-filter'))
+        )->class('mb-4');
+    }
+
     protected static function getFilesCountFor($year = null)
     {
         $labelFunc = $year ? 'LEFT(created_at,7)' : 'YEAR(created_at)';
 
-        $query = static::selectRaw($labelFunc.' as label, COUNT(*) as cn')->where('team_id', currentTeam()->id)
+        $query = static::selectRaw($labelFunc.' as label, COUNT(*) as cn')->where('team_id', currentTeam()?->id)
             ->groupByRaw($labelFunc)->orderByRaw($labelFunc.' DESC');
 
         return ($year ? $query->whereRaw('YEAR(created_at) = ?', [$year]) : $query )->get();
+    }
+
+    protected static function yearMonthOption($label, $count)
+    {
+        return _Html($label.' <span class="text-xs text-gray-600">('.$count.')</span>')->class('font-bold cursor-pointer mr-4');
     }
 
     protected static function buttonGroup($name, $interactsWithModel = true)

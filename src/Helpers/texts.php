@@ -8,72 +8,94 @@
 \Kompo\Elements\Element::macro('titleMini', fn() => $this->class('text-sm text-info uppercase leading-widest font-bold'));
 \Kompo\Elements\Element::macro('titleStat', fn() => $this->class('text-2xl font-black'));
 
-function _TitleMain($label = '')
-{
-	return _Html($label)->titleMain();
+if(!function_exists('_TitleMain')) {
+    function _TitleMain($label = '')
+    {
+        return _Html($label)->titleMain();
+    }
 }
 
-function _TitleCard($label = '')
-{
-	return _Html($label)->titleCard();
+if(!function_exists('_TitleCard')) {
+    function _TitleCard($label = '')
+    {
+        return _Html($label)->titleCard();
+    }
 }
 
-function _TitleModal($label = '')
-{
-    return _Html($label)->titleModal();
+if(!function_exists('_TitleModal')) {
+    function _TitleModal($label = '')
+    {
+        return _Html($label)->titleModal();
+    }
 }
 
-function _TitleAccent($label = '')
-{
-    return _Html($label)->titleAccent()->class('mb-2');
+if(!function_exists('_TitleAccent')) {
+    function _TitleAccent($label = '')
+    {
+        return _Html($label)->titleAccent()->class('mb-2');
+    }
 }
 
-function _TitleMini($label)
-{
-    return _Html($label)->titleMini();
+if(!function_exists('_TitleMini')) {
+    function _TitleMini($label)
+    {
+        return _Html($label)->titleMini();
+    }
 }
 
 /* LABELS AND VALUES */
-function _LabelMiniValue($label = '', $value = null)
-{
-    $value = $value instanceof \Kompo\Elements\Element ? $value : _Html($value);
+if(!function_exists('_LabelMiniValue')) {
+    function _LabelMiniValue($label = '', $value = null)
+    {
+        $value = $value instanceof \Kompo\Elements\Element ? $value : _Html($value);
 
-    return _Rows(
-        _Html($label)->class('text-sm font-medium'),
-        $value,
-    );
+        return _Rows(
+            _Html($label)->class('text-sm font-medium'),
+            $value,
+        );
+    }
 }
 
 /* DESCRIPTIONS AND OTHER */
 \Kompo\Elements\Element::macro('textSm', fn() => $this->class('text-sm'));
 \Kompo\Elements\Element::macro('textSmGray', fn() => $this->textSm()->class('text-level2'));
 
-function _TextSm($label = '')
-{
-    return _Html($label)->textSm();
+if(!function_exists('_TextSm')) {
+    function _TextSm($label = '')
+    {
+        return _Html($label)->textSm();
+    }
 }
 
-function _TextSmGray($label = '')
-{
-	return _Html($label)->textSmGray();
+if(!function_exists('_TextSmGray')) {
+    function _TextSmGray($label = '')
+    {
+        return _Html($label)->textSmGray();
+    }
 }
 
 /* Yes No Elements */
-function _HtmlYesNo($value)
-{
-    return _Html($value ? 'Yes' : 'No');
+if(!function_exists('_HtmlYesNo')) {
+    function _HtmlYesNo($value)
+    {
+        return _Html($value ? 'Yes' : 'No');
+    }
 }
 
 /* Pill Elements */
 \Kompo\Elements\Element::macro('asPill', fn($colorClass = '') => $this->class('text-xs font-medium px-4 py-1 rounded-full inline-block')->class($colorClass));
 \Kompo\Elements\Element::macro('asPillGrayWhite', fn() => $this->asPill('bg-level5 border !py-2 !px-6'));
 
-function _Pill($label = '')
-{
-    return _Html($label)->asPill();
+if(!function_exists('_Pill')) {
+    function _Pill($label = '')
+    {
+        return _Html($label)->asPill();
+    }
 }
 
-function _Pill3($label = '')
-{
-    return _Pill($label)->class('bg-level3 text-level1');
+if(!function_exists('_Pill3')) {
+    function _Pill3($label = '')
+    {
+        return _Pill($label)->class('bg-level3 text-level1');
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace Kompo\Auth\Models\Files;
 
+use Kompo\Auth\Files\FileLibraryAttachmentQuery;
 use Kompo\Auth\Models\Contracts\Searchable;
 use Kompo\Auth\Models\Files\FileVisibilityEnum;
 use Kompo\Auth\Models\Model;
@@ -268,6 +269,39 @@ class File extends Model implements Searchable
             $value => _Rows(
                 $icon ? $label->icon($icon->class('text-lg')) : $label
             )
+        ];
+    }
+
+    public static function fileUploadLinkAndBox($name, $toggleOnLoad = true, $fileIds = [])
+    {
+        $panelId = 'file-upload-'.uniqid();
+
+        return [
+
+            _Flex(
+                _Link()->icon(_Sax('paperclip-2'))->class('text-level1 text-2xl')
+                    ->balloon('attach-files', 'up')
+                    ->toggleId($panelId, $toggleOnLoad),
+                _Html()->class('text-xs text-gray-600 font-semibold')->id('file-size-div')
+            ),
+
+            _Rows(
+                _FlexBetween(
+                    _MultiFile()->placeholder('browse-files')->name($name)
+                        ->extraAttributes([
+                            'team_id' => currentTeam()->id,
+                        ])->class('mb-0 w-full md:w-5/12')
+                        ->id('email-attachments-input')->run('calculateTotalFileSize'),
+                    _Html('or')
+                        ->class('text-sm text-gray-600 my-2 md:my-0'),
+                    FileLibraryAttachmentQuery::libraryFilesPanel($fileIds)
+                        ->class('w-full md:w-5/12'),
+                )->class('flex-wrap'),
+                _Html('file.your-files-exceed-max-size')
+                    ->class('hidden text-danger text-xs')->id('file-size-message')
+            )->class('mx-2 dashboard-card p-2 space-x-2')
+            ->id($panelId)
+
         ];
     }
 

@@ -27,7 +27,7 @@ class ImpersonateForm extends Form
 	public function searchUsers($search)
 	{
 		return User::where('id', '<>', authId())->hasNameLike($search)
-			->with('currentTeam')->orderBy('current_team_id')->get()
+			->with('currentTeamRole.team')->orderBy('name')->get()
 			->mapWithKeys(fn($user) => [
 				$user->id => $this->getUserOptionLink($user)
 			]);
@@ -38,7 +38,7 @@ class ImpersonateForm extends Form
 		$label = $user->name;
 
 		if ($user->current_team_id != $this->lastTeamId) {
-			$label = '<div class="font-semibold">'.$user->currentTeam->name.'</div>'.$label;
+			$label = '<div class="font-semibold">'.$user->currentTeamRole->getTeamName().'</div>'.$label;
 			$this->lastTeamId = $user->current_team_id;
 		}
 

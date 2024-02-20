@@ -15,7 +15,7 @@ class TeamInvitationForm extends TeamBaseForm
     public function handle()
     {
         $user = auth()->user();
-        $team = $user->currentTeam;
+        $team = currentTeam();
         $email = request('email');
         $roles = request('roles') ?: [];
 
@@ -39,8 +39,6 @@ class TeamInvitationForm extends TeamBaseForm
 
     protected function body()
     {
-        $teamOwner = auth()->user()->currentTeam->owner;
-
         return [
             _Html('Please provide the email address of the person you would like to add to this team.')->class('max-w-xl text-sm text-gray-600 mb-4'),
             _Input('Email')->name('email')->type('email'),

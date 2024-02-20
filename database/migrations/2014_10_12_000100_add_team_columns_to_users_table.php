@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class AddTeamColumnsToUsersTable extends Migration
+return new class extends Migration
 {
     /**
      * Run the migrations.
@@ -14,9 +14,7 @@ class AddTeamColumnsToUsersTable extends Migration
     public function up()
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->foreignId('current_team_id')->nullable()->constrained('teams');
-            $table->string('current_role')->nullable();
-            $table->string('available_roles')->nullable();
+            $table->foreignId('current_team_role_id')->nullable()->constrained('team_user');
         });
     }
 
@@ -28,8 +26,8 @@ class AddTeamColumnsToUsersTable extends Migration
     public function down()
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropForeign(['current_team_id']);
-            $table->dropColumn('current_role', 'available_roles', 'current_team_id');
+            $table->dropForeign(['current_team_role_id']);
+            $table->dropColumn('current_team_role_id');
         });
     }
-}
+};

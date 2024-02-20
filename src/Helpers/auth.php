@@ -36,24 +36,49 @@ function baseEmailRules()
 }
 
 /** Current Team, Roles, etc */
+function currentTeamRoleId() 
+{
+    if (!auth()->user()) {
+        return;
+    }
+
+    if (!auth()->user()->current_team_role_id) {
+        auth()->user()->switchToFirstTeamRole();
+    }
+
+    return auth()->user()->current_team_role_id;
+}
+
+function currentTeamRole() 
+{
+    if (!auth()->user()) {
+        return;
+    }
+
+    if (!auth()->user()->current_team_role_id) {
+        auth()->user()->switchToFirstTeamRole();
+    }
+
+    return \Cache::remember('currentTeamRole'.auth()->id(), 120,
+        fn() => auth()->user()->currentTeamRole
+    );
+}
+
 function currentTeam() 
 {
     if (!auth()->user()) {
         return;
     }
 
-    if (!auth()->user()->current_team_id) {
-        auth()->user()->switchToFirstTeam();
-    }
-
     return \Cache::remember('currentTeam'.auth()->id(), 120,
-        fn() => auth()->user()->currentTeam
+        fn() => currentTeamRole()->team
     );
 }
 
-function refreshCurrentTeam()
+function refreshCurrentTeamAndRole()
 {
-    \Cache::put('currentTeam'.auth()->id(), auth()->user()->currentTeam, 120);
+    \Cache::put('currentTeamRole'.auth()->id(), auth()->user()->currentTeamRole, 120);
+    \Cache::put('currentTeam'.auth()->id(), currentTeamRole()->team, 120);
 }
 
 function currentTeamId() 
@@ -62,9 +87,5 @@ function currentTeamId()
         return;
     }
 
-    if (!auth()->user()->current_team_id) {
-        auth()->user()->switchToFirstTeam();
-    }
-
-    return auth()->user()->current_team_id;
+    return currentTeamRole()->team_id;
 }

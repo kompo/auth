@@ -38,33 +38,13 @@ class CheckRolesIntegrityCommand extends Command
                 \Log::critical('User id '.$user->id.' has no associated teams!');
             }
 
-            if (!$user->current_team_id) {
-                \Log::critical('User id '.$user->id.' has no current_team_id!');
+            if (!$user->current_team_role_id) {
+                \Log::critical('User id '.$user->id.' has no current_team_role_id!');
             }
 
-            if (!$user->teams->pluck('id')->contains($user->current_team_id)) {
-                \Log::critical('User id '.$user->id.' has a current_team_id from another team!');                
+            if (!$user->teamRoles->pluck('id')->contains($user->current_team_role_id)) {
+                \Log::critical('User id '.$user->id.' has a current_team_role_id from another team!');                
             }
-
-            if (!$user->current_role) {
-                \Log::critical('User id '.$user->id.' has no current_role!');
-            }
-
-            if (!$user->teamRoles->pluck('role')->contains($user->current_role)) {
-                \Log::critical('User id '.$user->id.' has a not allowed current_role! '.$user->current_role);                
-            }
-
-            if (!$user->collectAvailableRoles()->count()) {
-                \Log::critical('User id '.$user->id.' has no available_roles!');
-            }
-
-            $user->collectAvailableRoles()->each(function($role) use ($user) {
-
-                if (!$user->teamRoles->pluck('role')->contains($role)) {
-                    \Log::critical('User id '.$user->id.' has an available role not allowed! '.$role);                
-                }
-
-            });
         });
     }
 }

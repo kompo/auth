@@ -14,11 +14,11 @@ class TeamManagementPage extends Form
 
             new TeamsJoinedView(),
 
-            auth()->user()->can('addTeamMember', auth()->user()->currentTeam) ?
+            auth()->user()->can('addTeamMember', currentTeam()) ?
                 new TeamInvitationForm() : 
                 null,
 
-            auth()->user()->can('addTeamMember', auth()->user()->currentTeam) ?
+            auth()->user()->can('addTeamMember', currentTeam()) ?
                 new TeamInvitationsView() : 
                 null, 
 

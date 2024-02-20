@@ -11,7 +11,7 @@ class TeamMembersList extends Query
 
     public function created()
     {
-        $this->team = auth()->user()->currentTeam;
+        $this->team = currentTeam();
     }
 
     public function query()

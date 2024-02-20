@@ -11,7 +11,7 @@ abstract class TeamBaseForm extends Form
 
     public function created()
     {
-        $this->model(auth()->user()->currentTeam);
+        $this->model(currentTeam());
     }
 
     abstract protected function body();

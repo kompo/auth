@@ -9,18 +9,16 @@ class TeamsJoinedList extends Query
 {
     public function query()
     {
-        return TeamRole::where('user_id', auth()->id())->with('team')->latest();
+        return auth()->user()->teamRoles()->with('team')->latest();
     }
 
     public function render($teamRole)
     {
-        $roleClass = $teamRole->getRelatedRoleClass();
-
         return _FlexBetween(
 
             _Html($teamRole->getTeamName())->class('text-gray-600'),
 
-            _Pill($roleClass::ROLE_NAME),
+            _Pill($teamRole->getRoleName()),
 
             _Link('Switch to')->class('text-sm text-red-500')
                 ->selfPost('switchToTeamRole', [
@@ -32,10 +30,8 @@ class TeamsJoinedList extends Query
 
     public function switchToTeamRole($id)
     {
-        $teamRole = TeamRole::findOrFail($id);
-
-        auth()->user()->switchTeam($teamRole->team);
-
+        auth()->user()->switchToTeamRoleId($id);
+        
         return redirect()->route('teams.manage');
     }
 }

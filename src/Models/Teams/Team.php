@@ -42,6 +42,7 @@ class Team extends Model
 	/* ACTIONS */
 	public function detachFromTeam($user)
 	{
+        //TODO: refactor for current_team_role_id
 		if ($user->current_team_id === $this->id) {
             $user->forceFill([
                 'current_team_id' => null,

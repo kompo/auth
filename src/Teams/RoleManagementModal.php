@@ -17,7 +17,7 @@ class RoleManagementModal extends Modal
 
 	public function authorizeBoot()
 	{
-        $this->team = auth()->user()->currentTeam;
+        $this->team = currentTeam();
 
 		return auth()->user()->can('addTeamMember', $this->team);
 	}
@@ -38,9 +38,9 @@ class RoleManagementModal extends Modal
         	fn($role) => !$oldRoles->pluck('role')->contains($role) ? $this->model->createTeamRole($this->team, $role) : null
         );
 
-        $this->model->setAvailableRoles();
-
-        $this->model->switchRole($newRoles->first());
+        if (!$this->model->teamRoles()->pluck('id')->contains($this->model->current_team_role_id)) {
+        	$this->model->switchToFirstTeamRole();
+        }
 	}
 
 	public function body()

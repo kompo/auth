@@ -17,7 +17,7 @@ class RemoveTeamMemberModal extends Modal
 
 	public function authorizeBoot()
 	{
-        $this->team = auth()->user()->currentTeam;
+        $this->team = currentTeam();
 
 		return auth()->user()->can('removeTeamMember', $this->team);
 	}

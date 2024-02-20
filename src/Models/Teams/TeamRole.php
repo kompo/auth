@@ -10,12 +10,27 @@ use Kompo\Auth\Models\Teams\BaseRoles\TeamOwnerRole;
 class TeamRole extends Model
 {
     use \Kompo\Auth\Models\Teams\BelongsToTeamTrait;
+    use \Kompo\Auth\Models\Traits\BelongsToUserTrait;
 
     protected $table = 'team_user';
 
     public const ROLES_DELIMITER = ',';
 
+    /* RELATIONS */
+
     /* CALCULATED FIELDS */
+    public function getRoleName()
+    {
+        $roleClass = $this->getRelatedRoleClass();
+
+        return $roleClass::ROLE_NAME;
+    }
+
+    public function getRelatedRoleClass()
+    {
+        return static::getAllRoleClasses()->first(fn($class) => $this->role == $class::ROLE_KEY);
+    }
+
     public static function getUsableRoleClasses()
     {
         $appRolesDir = app_path('Models/Roles');
@@ -63,25 +78,9 @@ class TeamRole extends Model
         ]);
     }
 
-    public function getRelatedRoleClass()
-    {
-        return static::getAllRoleClasses()->first(fn($class) => $this->role == $class::ROLE_KEY);
-    }
-
     public static function teamRoleRules()
     {
         return ['required', 'array', 'in:'.implode(',', array_keys(TeamRole::usableRoles()->toArray()))];
-    }
-
-    /* RELATIONS */
-    public function team()
-    {
-        return $this->belongsTo(Team::class);
-    }
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
     }
 
     /* ACTIONS */

@@ -30,12 +30,18 @@ class KompoAuthServiceProvider extends ServiceProvider
 
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'kompo-auth');
 
-         //Usage: php artisan vendor:publish --provider="Kompo\KompoServiceProvider"
+        //Usage: php artisan vendor:publish --provider="Kompo\KompoServiceProvider"
         $this->publishes([
             __DIR__.'/../../config/kompo.php' => config_path('kompo.php'),
-            __DIR__ . '/../config/kompo-auth.php' => config_path('kompo-auth.php'),
-            __DIR__ . '/../config/kompo-files.php' => config_path('kompo-files.php'),
         ]);
+
+        //Usage: php artisan vendor:publish --tag="kompo-auth-config"
+        $this->publishes([
+            __DIR__.'/../config/kompo-auth.php' => config_path('kompo-auth.php'),
+            __DIR__ . '/../config/kompo-files.php' => config_path('kompo-files.php'),
+        ], 'kompo-auth-config');
+
+        $this->loadConfig();
     }
 
     /**
@@ -76,5 +82,16 @@ class KompoAuthServiceProvider extends ServiceProvider
         foreach ($policies as $key => $value) {
             \Gate::policy($key, $value);
         }
+    }
+
+    protected function loadConfig()
+    {
+        $this->mergeConfigFrom(
+            __DIR__.'/../config/kompo-auth.php','kompo-auth'
+        );
+
+        $this->mergeConfigFrom(
+            __DIR__.'/../config/kompo-files.php','kompo-files'
+        );
     }
 }

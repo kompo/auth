@@ -2,6 +2,6 @@
 
 return [
     'types' => [
-        'general' => [__('general.general'), 'file-alt'],
+        'general' => [__('general.general'), ''],
     ]
 ];

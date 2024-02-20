@@ -1,6 +1,6 @@
 <?php 
 
-namespace Kompo\Auth\Models\Traits;
+namespace Kompo\Auth\Models\Files;
 
 use Kompo\Auth\Models\Files\File;
 

@@ -10,7 +10,7 @@ class FileForm extends Modal
     protected $fileableId;
     protected $fileableType;
 
-    protected $_Title = 'file.upload-one-multiple-files';
+    protected $_Title = 'translate.files.upload-one-multiple-files';
 
     public function created()
     {
@@ -28,7 +28,7 @@ class FileForm extends Modal
 	{
 		return [
 			_Columns(
-                _MultiFile()->name('files')->placeholder('file.upload-one-multiple-files')
+                _MultiFile()->name('files')->placeholder('translate.files.upload-one-multiple-files')
                     ->class('text-gray-600 large-file-upload'),
 			),
 		];

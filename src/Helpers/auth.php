@@ -90,10 +90,10 @@ if(!function_exists('currentTeam')) {
 }
 
 if(!function_exists('refreshCurrentTeamAndRole')) {
-    function refreshCurrentTeamAndRole()
+    function refreshCurrentTeamAndRole($user)
     {
-        \Cache::put('currentTeamRole'.auth()->id(), auth()->user()->currentTeamRole, 120);
-        \Cache::put('currentTeam'.auth()->id(), currentTeamRole()->team, 120);
+        \Cache::put('currentTeamRole'.$user->id, $user->currentTeamRole, 120);
+        \Cache::put('currentTeam'.$user->id, $user->currentTeamRole->team, 120);
     }
 }
 

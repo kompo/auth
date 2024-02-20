@@ -36,17 +36,6 @@ trait HasTeamsTrait
     }
 
     /* CALCULATED FIELDS */
-    public function collectAvailableRoles()
-    {
-        if (!$this->available_roles) {
-            return collect();
-        }
-
-        $availableRoles = explode(TeamRole::ROLES_DELIMITER, $this->available_roles);
-
-        return collect($availableRoles);
-    }
-
     public function getRelatedTeamRoles($teamId = null)
     {
         return $this->teamRoles()->when($teamId, fn($q) => $q->where('team_id', $teamId))->get();
@@ -62,7 +51,7 @@ trait HasTeamsTrait
     {
         $team = Team::forceCreate([
             'user_id' => $this->id,
-            'name' => explode(' ', $this->name, 2)[0]."'s Team",
+            'team_name' => explode(' ', $this->name, 2)[0]."'s Team",
         ]);
 
         $this->createTeamRole($team, TeamOwnerRole::ROLE_KEY);
@@ -126,7 +115,7 @@ trait HasTeamsTrait
 
         $this->setRelation('currentTeamRole', $teamRole);
 
-        refreshCurrentTeamAndRole();
+        refreshCurrentTeamAndRole($this);
 
         return true;
     }

@@ -12,8 +12,6 @@ class TeamRole extends Model
     use \Kompo\Auth\Models\Teams\BelongsToTeamTrait;
     use \Kompo\Auth\Models\Traits\BelongsToUserTrait;
 
-    protected $table = 'team_user';
-
     public const ROLES_DELIMITER = ',';
 
     /* RELATIONS */

@@ -13,7 +13,7 @@ trait BelongsToTeamTrait
     /* CALCULATED FIELDS */
     public function getTeamName()
     {
-        return $this->team->name;
+        return $this->team->team_name;
     }
 
     /* ACTIONS */

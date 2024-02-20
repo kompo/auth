@@ -1,5 +1,5 @@
 @component('mail::message')
-{{ __('You have been invited to join the :team team!', ['team' => $invitation->team->name]) }}
+{{ __('You have been invited to join the :team team!', ['team' => $invitation->team->team_name]) }}
 
 {{ __('You may accept this invitation by clicking the button below:') }}
 

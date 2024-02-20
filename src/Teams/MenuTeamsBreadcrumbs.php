@@ -29,7 +29,7 @@ class MenuTeamsBreadcrumbs extends Form
 
 	protected function getTeamSwitcherLink($team)
 	{
-		return _Link($team->name)->class(currentTeam()->id == $team->id ? 'font-bold' : '')
+		return _Link($team->team_name)->class(currentTeam()->id == $team->id ? 'font-bold' : '')
 			->selfPost('switchToTeamRole', ['team_id' => $team->id])
 			->redirect();
 	}

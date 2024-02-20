@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateTeamsTable extends Migration
+class CreateTeamRolesTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,13 +13,13 @@ class CreateTeamsTable extends Migration
      */
     public function up()
     {
-        Schema::create('teams', function (Blueprint $table) {
-
+        Schema::create('team_roles', function (Blueprint $table) {
+            
             addMetaData($table);
             
-            $table->foreignId('user_id')->nullable()->constrained();
-            $table->string('team_name');
-            $table->foreignId('parent_team_id')->nullable()->constrained('teams');
+            $table->foreignId('team_id');
+            $table->foreignId('user_id');
+            $table->string('role')->nullable();
         });
     }
 
@@ -30,6 +30,6 @@ class CreateTeamsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('teams');
+        Schema::dropIfExists('team_roles');
     }
 }

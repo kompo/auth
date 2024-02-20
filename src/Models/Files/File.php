@@ -5,6 +5,7 @@ namespace Kompo\Auth\Models\Files;
 use Kompo\Auth\Models\Contracts\Searchable;
 use Kompo\Auth\Models\Files\FileVisibilityEnum;
 use Kompo\Auth\Models\Model;
+use Kompo\Auth\Models\Tags\MorphToManyTagsTrait;
 use Kompo\Auth\Models\Teams\BelongsToTeamTrait;
 use Kompo\Auth\Models\Traits\BelongsToUserTrait;
 use Kompo\Auth\Models\Traits\HasSearchableNameTrait;
@@ -14,6 +15,7 @@ class File extends Model implements Searchable
 {
     use BelongsToTeamTrait;
     use BelongsToUserTrait;
+    use MorphToManyTagsTrait;
 
     use HasSearchableNameTrait;
     public const SEARCHABLE_NAME_ATTRIBUTE = 'name';
@@ -80,6 +82,12 @@ class File extends Model implements Searchable
             }
         }
 
+        if (array_key_exists('tags_and', $filters) && $tags = $filters['tags_and']) {
+            foreach ($tags as $tagId) {
+                $query = $query->whereHas('tags', fn($q) => $q->where('tags.id', $tagId));
+            }
+        }
+
         if(array_key_exists('year', $filters) && $year = $filters['year']) {
             $query = $query->whereRaw('YEAR(created_at) = ?', [$year]);
         }
@@ -111,13 +119,13 @@ class File extends Model implements Searchable
         parent::delete();
     }
 
-    public static function uploadMultipleFiles($files, $fileableType = null, $fileableId = null)
+    public static function uploadMultipleFiles($files, $fileableType = null, $fileableId = null, $tags = [])
     {
         $fileHandler = new FileHandler();
 
         $fileHandler->setDisk('public'); // TODO: make this configurable
 
-        collect($files)->map(function ($uploadedFile) use ($fileHandler, $fileableId, $fileableType) {
+        collect($files)->map(function ($uploadedFile) use ($fileHandler, $fileableId, $fileableType, $tags) {
 
             $file = new File();
 
@@ -133,6 +141,8 @@ class File extends Model implements Searchable
             $file->team_id = currentTeam()->id;
 
             $file->save();
+
+            if($tags && count($tags)) $file->tags()->sync($tags);
 
             return $file->id;
         });

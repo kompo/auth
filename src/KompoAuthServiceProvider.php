@@ -2,6 +2,7 @@
 
 namespace Kompo\Auth;
 
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 
 class KompoAuthServiceProvider extends ServiceProvider
@@ -42,6 +43,8 @@ class KompoAuthServiceProvider extends ServiceProvider
         ], 'kompo-auth-config');
 
         $this->loadConfig();
+
+        $this->loadRelationsMorphMap();
     }
 
     /**
@@ -93,5 +96,16 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(
             __DIR__.'/../config/kompo-files.php','kompo-files'
         );
+    }
+    
+    /**
+     * Loads a relations morph map.
+     */
+    protected function loadRelationsMorphMap()
+    {
+        Relation::morphMap([
+            'team' => \Kompo\Auth\Models\Teams\Team::class,
+            'file' => \Kompo\Auth\Models\Files\File::class,
+        ]);
     }
 }

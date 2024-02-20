@@ -41,11 +41,6 @@ class Team extends Model
         return $this->users()->where('email', $email)->count();
     }
 
-    public function getTeamNameAttribute()
-    {
-        return $this->name;
-    }
-
     /* SCOPES */
     public function scopeForParentTeam($query, $teamId)
     {

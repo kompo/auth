@@ -46,7 +46,7 @@ class RoleManagementModal extends Modal
 	public function body()
 	{
 		return [
-            TeamRole::buttonGroupField()->value($this->model->collectAvailableRoles()),
+            TeamRole::buttonGroupField()->value($this->model->getRelatedTeamRoles($this->team->id)->pluck('id')),
 		];
 	}
 

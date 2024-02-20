@@ -7,6 +7,8 @@ use App\Models\User;
 
 class Team extends Model
 {
+    use \Kompo\Auth\Models\Maps\MorphManyAddresses;
+
 	/* RELATIONS */
 	public function owner()
     {
@@ -37,6 +39,17 @@ class Team extends Model
 	public function hasUserWithEmail(string $email): int
     {
         return $this->users()->where('email', $email)->count();
+    }
+
+    public function getTeamNameAttribute()
+    {
+        return $this->name;
+    }
+
+    /* SCOPES */
+    public function scopeForParentTeam($query, $teamId)
+    {
+        $query->where('parent_team_id', $teamId);
     }
 
 	/* ACTIONS */

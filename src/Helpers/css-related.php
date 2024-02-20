@@ -23,3 +23,20 @@ if (!function_exists('_PageTitle')) {
     }
 }
 
+function _ChatCount($count)
+{
+    return _Html($count)
+        ->icon(
+            _Sax('message',20)->class('text-xl')
+        )
+        ->class('flex items-center');
+}
+
+function _DiffDate($date)
+{
+    if(!$date)
+        return;
+
+    return _Html($date->diffForHumans())->class('text-xs text-gray-600 whitespace-nowrap');
+}
+

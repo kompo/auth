@@ -15,6 +15,28 @@ if (!function_exists('_CheckboxTerms')) {
     }
 }
 
+if (!function_exists('_ProfileImg')) {
+    function _ProfileImg($user, $sizeClass = 'h-8 w-8')
+    {
+        return _Img($user?->profile_photo_url)
+            ->class($sizeClass)
+            ->class('rounded-full object-cover border');
+    }
+}
+
+if (!function_exists('_UserImgDate')) {
+    function _UserImgDate($user, $date)
+    {
+        return _Flex(
+            _ProfileImg($user),
+            _Rows(
+                _Html($user?->name),
+                _DiffDate($date),
+            )->class('text-xs text-gray-600')
+        )->class('space-x-2');
+    }
+}
+
 // RULES
 if (!function_exists('registerRules')) {
     function registerRules()

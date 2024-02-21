@@ -40,6 +40,7 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../config/kompo-auth.php' => config_path('kompo-auth.php'),
             __DIR__ . '/../config/kompo-files.php' => config_path('kompo-files.php'),
+            __DIR__ . '/../config/kompo-tags.php' => config_path('kompo-tags.php'),
         ], 'kompo-auth-config');
 
         $this->loadConfig();
@@ -89,13 +90,15 @@ class KompoAuthServiceProvider extends ServiceProvider
 
     protected function loadConfig()
     {
-        $this->mergeConfigFrom(
-            __DIR__.'/../config/kompo-auth.php','kompo-auth'
-        );
+        $dirs = [
+            'kompo-auth' => __DIR__.'/../config/kompo-auth.php',
+            'kompo-files' => __DIR__.'/../config/kompo-files.php',
+            'kompo-tags' => __DIR__.'/../config/kompo-tags.php',
+        ];
 
-        $this->mergeConfigFrom(
-            __DIR__.'/../config/kompo-files.php','kompo-files'
-        );
+        foreach ($dirs as $key => $path) {
+            $this->mergeConfigFrom($path, $key);
+        }
     }
     
     /**

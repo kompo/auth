@@ -12,7 +12,7 @@ class FileUploadModalManager extends Modal
 	public $class = 'overflow-y-auto mini-scroll';
 	public $style = 'max-height:95vh; min-width: 350px;';
 
-	protected $_Title = 'file.upload-one-multiple-files';
+	protected $_Title = 'translate.files.upload-one-multiple-files';
 	protected $_Icon = 'document-text';
 
     protected $noHeaderButtons = true;
@@ -24,6 +24,7 @@ class FileUploadModalManager extends Modal
         } else {
             $this->model->fileable_type = request('fileable_type');
             $this->model->fileable_id = request('fileable_id');
+            if(request('tags')) $this->model->tags()->sync(request('tags'));
             $this->model->save();
         }
 	}
@@ -34,7 +35,10 @@ class FileUploadModalManager extends Modal
             $this->model->id ? null : _MultiFile()->name('files')->placeholder('file.upload-one-multiple-files')
                 ->class('text-gray-600 large-file-upload mb-10'),
             _Rows(
-                _Html('file.fileable')->class('text-lg font-semibold mb-2'),
+                _TagsMultiSelect()->class('mb-10'),
+            ),
+            _Rows(
+                _Html('translate.files.fileable')->class('text-lg font-semibold mb-2'),
                 new FileFileableForm($this->model->id),
             ),
             _SubmitButton()->closeModal(),

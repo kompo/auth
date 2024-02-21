@@ -23,7 +23,7 @@ class FileFileableForm extends Form
     public function render()
     {
         return _Columns(
-            _Select()->placeholder('translate.type-fileable')->options(
+            _Select()->placeholder('translate.files.type-fileable')->options(
                 collect(File::typesOptions())->mapWithKeys(
                     fn($label, $value) => [$value => ucfirst($label[0])]
                 ),
@@ -37,7 +37,7 @@ class FileFileableForm extends Form
 
     public function getSelectFileable()
     {
-        return new SelectFileable([
+        return new SelectFileable(null, [
             'fileable_type' => request('fileable_type') ?: $this->defaultType,
             'fileable_id' => request('fileable_id') ?: $this->defaultId,
         ]);

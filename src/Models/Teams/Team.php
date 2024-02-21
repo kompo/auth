@@ -8,6 +8,7 @@ use App\Models\User;
 class Team extends Model
 {
     use \Kompo\Auth\Models\Maps\MorphManyAddresses;
+    use \Kompo\Auth\Models\Tags\HasManyTagsTrait;
 
 	/* RELATIONS */
 	public function owner()

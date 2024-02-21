@@ -84,8 +84,28 @@ if (!function_exists("_Card")) {
 }
 
 /* COLORED CARDS */
+Element::macro('cardLevel1', fn() => $this->kompoCard()->class('bg-level1'));
+Element::macro('cardLevel2', fn() => $this->kompoCard()->class('bg-level2'));
 Element::macro('cardLevel3', fn() => $this->kompoCard()->class('bg-level3'));
 Element::macro('cardLevel4', fn() => $this->kompoCard()->class('bg-level4'));
+
+if (!function_exists("_CardLevel1")) {
+	function _CardLevel1()
+	{
+		return _Rows(
+			...func_get_args()
+		)->cardLevel1();
+	}
+}
+
+if (!function_exists("_CardLevel2")) {
+	function _CardLevel2()
+	{
+		return _Rows(
+			...func_get_args()
+		)->cardLevel2();
+	}
+}
 
 if (!function_exists("_CardLevel3")) {
 	function _CardLevel3()

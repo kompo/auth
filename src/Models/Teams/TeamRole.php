@@ -5,7 +5,7 @@ use App\Models\User;
 use Kompo\Auth\Models\Model;
 use Kompo\Auth\Models\Teams\BaseRoles\SuperAdminRole;
 use Kompo\Auth\Models\Teams\BaseRoles\TeamOwnerRole;
-
+use Kompo\Auth\Models\Teams\Permission;
 
 class TeamRole extends Model
 {
@@ -15,6 +15,16 @@ class TeamRole extends Model
     public const ROLES_DELIMITER = ',';
 
     /* RELATIONS */
+    public function permissions()
+    {
+        return $this->belongsToMany(Permission::class);
+    }
+
+    /* SCOPES */
+    public function scopeRelatedToTeam($query, $teamId = null)
+    {
+        $query->when($teamId, fn($q) => $q->where('team_id', $teamId));
+    }
 
     /* CALCULATED FIELDS */
     public function getRoleName()

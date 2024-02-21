@@ -4,6 +4,7 @@ namespace Kompo\Auth\Models\Teams;
 
 use Kompo\Auth\Models\Teams\BaseRoles\SuperAdminRole;
 use Kompo\Auth\Models\Teams\BaseRoles\TeamOwnerRole;
+use Kompo\Auth\Models\Teams\PermissionTeamRole;
 use Kompo\Auth\Models\Teams\TeamRole;
 
 trait HasTeamsTrait
@@ -30,20 +31,36 @@ trait HasTeamsTrait
     }
 
     /* SCOPES */
-    public function scopeWhereHasTeam($query, $teamId = null)
-    {
-        return $query->whereHas('teams', fn($q) => $q->where('team_id', $teamId ?: currentTeamId()));
-    }
+    
 
     /* CALCULATED FIELDS */
     public function getRelatedTeamRoles($teamId = null)
     {
-        return $this->teamRoles()->when($teamId, fn($q) => $q->where('team_id', $teamId))->get();
+        return $this->teamRoles()->relatedToTeam($teamId)->get();
     }
 
     public function getFirstTeamRole($teamId = null)
     {
-        return $this->teamRoles()->when($teamId, fn($q) => $q->where('team_id', $teamId))->first();        
+        return $this->teamRoles()->relatedToTeam($teamId)->first();        
+    }
+
+    public function getLatestTeamRole($teamId = null)
+    {
+        return $this->teamRoles()->relatedToTeam($teamId)->latest()->first();        
+    }
+
+    public function isOwnTeamRole($teamRole)
+    {
+        return $this->id == $teamRole->user_id;
+    }
+
+    public function ownsTeam($team)
+    {
+        if (is_null($team)) {
+            return false;
+        }
+
+        return $this->id == $team->user_id;
     }
 
 	/* ACTIONS */
@@ -66,16 +83,18 @@ trait HasTeamsTrait
         $teamRole->user_id = $this->id;
         $teamRole->role = $role;
         $teamRole->save();
+
+        return $teamRole;
     }
 
     public function createSuperAdminRole($team)
     {
-        $this->createTeamRole($team, SuperAdminRole::ROLE_KEY);
+        return $this->createTeamRole($team, SuperAdminRole::ROLE_KEY);
     }
 
     public function createTeamOwnerRole($team)
     {
-        $this->createTeamRole($team, TeamOwnerRole::ROLE_KEY);
+        return $this->createTeamRole($team, TeamOwnerRole::ROLE_KEY);
     }
 
     public function createRolesFromInvitation($invitation)
@@ -115,7 +134,7 @@ trait HasTeamsTrait
 
         $this->setRelation('currentTeamRole', $teamRole);
 
-        refreshCurrentTeamAndRole($this);
+        $this->refreshRolesAndPermissionsCache();
 
         return true;
     }
@@ -133,18 +152,13 @@ trait HasTeamsTrait
         ])->save();
     }
 
-    public function isOwnTeamRole($teamRole)
+    public function refreshRolesAndPermissionsCache()
     {
-    	return $this->id == $teamRole->user_id;
-    }
+        $currentTeamRole = $this->currentTeamRole()->first();
 
-    public function ownsTeam($team)
-    {
-        if (is_null($team)) {
-            return false;
-        }
-
-        return $this->id == $team->user_id;
+        \Cache::put('currentTeamRole'.$this->id, $currentTeamRole, 120);
+        \Cache::put('currentTeam'.$this->id, $currentTeamRole->team, 120);
+        \Cache::put('currentPermissions'.$this->id, $currentTeamRole->permissions()->pluck('permission_key'), 120);
     }
 
     /* ROLES */
@@ -161,5 +175,41 @@ trait HasTeamsTrait
     public function hasCurrentRole($role)
     {
         return $this->currentTeamRole->role === $role;
+    }
+
+    /* PERMISSIONS */
+    public function hasPermission($permissionKey)
+    {
+        return $this->getCurrentPermissionKeys()->contains($permissionKey);
+    }
+
+    public function getCurrentPermissionKeys()
+    {
+        return \Cache::remember('currentPermissionKeys'.$this->id, 120,
+            fn() => $this->currentTeamRole->permissions()->pluck('permission_key')
+        );
+    }
+
+    public function givePermissionTo($permissionKey, $teamRoleId = null)
+    {
+        $permission = Permission::findByKey($permissionKey);
+
+        return $this->givePermissionId($permission->id, $teamRoleId);
+    }
+
+    public function givePermissionId($permissionId, $teamRoleId = null)
+    {
+        $teamRoleId = $teamRoleId ?: $this->current_team_role_id;
+
+        $permissionTeamRole = PermissionTeamRole::forPermission($permissionId)->forTeamRole($teamRoleId)->first();
+
+        if (!$permissionTeamRole) {
+            $permissionTeamRole = new PermissionTeamRole();
+            $permissionTeamRole->team_role_id = $teamRoleId;
+            $permissionTeamRole->permission_id = $permissionId;
+            $permissionTeamRole->save();
+        }
+
+        $this->refreshRolesAndPermissionsCache();
     }
 }

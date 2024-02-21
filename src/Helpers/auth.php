@@ -98,6 +98,23 @@ if(!function_exists('currentTeamRole')) {
     }
 }
 
+if(!function_exists('currentPermissions')) {
+    function currentPermissions() 
+    {
+        if (!auth()->user()) {
+            return;
+        }
+
+        if (!auth()->user()->current_team_role_id) {
+            auth()->user()->switchToFirstTeamRole();
+        }
+
+        return \Cache::remember('currentPermissions'.auth()->id(), 120,
+            fn() => auth()->user()->currentTeamRole->permissions()->pluck('permission_key')
+        );
+    }
+}
+
 if(!function_exists('currentTeam')) {
     function currentTeam() 
     {
@@ -108,14 +125,6 @@ if(!function_exists('currentTeam')) {
         return \Cache::remember('currentTeam'.auth()->id(), 120,
             fn() => currentTeamRole()->team
         );
-    }
-}
-
-if(!function_exists('refreshCurrentTeamAndRole')) {
-    function refreshCurrentTeamAndRole($user)
-    {
-        \Cache::put('currentTeamRole'.$user->id, $user->currentTeamRole, 120);
-        \Cache::put('currentTeam'.$user->id, $user->currentTeamRole->team, 120);
     }
 }
 

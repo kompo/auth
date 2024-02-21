@@ -28,7 +28,7 @@ class TeamMembersList extends Query
             _Flex4(
                 $user->getProfilePhotoPill(),
                 _Html($user->name),
-            ),
+            )->href('user.manage', ['id' => $user->id]),
             _FlexEnd4(
                 
                 auth()->user()->can('addTeamMember', $this->team) ? 

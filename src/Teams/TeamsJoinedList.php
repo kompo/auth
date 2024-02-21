@@ -2,7 +2,6 @@
 
 namespace Kompo\Auth\Teams;
 
-use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Query;
 
 class TeamsJoinedList extends Query

@@ -81,6 +81,7 @@ class KompoAuthServiceProvider extends ServiceProvider
     {
         $policies = [
             \Kompo\Auth\Models\Teams\Team::class => \Kompo\Auth\Policies\TeamPolicy::class,
+            \App\Models\User::class => \Kompo\Auth\Policies\UserPolicy::class,
         ];
 
         foreach ($policies as $key => $value) {

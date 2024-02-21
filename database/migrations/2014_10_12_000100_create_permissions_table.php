@@ -17,7 +17,8 @@ class CreatePermissionsTable extends Migration
 
             addMetaData($table);
 
-            $table->string('permission_name');
+            $table->string('permission_key'); 
+            $table->string('permission_name'); 
             $table->string('permission_description');
         });
     }

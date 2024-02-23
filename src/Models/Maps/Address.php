@@ -6,7 +6,7 @@ use Kompo\Auth\Models\Model;
 
 class Address extends Model
 {
-    use \Kompo\Auth\Models\Teams\BelongsToTeam;
+    use \Kompo\Auth\Models\Teams\BelongsToTeamTrait;
 
     public const BASE_SEPARATOR = '<br>';
 

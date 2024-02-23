@@ -20,7 +20,7 @@ class TeamInfoForm extends TeamBaseForm
                     _Html($teamOwner->email)->class('text-gray-700 text-sm'),
                 )
             ),
-            _Input('Team Name')->name('name')->class('mt-4'),
+            _Input('Team Name')->name('team_name')->class('mt-4'),
             _FlexEnd(
                 _SubmitButton()
             )

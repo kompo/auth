@@ -1,6 +1,6 @@
 <?php
 
-namespace Kompo\Auth\Kompo\Maps;
+namespace Kompo\Auth\Maps;
 
 use Kompo\Auth\Models\Maps\Address;
 use Kompo\Form;

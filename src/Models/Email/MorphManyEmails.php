@@ -1,0 +1,71 @@
+<?php
+
+namespace Kompo\Auth\Models\Email;
+
+trait MorphManyEmails
+{
+    /* RELATIONSHIPS */
+    public function emails()
+    {
+        return $this->morphMany(Email::class, 'emailable');
+    }
+
+    public function email()
+    {
+        return $this->morphOne(Email::class, 'emailable');
+    }
+
+    public function primaryEmail()
+    {
+        return $this->belongsTo(Email::class, 'primary_email_id');
+    }
+
+    /* CALCULATED FIELDS */
+    public function getPrimaryEmailAddress(): string
+    {
+        return $this->primaryEmail?->address_em ?: '';
+    }
+
+    /* ATTRIBUTES */
+    public function getPrimaryEmailAddressAttribute(): string
+    {
+        return $this->primaryEmail?->address_em ?: '';
+    }
+
+    /* ACTIONS */
+    public function deleteEmails()
+    {
+        $this->unsetPrimaryEmail();
+
+        $this->emails->each->delete();
+    }
+
+    public function deleteEmail()
+    {
+        $this->unsetPrimaryEmail();
+
+        $this->email?->delete();
+    }
+
+    public function setPrimaryEmail($id)
+    {
+        $this->primary_email_id = $id;
+        $this->save();
+    }
+
+    public function unsetPrimaryEmail()
+    {
+        if ($this->primary_email_id) {
+            $this->primary_email_id = null;
+            $this->save();
+        }
+    }
+
+    /* ELEMENTS */
+    public function getPrimaryEmailButton()
+    {
+        $el = _Link()->icon(_Sax('sms',20))->asPillGrayWhite();
+
+        return $this->primary_email_address ? $el->href('mailto:'.$this->primary_email_address) : $el->run('() => {alert("No email found")}');
+    }
+}

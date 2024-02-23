@@ -1,11 +1,11 @@
 <?php
 
-namespace Kompo\Auth\Kompo\Maps;
+namespace Kompo\Auth\Maps;
 
-use App\Kompo\Common\Modal;
+use Kompo\Auth\Common\ModalScroll;
 use Kompo\Auth\Models\Maps\Address;
 
-class AddressForm extends Modal
+class AddressForm extends ModalScroll
 {
     public $model = Address::class;
     public $_Title = 'maps.manage-address';
@@ -48,7 +48,7 @@ class AddressForm extends Modal
         $isMainShipping = !$this->addressable?->primary_shipping_address_id || $this->addressable?->primary_shipping_address_id === $this->model->id;
 
     	return [
-            _SvPlace(),
+            _CustomPlace(),
             _Columns(
                 _Input('maps.address.apt_or_suite')->name('apt_or_suite'),
                 _Input('maps.address.description')->name('description_ad'),

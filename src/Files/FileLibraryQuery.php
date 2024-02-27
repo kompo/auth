@@ -42,7 +42,7 @@ class FileLibraryQuery extends Query
 
 	public function render($file)
 	{
-		return $file->fileThumbnail('link-to')
+		return $file->linkEl()
             ->selfPost('linkFileTo', ['id' => $file->id])
             ->removeSelf()
             ->alert('file.file-linked')

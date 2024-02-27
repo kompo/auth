@@ -44,7 +44,7 @@ class FileLibraryAttachmentQuery extends FileLibraryQuery
 
 	public function render($file)
 	{
-		return $file->fileThumbnail('preview', 'download')
+		return $file->linkEl()
 			->emit('checkItemId', ['id' => $file->id]);
 	}
 

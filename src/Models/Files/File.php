@@ -310,6 +310,12 @@ class File extends Model implements Searchable
         ];
     }
 
+    public function linkEl()
+    {
+        return _Link($this->name)->class('mt-1 -mr-2')->col('col-md-3')
+            ->icon('arrow-down');
+    }
+
     /* SEARCHS */
     public function scopeSearch($query, $search)
     {

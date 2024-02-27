@@ -14,7 +14,7 @@ class FileLibraryAttachmentQuery extends FileLibraryQuery
 	{
 		$this->checkedItemIds = json_decode($this->parameter('checked_items'), true);
 
-		$this->itemsWrapperClass = $this->itemsWrapperClass.' mx-4 px-6';
+		$this->itemsWrapperClass = $this->itemsWrapperClass.' mx-4 px-6 pb-8';
 	}
 
 	public function top()
@@ -44,7 +44,7 @@ class FileLibraryAttachmentQuery extends FileLibraryQuery
 
 	public function render($file)
 	{
-		return $file->linkEl()
+		return $file->linkEl()->class('mr-4')
 			->emit('checkItemId', ['id' => $file->id]);
 	}
 

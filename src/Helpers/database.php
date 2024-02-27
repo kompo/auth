@@ -17,3 +17,10 @@ if (!function_exists("addedModifiedByColumns")) {
         $table->foreignId('modified_by')->nullable()->constrained('users');
     }
 }
+
+if (!function_exists("isWhereCondition")) {
+    function isWhereCondition($argument)
+    {
+        return is_null($argument) || is_string($argument) || is_int($argument);
+    }
+}

@@ -26,12 +26,12 @@ class Address extends Model
     /* SCOPES */
     public function scopeForAddressable($query, $addressableId, $addressableType)
     {
-        if (is_int($addressableId)) {
+        if (isWhereCondition($addressableId)) {
             $query->where('addressable_id', $addressableId);
         } else {
             $query->whereIn('addressable_id', $addressableId);            
         }
-        if (is_string($addressableType)) {
+        if (isWhereCondition($addressableType)) {
             $query->where('addressable_type', $addressableType);
         } else {
             $query->whereIn('addressable_type', $addressableType);            

@@ -15,3 +15,21 @@ if(!function_exists('toRounded')) {
 	}
 }
 
+if(!function_exists('getFullName')) {
+	function getFullName($firstName, $lastName): string
+	{
+		return collect([$firstName, $lastName])->filter()->implode(' ');
+	}
+}
+
+if(!function_exists('getAgeFromDob')) {
+	function getAgeFromDob($dateOfBirth): string
+	{
+		if (!$dateOfBirth) {
+			return '';
+		}
+
+		return carbonNow()->diffInYears(carbon($dateOfBirth)).' '.__('years');
+	}
+}
+

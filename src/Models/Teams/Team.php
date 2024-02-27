@@ -43,9 +43,13 @@ class Team extends Model
     }
 
     /* SCOPES */
-    public function scopeForParentTeam($query, $teamId)
+    public function scopeForParentTeam($query, $teamIdOrIds)
     {
-        $query->where('parent_team_id', $teamId);
+        if (isWhereCondition($teamIdOrIds)) {
+            $query->where('parent_team_id', $teamIdOrIds);
+        } else {
+            $query->whereIn('parent_team_id', $teamIdOrIds);
+        }
     }
 
 	/* ACTIONS */

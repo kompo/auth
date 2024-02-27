@@ -1,5 +1,6 @@
 <?php
 
+/* MAP INPUTS */
 if (!function_exists('_CustomPlace')) {
     function _CustomPlace($label = 'crm.contact.address', $name = 'address1')
     {
@@ -13,5 +14,33 @@ if (!function_exists('_CustomPlace')) {
             ->componentRestrictions([
                 'country' => ['ca']
             ]);
+    }
+}
+
+/* PURE MAP */
+if (!function_exists('_MapNoInput')) {
+    function _MapNoInput($markers)
+    {
+        if (!$markers || !count($markers)) {
+            return;
+        }
+
+        return _Place()->addMarkers($markers)->class('place-no-input');
+    }
+}
+
+/* MAP UTILITIES */
+if (!function_exists('mapMarker')) {
+    function mapMarker($address, $iconUrl = 'location-add.svg')
+    {
+        if (!$address) {
+            return;
+        }
+
+        return [
+            'lat' => $address->lat,
+            'lng' => $address->lng,
+            'icon' => asset($iconUrl), //add the svg in public folder when starting a new project
+        ];
     }
 }

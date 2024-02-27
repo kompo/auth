@@ -2,6 +2,13 @@
 
 use Illuminate\Support\Carbon;
 
+if (!function_exists("carbonNow")) {
+	function carbonNow()
+	{
+		return carbon(date('Y-m-d'));
+	}
+}
+
 if (!function_exists("toDatetime")) {
 	function toDatetime($date)
 	{

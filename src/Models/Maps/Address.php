@@ -23,6 +23,21 @@ class Address extends Model
         return $this->morphTo();
     }
 
+    /* SCOPES */
+    public function scopeForAddressable($query, $addressableId, $addressableType)
+    {
+        if (is_int($addressableId)) {
+            $query->where('addressable_id', $addressableId);
+        } else {
+            $query->whereIn('addressable_id', $addressableId);            
+        }
+        if (is_string($addressableType)) {
+            $query->where('addressable_type', $addressableType);
+        } else {
+            $query->whereIn('addressable_type', $addressableType);            
+        }
+    }
+
     /* ATTRIBUTES */
 
     /* CALCULATED FIELDS */

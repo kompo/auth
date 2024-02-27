@@ -63,3 +63,20 @@ if (!function_exists('_BackLink')) {
 		return _Link($label)->icon(_Sax('arrow-left-1'))->class('text-gray-400');
 	}
 }
+
+if (!function_exists('_OutlinedLink')) {
+	function _OutlinedLink($label = '')
+	{
+		return _Link($label)->button()->outlined();
+	}
+}
+
+/* LAYOUTS */
+if (!function_exists('_TwoColumnsButtons')) {
+	function _TwoColumnsButtons()
+	{
+		return _Columns(
+			...func_get_args()
+		);
+	}
+}

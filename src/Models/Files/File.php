@@ -100,6 +100,11 @@ class File extends Model implements Searchable
         return $query;
     }
 
+    public function scopeForSubtype($query, $subtype)
+    {
+        $query->where('subtype', $subtype);
+    }
+
     /* ATTRIBUTES */
 
     public function getDisplayFlAttribute()

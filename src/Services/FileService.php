@@ -20,7 +20,7 @@ class FileService
 
     public static function setAllRoutes()
     {
-        $this->setAttachmentRoutes();
-        $this->setUploadManagerRoutes();
+        self::setAttachmentRoutes();
+        self::setUploadManagerRoutes();
     }
 }

@@ -8,17 +8,17 @@ use Kompo\Auth\Files\FilesManagerView;
 
 class FileService 
 {
-    public function setAttachmentRoutes()
+    public static function setAttachmentRoutes()
     {
         Route::get('add-file-as-attachment/{checked_items?}', FileLibraryAttachmentQuery::class)->name('file-add-attachment.modal');
     }
 
-    public function setUploadManagerRoutes()
+    public static function setUploadManagerRoutes()
     {
         Route::get('files-manager', FilesManagerView::class)->name('files-manager');
     }
 
-    public function setAllRoutes()
+    public static function setAllRoutes()
     {
         $this->setAttachmentRoutes();
         $this->setUploadManagerRoutes();

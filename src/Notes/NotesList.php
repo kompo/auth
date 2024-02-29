@@ -50,7 +50,7 @@ class NotesList extends Table
             _Html($note->content_nt),
             _Html($note->addedBy->name),
             _Html($note->date_nt->format('Y-m-d H:i')),
-        )->selfGet('getNoteForm', ['id' => $note->id]);
+        )->selfGet('getNoteForm', ['id' => $note->id])->inModal();
     }
 
     public function getNoteForm($id = null)

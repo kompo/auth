@@ -42,4 +42,12 @@ class Note extends Model
     {
         return $query->where('team_id', $team->id);
     }
+
+    /* ACTIONS */
+    public function save(array $options = [])
+    {
+        $this->team_id = currentTeamId();
+
+        return parent::save($options);
+    }
 }

@@ -39,12 +39,26 @@ class Phone extends Model
         return Phone::getTypePhLabels()[$this->type_ph] ?? '';
     }
 
+    /* SCOPES */
+    public function scopeMatchNumber($query, $phoneNumber)
+    {
+        $query->where('number_ph', $phoneNumber);
+    }
+
     /* CALCULATED FIELDS */
 
-
-    /* SCOPES */
-
     /* ACTIONS */
+    public function setPhonable($model)
+    {
+        $this->phonable_type = $model->getRelationType();
+        $this->phonable_id = $model->id;
+    }
+
+    public function setPhoneNumber($number)
+    {
+        //TODO sanitize phone number
+        $this->number_ph = $number;
+    }
 
     /* ELEMENTS */
 }

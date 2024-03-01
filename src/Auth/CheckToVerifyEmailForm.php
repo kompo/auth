@@ -38,19 +38,9 @@ class CheckToVerifyEmailForm extends ImgFormLayout
 
         } else {
 
-            if (!$this->model->hasVerifiedEmail()) {
+            $this->model->sendEmailVerificationNotification();
 
-                $this->model->sendEmailVerificationNotification();
-
-                return $this->getEmailSentConfirmationEls();
-
-            } else {
-
-                return _Rows(
-	            	_Html('You have already confirmed your email. Please register here'),
-	            	_Link('Register')->href($this->model->getRegisterRoute()),
-	            );
-            }
+            return $this->getEmailSentConfirmationEls();
         }
     }
 }

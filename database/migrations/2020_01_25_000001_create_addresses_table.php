@@ -17,11 +17,11 @@ class CreateAddressesTable extends Migration
 
             addMetaData($table);
 
-            $table->foreignId('team_id')->constrained();
+            $table->foreignId('team_id')->nullable()->constrained();
 
             $table->nullableMorphs('addressable');
             $table->integer('type_ad')->nullable(); //when not a contact
-            $table->string('address1');
+            $table->text('address1');
             $table->string('apt_or_suite')->nullable();
             $table->string('postal_code')->nullable(); //because some adresses don't have one (outside canada)
             $table->string('city')->nullable(); //some adresses don't have a city... wtf google

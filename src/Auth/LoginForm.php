@@ -7,7 +7,6 @@ use Kompo\Auth\Common\ImgFormLayout;
 class LoginForm extends ImgFormLayout
 {
     public $submitTo = 'login';
-    public $redirectTo = 'dashboard';
 
     protected $imgUrl = 'images/login-image.png';
 
@@ -16,6 +15,8 @@ class LoginForm extends ImgFormLayout
     public function created()
     {
         $this->email = $this->prop('email');
+
+        $this->redirectTo = $this->prop('redirect_to') ?: 'dashboard';
     }
 
 	public function rightColumnBody()
@@ -32,7 +33,7 @@ class LoginForm extends ImgFormLayout
                 _Link('Forgot your password?')
                     ->href('password.request')
                     ->class('text-gray-600 text-sm'),
-                _SubmitButton('Login')
+                _SubmitButton('Login')->redirect($this->redirectTo),
             )->class('space-x-4')
 		];
 	}

@@ -16,7 +16,7 @@ class TeamInvitationAcceptController extends Controller
 
         if ($user = User::where('email', $email)->first()) {
             
-            if (!$team->hasUserWithEmail($teamInvitation->email)) {
+            if (!$team->hasUserWithEmail($email)) {
                 $user->createRolesFromInvitation($teamInvitation);
             }
 

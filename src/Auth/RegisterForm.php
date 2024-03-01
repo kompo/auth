@@ -24,6 +24,8 @@ class RegisterForm extends ImgFormLayout
     public function beforeSave()
     {
         $this->model->email = $this->emailRequest->getEmailForVerification();
+        
+        $this->model->handleRegisterNames();
     }
 
     public function completed()
@@ -32,7 +34,7 @@ class RegisterForm extends ImgFormLayout
 
         $this->model->switchToFirstTeamRole($team->id);
 
-        event(new \Illuminate\Auth\Events\Registered($this->model));
+        fireRegisteredEvent($this->model);
 
         auth()->guard()->login($this->model);
     }
@@ -49,10 +51,9 @@ class RegisterForm extends ImgFormLayout
                 _Html($this->emailRequest->getEmailForVerification()),
                 _Html('ka::auth.Your email has been verified!'),
             ),
-			_Input('ka::auth.name')->name('name'),
-			_Password('ka::auth.password-auth')->name('password'),
-			_Password('ka::auth.password-auth-confirmation')->name('password_confirmation', false),
-            _Checkbox('ka::auth.i-agree-to-the-terms-of-service-and-privacy-policy')->name('terms', false),
+			_InputRegisterNames(),
+            _InputRegisterPasswords(),
+            _CheckboxTerms(),
 			_SubmitButton('ka::auth.register')->class('mb-4'),
             _LinkAlreadyHaveAccount(),
 		];

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Phone;
+namespace Kompo\Auth\Models\Phone;
 
 trait MorphManyPhones
 {
@@ -19,6 +19,8 @@ trait MorphManyPhones
     {
         return $this->belongsTo(Phone::class, 'primary_phone_id');
     }
+
+    /* SCOPES */
 
     /* CALCULATED FIELDS */
     public function getPrimaryPhoneNumber(): string
@@ -43,6 +45,23 @@ trait MorphManyPhones
     }
 
     /* ACTIONS */
+    public function setPhonableAndMakePrimary(?Phone $phone)
+    {
+        if (!$phone) {
+            return;
+        }
+        
+        $copiedPhone = $this->phones()->matchNumber($phone->number_ph)->first();
+
+        if (!$copiedPhone) {
+            $copiedPhone = $phone->replicate();
+            $copiedPhone->setPhonable($this);
+            $copiedPhone->save();
+        }
+
+        $this->setPrimaryPhone($copiedPhone->id);
+    }
+
     public function deletePhones()
     {
         $this->unsetPrimaryPhone();
@@ -69,6 +88,20 @@ trait MorphManyPhones
             $this->primary_phone_id = null;
             $this->save();
         }
+    }
+
+    public function createPhoneFromNumberIfNotExists($number)
+    {
+        $existingPhone = $this->phones()->matchNumber($number)->first();
+
+        if (!$existingPhone) {
+            $existingPhone = new Phone();
+            $existingPhone->setPhonable($this);
+            $existingPhone->setPhoneNumber($number);
+            $existingPhone->save();
+        }
+
+        return $existingPhone;
     }
 
     /* ELEMENTS */

@@ -75,7 +75,7 @@ class VerifyEmail extends Notification
     {
         $emailRequest = EmailRequest::getOrCreateEmailRequest($email);
 
-        return $emailRequest->getRegisterRoute();
+        return $emailRequest->redirect_url;
     }
 
     /**

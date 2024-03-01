@@ -36,6 +36,15 @@ class EmailRequest extends ModelBase
     }
 
     /* ACTIONS */
+    public static function getOrCreateWithRegisterUrl($email)
+    {
+        $emailRequest = static::getOrCreateEmailRequest($email);
+
+        $emailRequest->setRedirectUrl($emailRequest->getRegisterRoute());
+
+        return $emailRequest;
+    }
+
     public static function getOrCreateEmailRequest($email)
     {
         $emailRequest = EmailRequest::where('email', $email)->first();
@@ -47,6 +56,12 @@ class EmailRequest extends ModelBase
         }
 
         return $emailRequest;
+    }
+
+    public function setRedirectUrl($redirectUrl)
+    {
+        $this->redirect_url = $redirectUrl;
+        $this->save();
     }
 
     public function markEmailAsVerified()

@@ -13,6 +13,7 @@ return new class extends Migration
      */
     public function up()
     {
+        $this->addContactFieldsColumns('users');
         $this->addContactFieldsColumns('teams');
     }
 
@@ -35,14 +36,17 @@ return new class extends Migration
      */
     public function down()
     {
+        $this->dropContactFieldsColumns('users');
         $this->dropContactFieldsColumns('teams');
     }
 
     protected function dropContactFieldsColumns($table)
     {
         Schema::table($table, function (Blueprint $table) {
-            $table->dropForeign(['primary_address_id']);
-            $table->dropColumn('primary_address_id');
+            $table->dropForeign(['primary_billing_address_id']);
+            $table->dropColumn('primary_billing_address_id');
+            $table->dropForeign(['primary_shipping_address_id']);
+            $table->dropColumn('primary_shipping_address_id');
             $table->dropForeign(['primary_phone_id']);
             $table->dropColumn('primary_phone_id');
             $table->dropForeign(['primary_email_id']);

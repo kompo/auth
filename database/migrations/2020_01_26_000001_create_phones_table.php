@@ -17,7 +17,7 @@ class CreatePhonesTable extends Migration
 
             addMetaData($table);
             
-            $table->foreignId('team_id')->constrained();
+            $table->foreignId('team_id')->nullable()->constrained();
 
             $table->nullableMorphs('phonable');
             $table->tinyInteger('type_ph')->nullable();

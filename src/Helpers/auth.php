@@ -7,14 +7,6 @@ if (!function_exists('_LinkAlreadyHaveAccount')) {
     }
 }
 
-if (!function_exists('_CheckboxTerms')) {
-    function _CheckboxTerms()
-    {
-        return _Checkbox(__('register.i-agree-to').' '.'<a href="'.route('privacy').'" class="underline" target="_blank">'.__('register.the-terms').'</a>')
-            ->name('terms', false);
-    }
-}
-
 if (!function_exists('_ProfileImg')) {
     function _ProfileImg($user, $sizeClass = 'h-8 w-8')
     {
@@ -37,14 +29,56 @@ if (!function_exists('_UserImgDate')) {
     }
 }
 
+/* FIELDS */
+if (!function_exists('_InputRegisterNames')) {
+    function _InputRegisterNames($defaultName1 = null, $defaultName2 = null)
+    {
+        return config('kompo-auth.register_with_first_last_name') ? _Rows(
+            _Input('ka::your-first-name')->name('first_name')->default($defaultName1),
+            _Input('ka::your-last-name')->name('last_name')->default($defaultName2),
+        ) : 
+        _Input('ka::your-name')->name('name')->default($defaultName1);
+    }
+}
+
+if (!function_exists('_InputRegisterPasswords')) {
+    function _InputRegisterPasswords()
+    {
+        return _Rows(
+            _Password('ka::auth.password-auth')->name('password'),
+            _Password('ka::auth.password-auth-confirmation')->name('password_confirmation', false),
+        );
+    }
+}
+
+if (!function_exists('_CheckboxTerms')) {
+    function _CheckboxTerms()
+    {
+        return _Checkbox(__('register.i-agree-to').' '.'<a href="'.url('privacy').'" class="underline" target="_blank">'.__('register.the-terms').'</a>')
+            ->name('terms', false);
+    }
+}
+
+
 // RULES
 if (!function_exists('registerRules')) {
     function registerRules()
     {
-        return [
-            'name' => ['required', 'string', 'max:255'],
+        return array_merge(namesRules(), [
             'password' => passwordRules(),
             'terms' => ['required', 'accepted'],
+        ]);
+    }
+}
+
+if (!function_exists('namesRules')) {
+    function namesRules()
+    {
+        return config('kompo-auth.register_with_first_last_name') ? [
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+        ] : [
+            'name' => ['required', 'string', 'max:255'],
         ];
     }
 }
@@ -64,6 +98,15 @@ if(!function_exists('baseEmailRules')) {
         return ['required', 'string', 'email', 'max:255'];
     }
 }
+
+/* ACTIONS */
+if(!function_exists('fireRegisteredEvent')) {
+    function fireRegisteredEvent($user)
+    {
+        //event(new \Illuminate\Auth\Events\Registered($user)); //uncomment if needed
+    }
+}
+
 
 /** Current Team, Roles, etc */
 if(!function_exists('currentTeamRoleId')) {

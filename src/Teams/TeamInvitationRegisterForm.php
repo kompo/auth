@@ -2,9 +2,9 @@
 
 namespace Kompo\Auth\Teams;
 
-use App\Models\User;
 use Kompo\Auth\Common\ImgFormLayout;
 use Kompo\Auth\Models\Teams\TeamInvitation;
+use Kompo\Auth\Models\User;
 
 class TeamInvitationRegisterForm extends ImgFormLayout
 {
@@ -29,13 +29,15 @@ class TeamInvitationRegisterForm extends ImgFormLayout
     {
         $this->model->email = $this->invitation->email; //ensures the email in the invitation is used
         $this->model->email_verified_at = now();
+
+        $this->model->handleRegisterNames();
     }
 
     public function afterSave()
     {
         $this->model->createRolesFromInvitation($this->invitation);
 
-        //event(new Registered($this->model)); //uncomment if needed
+        fireRegisteredEvent($this->model);
 
         auth()->guard()->login($this->model);
     }
@@ -51,10 +53,9 @@ class TeamInvitationRegisterForm extends ImgFormLayout
             _Input('Your invitation email')->name('show_email', false)->readOnly()
                 ->value($this->invitation->email)->inputClass('bg-gray-50 rounded-xl'),
 
-            _Input('general.name')->name('name'),
-            _Password('Password')->name('password'),
-            _Password('Confirm Password')->name('password_confirmation', false),
-            _Checkbox('I agree to the terms of service and privacy policy')->name('terms', false),
+            _InputRegisterNames(),
+            _InputRegisterPasswords(),
+            _CheckboxTerms(),
             _FlexEnd(
                 _SubmitButton('Accept Invitation')
             )

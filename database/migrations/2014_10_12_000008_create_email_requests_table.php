@@ -19,6 +19,7 @@ class CreateEmailRequestsTable extends Migration
             
             $table->string('email');
             $table->timestamp('email_verified_at')->nullable();
+            $table->text('redirect_url')->nullable();
         });
     }
 

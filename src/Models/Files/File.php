@@ -2,6 +2,7 @@
 
 namespace Kompo\Auth\Models\Files;
 
+use Carbon\Carbon;
 use Kompo\Auth\Files\FileLibraryAttachmentQuery;
 use Kompo\Auth\Models\Contracts\Searchable;
 use Kompo\Auth\Models\Files\FileVisibilityEnum;
@@ -218,7 +219,7 @@ class File extends Model implements Searchable
                 _LinkGroup()->name('month', false)->class('mb-0')
                     ->options(
                         static::getFilesCountFor($year)->mapWithKeys(fn($stat) => [
-                            $stat->label => static::yearMonthOption(carbon($stat->label.'-01', 'Y-m-d')->translatedFormat('M'), $stat->cn)
+                            $stat->label => static::yearMonthOption(Carbon::createFromFormat('Y-m-d', $stat->label.'-01')->translatedFormat('M'), $stat->cn)
                         ])
                     )->selectedClass('text-level3 border-b-2 border-level3', 'text-level3 border-b-2 border-transparent')
                     ->filter()
@@ -308,6 +309,12 @@ class File extends Model implements Searchable
             ->id($panelId)
 
         ];
+    }
+
+    public function linkEl()
+    {
+        return _Link($this->name)->class('mt-1 -mr-2')->col('col-md-3')
+            ->icon('arrow-down');
     }
 
     /* SEARCHS */

@@ -28,4 +28,10 @@ trait HasAddedModifiedByTrait
     {
         return $this->belongsTo(User::class, 'modified_by');
     }
+
+    /* SCOPES */
+    public function scopeForAuthUser($query, $userId = null)
+    {
+        $query->where('added_by', $userId ?: auth()->id());
+    }
 }

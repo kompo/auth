@@ -41,7 +41,7 @@ class ProfileInformationForm extends Form
                 _Image('Photo')->name('profile_photo')->rounded(),
 
                 _Rows(
-                    _Input('general.name')->name('name'),
+                    _InputRegisterNames(),
 
                     _Input('Email')->name('email')->type('email'),
                 )->class('flex-auto'),
@@ -55,11 +55,10 @@ class ProfileInformationForm extends Form
 
     public function rules()
     {
-        return [
-            'name' => ['required', 'string', 'max:255'],
+        return array_merge(namesRules(), [
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($this->model->id)],
             'photo' => ['nullable', /*'mimes:jpg,jpeg,png',*/ 'max:1024'], //TODO: removed because pic is json on UPDATE, so mimes validation fails...
-        ];
+        ]);
     }
 
     protected function updateVerifiedUser()

@@ -83,6 +83,11 @@ class Address extends Model
     /* SCOPES */
 
     /* ACTIONS */
+    public function setAddressable($model)
+    {
+        $this->addressable_type = $model->getRelationType();
+        $this->addressable_id = $model->id;
+    }
 
     /* ELEMENTS */
 }

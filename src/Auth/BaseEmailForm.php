@@ -20,18 +20,18 @@ class BaseEmailForm extends ImgFormLayout
 
         } else {
 
-            $emailRequest = EmailRequest::getOrCreateEmailRequest($email);
+            $emailRequest = EmailRequest::getOrCreateWithRegisterUrl($email);
+            
+            $emailRequest->sendEmailVerificationNotification();
 
-            if (!$emailRequest->hasVerifiedEmail()) {
+            return redirect()->to(\Url::signedRoute('check.verify.email', ['id' => $emailRequest]));
 
-                $emailRequest->sendEmailVerificationNotification();
+            //if (!$emailRequest->hasVerifiedEmail()) { //commented this out to force verification every time otherwise somebody can use a verified email to create an account
 
-                return redirect()->to(\Url::signedRoute('check.verify.email', ['id' => $emailRequest]));
+            //} else {
 
-            } else {
-
-                return redirect()->to($emailRequest->getRegisterRoute());
-            }
+                //return redirect()->to($emailRequest->getRegisterRoute());
+            //}
         }
     }
 

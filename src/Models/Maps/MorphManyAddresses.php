@@ -28,8 +28,36 @@ trait MorphManyAddresses
     }
 
     /* CALCULATED FIELDS */
+    public function getPrimaryAddressLabel(): string
+    {
+        $pa = $this->primaryBillingAddress;
+        if (!$pa) {
+            return '';
+        }
+
+        return $pa->getAddressLabel();
+    }
 
     /* ACTIONS */
+    public function setAddressableAndMakeBilling(?Address $address)
+    {
+        if (!$address) {
+            return;
+        }
+        
+        $copiedAddress = $this->addresses()->where('external_id', $address->external_id)->first();
+
+        if (!$copiedAddress) {
+
+            $copiedAddress = $address->replicate();
+            $copiedAddress->setAddressable($this);
+            $copiedAddress->save();
+
+        }
+
+        $this->setPrimaryBillingAddress($copiedAddress->id);
+    }
+
     public function deleteAddresses()
     {
         $this->unsetPrimaryAddresses();

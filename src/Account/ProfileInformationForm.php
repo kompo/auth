@@ -43,7 +43,7 @@ class ProfileInformationForm extends Form
                 _Rows(
                     _InputRegisterNames(),
 
-                    _Input('Email')->name('email')->type('email'),
+                    _Input('ka::auth.email')->name('email')->type('email'),
                 )->class('flex-auto'),
             )->class('space-x-4'),
 

@@ -15,15 +15,15 @@ class CheckToVerifyEmailForm extends ImgFormLayout
 	{
 		return _Panel1(
 			$this->getEmailSentConfirmationEls(),
-            _Button('Resend invitation link')->selfPost('resendVerificationEmail')->inPanel1(),
+            _Button('ka::auth.resend-invitation-link')->selfPost('resendVerificationEmail')->inPanel1(),
         );
 	}
 
 	protected function getEmailSentConfirmationEls()
 	{
 		return _Rows(
-            _Html('We sent an email to this address. Please go to your inbox and continue the process from there'),
-            _Html('The link is valid for 20 minutes'),
+            _Html('ka::auth.email-sent-confirmation-1'),
+            _Html('ka::auth.email-sent-confirmation-2'),
 		);
 	}
 
@@ -32,8 +32,8 @@ class CheckToVerifyEmailForm extends ImgFormLayout
         if ($user = $this->model->getRelatedUser()) {
 
             return _Rows(
-            	_Html('There is already an account for this email. Please login'),
-            	_Link('Login')->href('login', ['email' => $this->model->email]),
+            	_Html('ka::auth.there-is-already-an-account-for-this-email'),
+            	_Link('ka::auth.login')->href('login', ['email' => $this->model->email]),
             );
 
         } else {

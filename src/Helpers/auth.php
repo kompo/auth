@@ -3,7 +3,7 @@
 if (!function_exists('_LinkAlreadyHaveAccount')) {
     function _LinkAlreadyHaveAccount()
     {
-        return _Link('auth.i-already-have-an-account-log-in-instead')->class('text-sm text-gray-600 self-center')->href('login');
+        return _Link('ka::auth.i-already-have-an-account-log-in-instead')->class('text-sm text-gray-600 self-center')->href('login');
     }
 }
 
@@ -34,10 +34,10 @@ if (!function_exists('_InputRegisterNames')) {
     function _InputRegisterNames($defaultName1 = null, $defaultName2 = null)
     {
         return config('kompo-auth.register_with_first_last_name') ? _Rows(
-            _Input('ka::your-first-name')->name('first_name')->default($defaultName1),
-            _Input('ka::your-last-name')->name('last_name')->default($defaultName2),
+            _Input('ka::auth.your-first-name')->name('first_name')->default($defaultName1),
+            _Input('ka::auth.your-last-name')->name('last_name')->default($defaultName2),
         ) : 
-        _Input('ka::your-name')->name('name')->default($defaultName1);
+        _Input('ka::auth.your-name')->name('name')->default($defaultName1);
     }
 }
 
@@ -54,7 +54,7 @@ if (!function_exists('_InputRegisterPasswords')) {
 if (!function_exists('_CheckboxTerms')) {
     function _CheckboxTerms()
     {
-        return _Checkbox(__('register.i-agree-to').' '.'<a href="'.url('privacy').'" class="underline" target="_blank">'.__('register.the-terms').'</a>')
+        return _Checkbox(__('ka::register.i-agree-to').' '.'<a href="'.url('privacy').'" class="underline" target="_blank">'.__('register.the-terms').'</a>')
             ->name('terms', false);
     }
 }

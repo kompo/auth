@@ -49,7 +49,7 @@ class RegisterForm extends ImgFormLayout
 		return [
             _Rows(
                 _Html($this->emailRequest->getEmailForVerification()),
-                _Html('ka::auth.Your email has been verified!'),
+                _Html('ka::auth.your-email-has-been-verified!'),
             ),
 			_InputRegisterNames(),
             _InputRegisterPasswords(),

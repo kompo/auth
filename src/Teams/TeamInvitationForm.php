@@ -41,7 +41,7 @@ class TeamInvitationForm extends TeamBaseForm
     {
         return [
             _Html('Please provide the email address of the person you would like to add to this team.')->class('max-w-xl text-sm text-gray-600 mb-4'),
-            _Input('Email')->name('email')->type('email'),
+            _Input('ka::auth.email')->name('email')->type('email'),
             TeamRole::buttonGroupField(),
             _FlexEnd(
                 _SubmitButton('Send invite')->alert('Invite Sent!')->refresh()->refresh('team-invitations-list'),

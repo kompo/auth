@@ -1,5 +1,27 @@
 <?php
-
 return [
-
+    "add-from-library" => "Add from library",
+    "attach-files" => "Attach files",
+    "attach-from-library" => "From library",
+    "browse-files" => "Browse files",
+    "confirm" => "Confirm",
+    "edit-form" => "Edit",
+    "everyone" => "Everyone",
+    "file-infos" => "File info",
+    "file-manager" => "File manager",
+    "file-name" => "File name",
+    "file-size" => "File size",
+    "file-uploaded-at" => "Uploaded at",
+    "fileable" => "Fileable",
+    "fileable-id" => "Id",
+    "fileable-type" => "Fileable type",
+    "link-from-library" => "Lilnk from library",
+    "my-files" => "My files",
+    "private" => "Private",
+    "semi-private" => "Semi-private",
+    "text-click-on-a-file" => "Click on a file",
+    "type-fileable" => "Type fileable",
+    "upload-files" => "Upload files",
+    "upload-one-multiple-files" => "Upload one or multiple files",
+    "your-files-exceed-max-size" => "Your files exceed max size"
 ];

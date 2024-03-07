@@ -163,7 +163,7 @@ class File extends Model implements Searchable
 
     public static function emptyPanel()
     {
-        return _DashedBox('file.text-click-on-a-file', 'py-20 text-lg px-4');
+        return _DashedBox('ka::files.text-click-on-a-file', 'py-20 text-lg px-4');
     }
 
     public static function typesOptions()
@@ -196,7 +196,7 @@ class File extends Model implements Searchable
                 _Rows(
                 )->class('mb-4'),
                 _Rows(
-                    _Input()->icon('icon-search')->placeholder('library.search')
+                    _Input()->icon('icon-search')->placeholder('ka::general.search')
                         ->name('name', false)
                         ->class('mb-0')
                         ->type('search')
@@ -214,7 +214,7 @@ class File extends Model implements Searchable
     {
         if ($year = request('year')) {
             return _Flex4(
-                _Link(__('Year').' '.$year)->class('text-level1 font-bold')->icon('arrow-left')
+                _Link(__('ka::general.year').' '.$year)->class('text-level1 font-bold')->icon('arrow-left')
                     ->getElements('getYearsMonthsFilter')->inPanel('file-manager-year-month-filter'),
                 _LinkGroup()->name('month', false)->class('mb-0')
                     ->options(
@@ -227,7 +227,7 @@ class File extends Model implements Searchable
         }
 
         return _Flex4(
-            _Html('file.filter-by-year')->class('text-level1 font-medium'),
+            _Html('ka::general.filter-by-year')->class('text-level1 font-medium'),
             _LinkGroup()->name('year', false)->class('mb-0')
                 ->options(
                     static::getFilesCountFor()->mapWithKeys(fn($stat) => [
@@ -286,14 +286,14 @@ class File extends Model implements Searchable
 
             _Flex(
                 _Link()->icon(_Sax('paperclip-2'))->class('text-level1 text-2xl')
-                    ->balloon('attach-files', 'up')
+                    ->balloon('ka::files.attach-files', 'up')
                     ->toggleId($panelId, $toggleOnLoad),
                 _Html()->class('text-xs text-gray-600 font-semibold')->id('file-size-div')
             ),
 
             _Rows(
                 _FlexBetween(
-                    _MultiFile()->placeholder('browse-files')->name($name)
+                    _MultiFile()->placeholder('ka::files.browse-files')->name($name)
                         ->extraAttributes([
                             'team_id' => currentTeam()->id,
                         ])->class('mb-0 w-full md:w-5/12')
@@ -303,7 +303,7 @@ class File extends Model implements Searchable
                     FileLibraryAttachmentQuery::libraryFilesPanel($fileIds)
                         ->class('w-full md:w-5/12'),
                 )->class('flex-wrap'),
-                _Html('file.your-files-exceed-max-size')
+                _Html('ka::files.your-files-exceed-max-size')
                     ->class('hidden text-danger text-xs')->id('file-size-message')
             )->class('mx-2 dashboard-card p-2 space-x-2')
             ->id($panelId)

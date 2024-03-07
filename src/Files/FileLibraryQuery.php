@@ -36,7 +36,7 @@ class FileLibraryQuery extends Query
 	public function top()
 	{
 		return File::fileFilters(
-			_MiniTitle('file.link-from-library'),
+			_MiniTitle('ka::files.link-from-library'),
 		);
 	}
 
@@ -45,7 +45,7 @@ class FileLibraryQuery extends Query
 		return $file->linkEl()
             ->selfPost('linkFileTo', ['id' => $file->id])
             ->removeSelf()
-            ->alert('file.file-linked')
+            ->alert('ka::alert.files.file-linked')
 			->browse($this->browseCard);
 	}
 

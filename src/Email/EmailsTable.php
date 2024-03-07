@@ -32,7 +32,7 @@ class EmailsTable extends Table
 	public function top()
 	{
 		return _FlexBetween(
-            _TitleCard('crm.emails'),
+            _TitleCard('ka::email.emails'),
             _CreateCard()->selfCreate('getEmailForm')->inModal(),
         )->class('mb-4');
 	}
@@ -40,9 +40,9 @@ class EmailsTable extends Table
 	public function headers()
 	{
 		return [
-			_Th('crm.email.type'),
-			_Th('crm.email'),
-			_Th('crm.email.is-main'),
+			_Th('ka::email.email-type'),
+			_Th('ka::email'),
+			_Th('ka::email.is-main'),
 			_Th(),
 		];
 	}

@@ -32,7 +32,7 @@ class AddressesTable extends Table
     public function top()
     {
         return _FlexBetween(
-            _TitleCard('maps.address.titles'),
+            _TitleCard('ka::maps.address-title'),
             _CreateCard()->selfCreate('getAddressForm')->inModal(),
         )->class('mb-4');
     }
@@ -40,10 +40,10 @@ class AddressesTable extends Table
     public function headers()
     {
         return [
-            _Th('maps.address.address1'),
-            _Th('maps.address.description'),
-            _Th('maps.is_main_billing'),
-            _Th('maps.is_main_shipping'),
+            _Th('ka::maps.address-address1'),
+            _Th('ka::maps.address-description'),
+            _Th('ka::maps.is_main_billing'),
+            _Th('ka::maps.is_main_shipping'),
             _Th(),
         ];
     }

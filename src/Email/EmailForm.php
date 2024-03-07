@@ -8,7 +8,7 @@ use Kompo\Auth\Models\Email\Email;
 class EmailForm extends ModalScroll
 {
     public $model = Email::class;
-    public $_Title = 'Manage email';
+    public $_Title = 'ka::email.manage-email';
 
     protected $emailableId;
     protected $emailableType;
@@ -36,11 +36,11 @@ class EmailForm extends ModalScroll
     {
     	return [
             _Columns(
-                _Input('crm.email')->name('address_em')->type('email'),
-                _Select('crm.email.type')->name('type_em')->options(Email::getTypeEmLabels()),
+                _Input('ka::email.email')->name('address_em')->type('email'),
+                _Select('ka::email.email-type')->name('type_em')->options(Email::getTypeEmLabels()),
             ),
             _Columns(
-                _Checkbox('crm.email.is-main')->name('is_main_email', false)->default(1),
+                _Checkbox('ka::email.is-main')->name('is_main_email', false)->default(1),
             )
         ];
     }

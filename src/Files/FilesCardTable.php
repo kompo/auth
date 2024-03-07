@@ -32,7 +32,7 @@ class FilesCardTable extends Table
 	public function top()
 	{
 		return _FlexBetween(
-            _TitleCard('translate.files.my-files'),
+            _TitleCard('ka::files.my-files'),
             _CreateCard()->selfCreate('getFileForm')->inModal(),
         )->class('mb-4');
 	}
@@ -40,8 +40,8 @@ class FilesCardTable extends Table
 	public function headers()
 	{
 		return [
-			_Th('translate.general.type'),
-			_Th('translate.general.name'),
+			_Th('ka::general.type'),
+			_Th('ka::general.name'),
 			_Th(),
 		];
 	}

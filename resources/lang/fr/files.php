@@ -1,5 +1,27 @@
 <?php
-
 return [
-
+    "add-from-library" => "Ajouter depuis la bibliothèque",
+    "attach-files" => "Joindre des fichiers",
+    "attach-from-library" => "De la bibliothèque",
+    "browse-files" => "Parcourir les fichiers",
+    "confirm" => "Confirmer",
+    "edit-form" => "Modifier",
+    "everyone" => "Tous",
+    "file-infos" => "Informations fichier",
+    "file-manager" => "Gestionnaire de fichiers",
+    "file-name" => "Nom de fichier",
+    "file-size" => "Taille du fichier",
+    "file-uploaded-at" => "Téléversé le",
+    "fileable" => "Classable",
+    "fileable-id" => "Id",
+    "fileable-type" => "Type pouvant être classé",
+    "link-from-library" => "Lien de la bibliothèque",
+    "my-files" => "Mes fichiers",
+    "private" => "Privé",
+    "semi-private" => "Semi-privé",
+    "text-click-on-a-file" => "Cliquez sur un fichier",
+    "type-fileable" => "Type de fichier",
+    "upload-files" => "Téléverser des fichiers",
+    "upload-one-multiple-files" => "Téléverser un ou plusieurs fichiers",
+    "your-files-exceed-max-size" => "Vos fichiers dépassent la taille maximale"
 ];

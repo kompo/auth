@@ -22,7 +22,7 @@ class SelectFileable extends Form
         $model = Relation::morphMap()[$this->fileableType];
         $model = $model::query();
 
-        return _Select()->placeholder('translate.files.type-fileable')
+        return _Select()->placeholder('ka::files.type-fileable')
             ->options(
                 $model->forTeam(currentTeamId())->get()->mapWithKeys(
                     fn ($model) => [$model->id => $model->display]

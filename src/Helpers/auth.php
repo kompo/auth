@@ -3,7 +3,7 @@
 if (!function_exists('_LinkAlreadyHaveAccount')) {
     function _LinkAlreadyHaveAccount()
     {
-        return _Link('auth.i-already-have-an-account-log-in-instead')->class('text-sm text-gray-600 self-center')->href('login');
+        return _Link('auth-i-already-have-an-account-log-in-instead')->class('text-sm text-gray-600 self-center')->href('login');
     }
 }
 
@@ -54,7 +54,7 @@ if (!function_exists('_InputRegisterPasswords')) {
 if (!function_exists('_CheckboxTerms')) {
     function _CheckboxTerms()
     {
-        return _Checkbox(__('register.i-agree-to').' '.'<a href="'.url('privacy').'" class="underline" target="_blank">'.__('register.the-terms').'</a>')
+        return _Checkbox(__('auth-register-i-agree-to').' '.'<a href="'.url('privacy').'" class="underline" target="_blank">'.__('register.the-terms').'</a>')
             ->name('terms', false);
     }
 }

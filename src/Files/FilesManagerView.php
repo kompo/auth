@@ -35,18 +35,18 @@ class FilesManagerView extends Table
 	public function top()
 	{
 		return File::fileFilters(
-			_TitleMain('translate.files.file-manager')->class('mb-4'),
+			_TitleMain('files-file-manager')->class('mb-4'),
 		);
 	}
 
 	public function right()
 	{
 		return _Rows(
-            _Button('translate.files.upload-files')->icon('upload')->class('ml-0 sm:ml-4 mb-4')
+            _Button('files-upload-files')->icon('upload')->class('ml-0 sm:ml-4 mb-4')
             ->selfUpdate('getFileUploadModal')
             ->inModal(),
         	_Panel(
-    			_TitleCard('translate.files.file-infos'),
+    			_TitleCard('files-file-infos'),
             	File::emptyPanel(),
             )->id('file-info-panel')
             ->closable()
@@ -62,10 +62,10 @@ class FilesManagerView extends Table
 	{
 		return [
 			_Th()->class('w-20'),
-			_Th('translate.general.name')->sort('name')->class('w-60'),
-            _Th('translate.general.type')->sort('type')->class('w-20'),
-			_Th('translate.general.date')->sort('created_at')->class('w-20'),
-            _Th('translate.general.actions')->sort('updated_at')->class('w-10'),
+			_Th('ka::general.name')->sort('name')->class('w-60'),
+            _Th('ka::general.type')->sort('type')->class('w-20'),
+			_Th('ka::general.date')->sort('created_at')->class('w-20'),
+            _Th('ka::general.actions')->sort('updated_at')->class('w-10'),
 		];
 	}
 

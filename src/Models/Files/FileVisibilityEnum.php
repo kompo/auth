@@ -12,9 +12,9 @@ enum FileVisibilityEnum: int
     {
         return match ($this) 
         {
-            static::PRIVATE => static::visibilityOption('Management', 'profile-circle'),
-            static::SEMI => static::visibilityOption('boardmembers-short', 'profile-2user'),
-            static::PUBLIC => static::visibilityOption('Everyone', 'people'),
+            static::PRIVATE => static::visibilityOption('files-private', 'profile-circle'),
+            static::SEMI => static::visibilityOption('files-semi-private', 'profile-2user'),
+            static::PUBLIC => static::visibilityOption('files-everyone', 'people'),
         };
     }
 

@@ -14,7 +14,7 @@ class NotificationsList extends Query
 
     public function noItemsFound()
     {
-        return _Html('dashboard.no-notifications')->icon('icon-check')
+        return _Html('ka::dashboard.no-notifications')->icon('icon-check')
             ->class('text-white text-sm');
     }
 
@@ -90,7 +90,7 @@ class NotificationsList extends Query
 
         Notification::find($notificationId)->delete();
 
-        return __('email.notification-sent');
+        return __('monitoring-notification-sent');
     }
 
     public function notifyMissingInfoContacts($teamId)
@@ -101,9 +101,9 @@ class NotificationsList extends Query
 
                 $message = new Message();
                 $message->sender_id = auth()->user()->getSenderAccountId();
-                $message->subject = __('email.message-from').' '.$contact->units()->first()->union->display;
-                $message->html = '<p>'.__('Hi').' '.$contact->first_name.'</p>'.
-                    '<p>'.__('email.missing-informations').'</p>';
+                $message->subject = __('email-message-from').' '.$contact->units()->first()->union->display;
+                $message->html = '<p>'.__('ka::general.hi').' '.$contact->first_name.'</p>'.
+                    '<p>'.__('email-missing-informations').'</p>';
 
                 Mail::to($contact->mainEmail())->queue(
                     new CommunicationNotification($message, $contact->invitationUrl())

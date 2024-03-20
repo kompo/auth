@@ -22,8 +22,8 @@ class Email extends Model
     public static function getTypeEmLabels()
     {
         return [
-            Email::TYPE_EM_PERSONAL => __('Personal'),
-            Email::TYPE_EM_WORK => __('Work'),
+            Email::TYPE_EM_PERSONAL => __('email-personal'),
+            Email::TYPE_EM_WORK => __('email-work'),
         ];
     }
 

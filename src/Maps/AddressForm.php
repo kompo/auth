@@ -8,7 +8,7 @@ use Kompo\Auth\Models\Maps\Address;
 class AddressForm extends ModalScroll
 {
     public $model = Address::class;
-    public $_Title = 'maps.manage-address';
+    public $_Title = 'maps-manage-address';
 
     protected $addressableId;
     protected $addressableType;
@@ -50,12 +50,12 @@ class AddressForm extends ModalScroll
     	return [
             _CustomPlace(),
             _Columns(
-                _Input('maps.address.apt_or_suite')->name('apt_or_suite'),
-                _Input('maps.address.description')->name('description_ad'),
+                _Input('maps-address-apt_or_suite')->name('apt_or_suite'),
+                _Input('maps-address-description')->name('description_ad'),
             ),
             _Columns(
-                _Checkbox('maps.address.is_main_billing')->name('is_main_billing', false)->default($isMainBilling),
-                _Checkbox('maps.address.is_main_shipping')->name('is_main_shipping', false)->default($isMainShipping),
+                _Checkbox('maps-is_main_billing')->name('is_main_billing', false)->default($isMainBilling),
+                _Checkbox('maps-is_main_shipping')->name('is_main_shipping', false)->default($isMainShipping),
             ),
         ];
     }

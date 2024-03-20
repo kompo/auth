@@ -28,10 +28,10 @@ class ForgotPasswordForm extends Form
         return [
             _Panel()->id('reset-password-response'),
 
-            _Input('Email')->name('email'),
+            _Input('auth-email')->name('email'),
             
             _FlexEnd(
-                _SubmitButton('Send Password Reset Link')
+                _SubmitButton('auth-send-password-reset-link')
                     ->inPanel('reset-password-response')
             )
         ];

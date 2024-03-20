@@ -8,7 +8,7 @@ use Kompo\Auth\Models\Phone\Phone;
 class PhoneForm extends ModalScroll
 {
     public $model = Phone::class;
-    public $_Title = 'Manage phone';
+    public $_Title = 'phone-manage-phone';
 
     protected $phonableId;
     protected $phonableType;
@@ -36,11 +36,11 @@ class PhoneForm extends ModalScroll
     {
     	return [
             _Columns(
-                _Input('crm.phone.number')->name('number_ph')->type('tel'),
-                _Select('crm.phone.type')->name('type_ph')->options(Phone::getTypePhLabels()),
+                _Input('ka::crm.phone.number')->name('number_ph')->type('tel'),
+                _Select('ka::crm.phone.type')->name('type_ph')->options(Phone::getTypePhLabels()),
             ),
             _Columns(
-                _Checkbox('crm.phone.is-main')->name('is_main_phone', false)->default(1),
+                _Checkbox('ka::crm.phone.is-main')->name('is_main_phone', false)->default(1),
             ),
         ];
     }

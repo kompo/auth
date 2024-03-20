@@ -1,6 +1,6 @@
 <?php
 
-namespace Kompo\Auth\Mail;
+namespace Kompo\Auth\Teams\Mail;
 
 use Kompo\Auth\Models\Teams\TeamInvitation;
 use Illuminate\Bus\Queueable;
@@ -25,7 +25,7 @@ class TeamInvitationMail extends Mailable
      */
     public function build()
     {
-        return $this->subject(__('Team Invitation'))
+        return $this->subject(__('teams-team-invitation'))
             ->markdown('kompo-auth::mail.team-invitation', [
                 'acceptUrl' => $this->invitation->getAcceptInvitationRoute(),
             ]);

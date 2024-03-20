@@ -22,13 +22,13 @@ class FileLibraryAttachmentQuery extends FileLibraryQuery
 		return _Rows(
 			_FlexBetween(
 
-				_Title('file.attach-from-library')->class('text-2xl sm:text-3xl font-bold')
+				_Title('files-attach-from-library')->class('text-2xl sm:text-3xl font-bold')
 					->icon('document-text')
 					->class('font-semibold mb-4 md:mb-0')
 					->class('flex items-center'),
 
 				_FlexEnd(
-					_Button('Confirm')->getElements('confirmSelection')->inPanel('linked-attachments')
+					_Button('files-confirm')->getElements('confirmSelection')->inPanel('linked-attachments')
 						->closeModal()
 		                ->config(['withCheckedItemIds' => true])
 				)->class('flex-row-reverse md:flex-row md:ml-8')
@@ -62,7 +62,7 @@ class FileLibraryAttachmentQuery extends FileLibraryQuery
 				->options($selectedFiles->mapWithKeys(fn($file) => [$file->id => $file->name]))
 				->value($selectedFiles->pluck('id'))
 				->class('mb-0'),
-			_Button('file.add-from-library')
+			_Button('files-add-from-library')
 				->class('text-sm vlBtn vlBtnOutlined')->icon('icon-plus')
 				->get('file-add-attachment.modal', [
 					'checked_items' => json_encode($selectedIds),

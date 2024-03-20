@@ -12,3 +12,10 @@ if (!function_exists('_ImgModel')) {
 		return _Img($image['path']);
 	}
 }
+
+if (!function_exists('_ImgCover')) {
+	function _ImgCover($label = '')
+	{
+		return _Img($label)->bgCover();
+	}
+}

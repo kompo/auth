@@ -1,5 +1,11 @@
 <?php 
 
+use \Kompo\Elements\Element;
+
+/* GENERAL CARD SETTINGS */
+Element::macro('iconSax', fn($icon) => $this->icon(_Sax($icon)));
+
+/* SAX elements */
 if(!function_exists('_Sax')) {
 	function _Sax($path, $dimension = 24)
 	{

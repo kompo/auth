@@ -2,6 +2,17 @@
 
 use \Kompo\Elements\Element;
 
+/* BASE BUTTONS */
+Element::macro('bigButton', fn() => $this->class('px-6 py-3 text-lg'));
+
+if (!function_exists('_ButtonBig')) {
+	function _ButtonBig($label = '')
+	{
+		return _Button($label)->bigButton();
+	}
+}
+
+
 /* CRUD ICONS */
 Element::macro('iconCreate', fn() => $this->icon(_Sax('add',22)));
 Element::macro('iconUpdate', fn() => $this->icon(_Sax('edit', 22)));

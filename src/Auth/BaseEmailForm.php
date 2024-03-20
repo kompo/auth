@@ -38,8 +38,8 @@ class BaseEmailForm extends ImgFormLayout
 	public function rightColumnBody()
 	{
 		return [
-            _Input('ka::auth.email')->name('email'),
-            _SubmitButton('ka::auth.base-email-btn'),
+            _Input('auth-my-email')->name('email'),
+            _SubmitButton('auth-base-email-btn'),
         ];
 	}
 

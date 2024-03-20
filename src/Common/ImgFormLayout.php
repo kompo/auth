@@ -6,21 +6,25 @@ use Kompo\Form;
 
 abstract class ImgFormLayout extends Form
 {
-    public $containerClass = 'container-fluid';
+    public $containerClass = '';
 
     protected $imgUrl = 'images/left-column-image.png';
 
+    protected $rightColumnBodyWrapperClass = 'justify-around md:justify-center';
+
 	public function render()
 	{
+        $this->class(config('kompo-auth.img_form_layout_default_class'));
+
 		return _Columns(
             _Div(
-                _Img($this->imgUrl)->class('h-screen w-full')->bgCover()->style('margin: 0 -15px'),
-            )->class('hidden md:block')->col('col-md-7'),
+                _Img($this->imgUrl)->class('h-screen w-full')->bgCover(),
+            )->class('relative hidden md:block')->col('col-md-7'),
             _Rows(
-                _Div(
+                _Rows(
                     $this->rightColumnBody(),
-                )->class('h-screen overflow-auto p-6'),
-            )->col('col-12 col-md-5'),
-		);
+                )->class('h-screen overflow-auto p-6 md:p-8')->class($this->rightColumnBodyWrapperClass),
+            )->col('col-12 col-md-5 bg-level1'),
+		)->class('no-gutters');
 	}
 }

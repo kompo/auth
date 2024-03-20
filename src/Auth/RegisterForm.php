@@ -49,12 +49,12 @@ class RegisterForm extends ImgFormLayout
 		return [
             _Rows(
                 _Html($this->emailRequest->getEmailForVerification()),
-                _Html('ka::auth.Your email has been verified!'),
+                _Html('auth.Your email has been verified!'),
             ),
 			_InputRegisterNames(),
             _InputRegisterPasswords(),
             _CheckboxTerms(),
-			_SubmitButton('ka::auth.register')->class('mb-4'),
+			_SubmitButton('auth.register')->class('mb-4'),
             _LinkAlreadyHaveAccount(),
 		];
 	}

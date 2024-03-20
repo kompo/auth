@@ -20,6 +20,7 @@ class CreateAddressesTable extends Migration
             $table->foreignId('team_id')->nullable()->constrained();
 
             $table->nullableMorphs('addressable');
+            $table->foreignId('address_type_id')->nullable()->constrained();
             $table->integer('type_ad')->nullable(); //when not a contact
             $table->text('address1');
             $table->string('apt_or_suite')->nullable();

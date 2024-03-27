@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Kompo\Auth\Models\Teams\RoleHierarchyEnum;
 
 class CreateTeamInvitationsTable extends Migration
 {
@@ -20,6 +21,7 @@ class CreateTeamInvitationsTable extends Migration
             $table->foreignId('team_id')->constrained()->cascadeOnDelete();
             $table->string('email');
             $table->string('role')->nullable();
+            $table->string('role_hierarchy')->default(RoleHierarchyEnum::DIRECT);
         });
     }
 

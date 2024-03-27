@@ -2,6 +2,11 @@
 
 use \Kompo\Elements\Element;
 
+/* GENERAL SHORTCUTS */
+Element::macro('mb4', fn() => $this->class('mb-4'));
+Element::macro('mb2', fn() => $this->class('mb-2'));
+Element::macro('p4', fn() => $this->class('p-4'));
+
 /* GENERAL CARD SETTINGS */
 Element::macro('scrollY', fn($height = '300px') => $this->class('overflow-y-auto mini-scroll')->style('min-height:'.$height));
 

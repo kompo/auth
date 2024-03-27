@@ -19,6 +19,11 @@ trait BelongsToUserTrait
     }
 
     /* SCOPES */
+    public function scopeForUser($query, $userId)
+    {
+        $query->where('user_id', $userId);
+    }
+
     public function scopeForAuthUser($query, $userId = null)
     {
         $query->where('user_id', $userId ?: auth()->id());

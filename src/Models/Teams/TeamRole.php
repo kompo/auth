@@ -14,6 +14,10 @@ class TeamRole extends Model
 
     public const ROLES_DELIMITER = ',';
 
+    protected $casts = [
+        'role_hierarchy' => RoleHierarchyEnum::class,
+    ];
+
     /* RELATIONS */
     public function permissions()
     {
@@ -72,31 +76,35 @@ class TeamRole extends Model
         ];
     }
 
-    public static function usableRoles()
-    {
-        return static::getUsableRoleClasses()->mapWithKeys(fn($class) => [
-            $class::ROLE_KEY => $class::ROLE_NAME,
-        ]);
-    }
-
-    public static function roleDescriptions()
-    {
-        return static::getUsableRoleClasses()->mapWithKeys(fn($class) => [
-            $class::ROLE_KEY => $class::ROLE_DESCRIPTION,
-        ]);
-    }
-
     public static function teamRoleRules()
     {
-        return ['required', 'array', 'in:'.implode(',', array_keys(TeamRole::usableRoles()->toArray()))];
+        if (!config('kompo-auth.team_hierarchy_roles')) {
+            $rules['role'] = ['required', 'array', 'in:'.implode(',', TeamRole::getUsableRoleClasses()->map(fn($c) => $c::ROLE_KEY)->toArray())];
+        } else {
+            $rules['multi_roles'] = ['required'];
+        }
+
+        return $rules;
+    }
+
+    public function getRoleHierarchyAccessDirect()
+    {
+        return $this->role_hierarchy->accessGrant();
+    }
+
+    public function getRoleHierarchyAccessBelow()
+    {
+        return $this->role_hierarchy->accessGrantBelow();
     }
 
     /* ACTIONS */
 
     /* ELEMENTS */
-    public static function buttonGroupField()
+    public static function buttonGroupField($label = 'Role')
     {
-        return _MultiSelect('Role')->name('roles')
+        $selectEl = config('kompo-auth.multiple_roles_per_team') ? _MultiSelect($label) : _Select($label);
+
+        return $selectEl->name('role')
             ->options(
                 static::buttonOptions()
             );
@@ -104,13 +112,26 @@ class TeamRole extends Model
 
     public static function buttonOptions()
     {
-        return collect(static::usableRoles())->mapWithKeys(function ($role, $roleKey) {
+        return static::getUsableRoleClasses()->mapWithKeys(function ($roleClass) {
             return [
-                $roleKey => _Rows(
-                    _Html(static::usableRoles()[$roleKey])->class('text-sm text-gray-600'),
-                    _Html(static::roleDescriptions()[$roleKey])->class('mt-2 text-xs text-gray-600'),
+                $roleClass::ROLE_KEY => _Rows(
+                    _Html($roleClass::ROLE_NAME)->class('text-sm text-gray-600'),
+                    _Html($roleClass::ROLE_DESCRIPTION)->class('mt-2 text-xs text-gray-600'),
                 )->class('p-4')
             ];
         });
+    }
+
+    public static function roleHierarchySelect()
+    {
+        return _Select('Role hierarchy')->name('role_hierarchy')
+            ->options(
+                static::roleHierarchyOptions()
+            );
+    }
+
+    public static function roleHierarchyOptions()
+    {
+        return RoleHierarchyEnum::optionsWithLabels();
     }
 }

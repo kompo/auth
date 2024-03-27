@@ -32,7 +32,7 @@ class TeamPolicy
 
     public function addTeamMember(User $user, Team $team)
     {
-        //TODO
+        return $user->isTeamOwner();
     }
 
     public function updateTeamMember(User $user, Team $team)

@@ -76,12 +76,13 @@ trait HasTeamsTrait
         return $team;
     }
 
-    public function createTeamRole($team, $role)
+    public function createTeamRole($team, $role, $hierarchy = null)
     {
         $teamRole = new TeamRole();
         $teamRole->team_id = $team->id;
         $teamRole->user_id = $this->id;
         $teamRole->role = $role;
+        $teamRole->role_hierarchy = $hierarchy ?: RoleHierarchyEnum::DIRECT;
         $teamRole->save();
 
         return $teamRole;
@@ -102,8 +103,9 @@ trait HasTeamsTrait
         $team = $invitation->team;
 
         $roles = explode(TeamRole::ROLES_DELIMITER, $invitation->role);
+        $hierarchies = explode(TeamRole::ROLES_DELIMITER, $invitation->role_hierarchy);
 
-        collect($roles)->each(fn($role) => $this->createTeamRole($team, $role));
+        collect($roles)->each(fn($role, $key) => $this->createTeamRole($team, $role, $hierarchies[$key] ?? null));
         
         $this->switchToFirstTeamRole($invitation->team_id);
 
@@ -169,12 +171,35 @@ trait HasTeamsTrait
 
     public function isSuperAdmin()
     {
-        return $this->hasCurrentRole(SuperAdminRole::ROLE_KEY);
+        return $this->hasCurrentRole(SuperAdminRole::class);
     }
 
-    public function hasCurrentRole($role)
+    public function hasCurrentRole($roleClass)
     {
-        return $this->currentTeamRole->role === $role;
+        if ($this->currentTeamRole->role === $roleClass::ROLE_KEY) {
+            if (config('kompo-auth.team_hierarchy_roles')) {
+                return $this->currentTeamRole->getRoleHierarchyAccessDirect();
+            }
+
+            return true;
+        }
+
+        if (config('kompo-auth.team_hierarchy_roles')) {
+            $currentTeam = $this->currentTeamRole->team;
+            $parentTeam = $currentTeam->parentTeam;
+
+            while ($parentTeam) {
+                $teamRole = $parentTeam->teamRoles()->forUser($this->id)->where('role', $roleClass::ROLE_KEY)->first();
+
+                if ($teamRole) {
+                    return $teamRole->getRoleHierarchyAccessBelow();
+                }
+
+                $parentTeam = $parentTeam->parentTeam;
+            }
+        }
+
+        return false;
     }
 
     /* PERMISSIONS */

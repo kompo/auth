@@ -17,7 +17,6 @@ class TeamInvitationForm extends TeamBaseForm
         $user = auth()->user();
         $team = currentTeam();
         $email = request('email');
-        $roles = request('roles') ?: [];
 
         Gate::forUser($user)->authorize('addTeamMember', $team);
 
@@ -29,12 +28,49 @@ class TeamInvitationForm extends TeamBaseForm
             throwValidationError ('email', 'This user already belongs to the team.');
         }
 
-        $invitation = $team->teamInvitations()->forceCreate([
+        if (config('kompo-auth.team_hierarchy_roles')) {
+            $invitation = $this->createForHierarchyRoles($user, $team, $email);
+        } else {
+            if (config('kompo-auth.multiple_roles_per_team')) {
+                $invitation = $this->createForMultipleRolePerTeam($user, $team, $email);
+            } else {
+                $invitation = $this->createForSingleRolePerTeam($user, $team, $email);
+            }
+        }
+
+        \Mail::to($email)->send(new TeamInvitationMail($invitation));
+    }
+
+    protected function createForSingleRolePerTeam($user, $team, $email)
+    {
+        $role = request('role');
+
+        return $team->teamInvitations()->forceCreate([
+            'email' => $email,
+            'role' => $role,
+        ]);
+    }
+
+    protected function createForMultipleRolePerTeam($user, $team, $email)
+    {
+        $roles = request('role' ?: []);
+
+        return $team->teamInvitations()->forceCreate([
             'email' => $email,
             'role' => implode(TeamRole::ROLES_DELIMITER, $roles),
         ]);
+    }
 
-        \Mail::to($email)->send(new TeamInvitationMail($invitation));
+    protected function createForHierarchyRoles($user, $team, $email)
+    {
+        $roles = collect(request('multi_roles') ?: [])->map(fn($mr) => $mr['role'])->toArray();
+        $hierarchies = collect(request('multi_roles') ?: [])->map(fn($mr) => $mr['role_hierarchy'])->toArray();
+
+        return $team->teamInvitations()->forceCreate([
+            'email' => $email,
+            'role' => implode(TeamRole::ROLES_DELIMITER, $roles),
+            'role_hierarchy' => implode(TeamRole::ROLES_DELIMITER, $hierarchies),
+        ]);
     }
 
     protected function body()
@@ -42,7 +78,11 @@ class TeamInvitationForm extends TeamBaseForm
         return [
             _Html('Please provide the email address of the person you would like to add to this team.')->class('max-w-xl text-sm text-gray-600 mb-4'),
             _Input('auth-email')->name('email')->type('email'),
-            TeamRole::buttonGroupField(),
+            !config('kompo-auth.team_hierarchy_roles') ? 
+                TeamRole::buttonGroupField() :
+                _MultiForm()->name('multi_roles', false)
+                    ->formClass(TeamInvitationMultiForm::class)
+                    ->preloadIfEmpty(),
             _FlexEnd(
                 _SubmitButton('Send invite')->alert('Invite Sent!')->refresh()->refresh('team-invitations-list'),
             )
@@ -51,9 +91,10 @@ class TeamInvitationForm extends TeamBaseForm
 
     public function rules()
     {
-        return [
-            'email' => baseEmailRules(),
-            'roles' => TeamRole::teamRoleRules(),
-        ];
+        $rules = TeamRole::teamRoleRules();
+
+        $rules['email'] = baseEmailRules();
+
+        return $rules;
     }
 }

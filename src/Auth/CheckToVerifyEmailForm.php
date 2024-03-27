@@ -22,8 +22,8 @@ class CheckToVerifyEmailForm extends ImgFormLayout
 	protected function getEmailSentConfirmationEls()
 	{
 		return _Rows(
-            _Html('auth-email-sent-confirmation-1'),
-            _Html('auth-email-sent-confirmation-2'),
+            _Html('auth-email-sent-confirmation-1')->mb4(),
+            _Html('auth-email-sent-confirmation-2')->mb4(),
 		);
 	}
 

@@ -5,7 +5,7 @@
 \Kompo\Elements\Element::macro('titleCard', fn() => $this->class('text-base font-semibold mb-2'));
 \Kompo\Elements\Element::macro('titleModal', fn() => $this->class('text-xl font-semibold'));
 \Kompo\Elements\Element::macro('titleAccent', fn() => $this->class('text-lg font-medium text-info'));
-\Kompo\Elements\Element::macro('titleMini', fn() => $this->class('text-sm text-info uppercase leading-widest font-bold'));
+\Kompo\Elements\Element::macro('titleMini', fn() => $this->class('text-sm uppercase leading-widest font-bold'));
 \Kompo\Elements\Element::macro('titleStat', fn() => $this->class('text-2xl font-black'));
 
 if(!function_exists('_TitleMain')) {
@@ -40,6 +40,13 @@ if(!function_exists('_TitleMini')) {
     function _TitleMini($label)
     {
         return _Html($label)->titleMini();
+    }
+}
+
+if(!function_exists('_TitleMiniWhite')) {
+    function _TitleMiniWhite($label)
+    {
+        return _Html($label)->titleMini()->class('text-white');
     }
 }
 

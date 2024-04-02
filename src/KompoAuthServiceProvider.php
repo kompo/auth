@@ -3,6 +3,7 @@
 namespace Kompo\Auth;
 
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 class KompoAuthServiceProvider extends ServiceProvider
@@ -47,6 +48,10 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->loadConfig();
 
         $this->loadRelationsMorphMap();
+
+        $this->loadListeners();
+
+        $this->loadMiddlewares();
     }
 
     /**
@@ -112,5 +117,20 @@ class KompoAuthServiceProvider extends ServiceProvider
             'team' => \Kompo\Auth\Models\Teams\Team::class,
             'file' => \Kompo\Auth\Models\Files\File::class,
         ]);
+    }
+
+    /**
+     * Loads the listeners.
+     */
+    protected function loadListeners()
+    {
+        Event::listen(function (\SocialiteProviders\Manager\SocialiteWasCalled $event) {
+            $event->extendSocialite('azure', \SocialiteProviders\Azure\Provider::class);
+        });
+    }
+
+    protected function loadMiddlewares()
+    {
+        $this->app['router']->aliasMiddleware('sso.validate-driver', \Kompo\Auth\Http\Middleware\ValidateSsoDriver::class);
     }
 }

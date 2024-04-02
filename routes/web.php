@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Laravel\Socialite\Facades\Socialite;
 
 //PACKAGES
 Route::impersonate();
@@ -11,6 +12,14 @@ Route::layout('layouts.guest')->middleware(['guest:web'])->group(function(){
 	Route::get('login', Kompo\Auth\Auth\BaseEmailForm::class)->name('login');
 
 	Route::get('login-password/{email?}', Kompo\Auth\Auth\LoginForm::class)->name('login.password');
+
+	Route::middleware(['sso.validate-driver'])->group(function () {
+		
+		Route::get('login-sso/{service}', [Kompo\Auth\Http\Controllers\SsoController::class, 'login'])->name('login.sso');
+
+		Route::get('login-sso/{service}/callback', [Kompo\Auth\Http\Controllers\SsoController::class, 'callback']);
+
+	});
 
 	Route::middleware(['signed', 'throttle:10,1'])->group(function(){
 

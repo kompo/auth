@@ -71,7 +71,7 @@ trait HasTeamsTrait
             'team_name' => explode(' ', $this->name, 2)[0]."'s Team",
         ]);
 
-        $this->createTeamRole($team, TeamOwnerRole::ROLE_KEY);
+        $this->createTeamOwnerRole($team);
 
         return $team;
     }
@@ -90,12 +90,14 @@ trait HasTeamsTrait
 
     public function createSuperAdminRole($team)
     {
-        return $this->createTeamRole($team, SuperAdminRole::ROLE_KEY);
+        $this->createTeamRole($team, SuperAdminRole::ROLE_KEY);
+        $this->switchToFirstTeamRole();
     }
 
     public function createTeamOwnerRole($team)
     {
-        return $this->createTeamRole($team, TeamOwnerRole::ROLE_KEY);
+        $this->createTeamRole($team, TeamOwnerRole::ROLE_KEY);
+        $this->switchToFirstTeamRole();
     }
 
     public function createRolesFromInvitation($invitation)

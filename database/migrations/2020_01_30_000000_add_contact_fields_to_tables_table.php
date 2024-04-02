@@ -13,7 +13,7 @@ return new class extends Migration
      */
     public function up()
     {
-        $this->addContactFieldsColumns('users');
+        //$this->addContactFieldsColumns('users');
         $this->addContactFieldsColumns('teams');
     }
 
@@ -36,7 +36,7 @@ return new class extends Migration
      */
     public function down()
     {
-        $this->dropContactFieldsColumns('users');
+        //$this->dropContactFieldsColumns('users');
         $this->dropContactFieldsColumns('teams');
     }
 

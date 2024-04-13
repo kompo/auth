@@ -12,6 +12,7 @@ class Phone extends Model
     public const TYPE_PH_CELLULAR = 2;
     public const TYPE_PH_HOME = 3;
     public const TYPE_PH_OTHER = 4;
+    public const TYPE_PH_FAX = 5;
     
     public function save(array $options = [])
     {

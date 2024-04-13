@@ -17,7 +17,7 @@ class Modal extends KompoModal
 
     public function headerButtons()
     {
-        return $this->noHeaderButtons ? null : _SubmitButton('ka::modal.save');
+        return $this->noHeaderButtons ? null : _SubmitButton('general-save');
     }
 
     /* BASE METHODS */

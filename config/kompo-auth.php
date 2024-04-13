@@ -8,4 +8,6 @@ return [
     'multiple_roles_per_team' => false,
     
     'team_hierarchy_roles' => false,
+
+    'sso-services' => ['google', 'azure'], 
 ];

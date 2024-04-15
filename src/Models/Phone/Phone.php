@@ -47,6 +47,10 @@ class Phone extends Model
     }
 
     /* CALCULATED FIELDS */
+    public function getFullLabelWithExtension()
+    {
+        return $this->number_ph . ($this->extension_ph ? (' - ext:' . $this->extension_ph) : '');
+    }
 
     /* ACTIONS */
     public function setPhonable($model)

@@ -30,7 +30,17 @@ trait MorphManyPhones
             return '';
         }
 
-        return $ph->number_ph . ($ph->extension_ph ? (' - ext:' . $ph->extension_ph) : '');
+        return $ph->getFullLabelWithExtension();
+    }
+
+    public function getFirstValidPhone()
+    {
+        return $this->primaryPhone ?: $this->phone()->first();
+    }
+
+    public function getFirstValidPhoneLabel()
+    {
+        return $this->getFirstValidPhone()?->getFullLabelWithExtension();
     }
 
     /* ATTRIBUTES */

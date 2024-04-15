@@ -38,6 +38,16 @@ trait MorphManyAddresses
         return $pa->getAddressLabel();
     }
 
+    public function getFirstValidAddress()
+    {
+        return $this->primaryBillingAddress ?: $this->address()->first();
+    }
+
+    public function getFirstValidAddressLabel()
+    {
+        return $this->getFirstValidAddress()?->getAddressLabel();
+    }
+
     /* ACTIONS */
     public function setAddressableAndMakeBilling(?Address $address)
     {

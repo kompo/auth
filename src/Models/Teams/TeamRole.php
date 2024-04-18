@@ -43,6 +43,11 @@ class TeamRole extends Model
         return static::getAllRoleClasses()->first(fn($class) => $this->role == $class::ROLE_KEY);
     }
 
+    public function getTeamAndRoleLabel()
+    {
+        return $this->team->team_name.' - '.$this->getRoleName();
+    }
+
     public static function getUsableRoleClasses()
     {
         $appRolesDir = app_path('Models/Roles');

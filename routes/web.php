@@ -55,6 +55,8 @@ Route::layout('layouts.dashboard')->middleware(['auth'])->group(function(){
 	Route::get('teams/manage', Kompo\Auth\Teams\TeamManagementPage::class)->name('teams.manage');
 	Route::get('user/manage/{id?}', Kompo\Auth\Teams\UserRolesAndPermissionsPage::class)->name('user.manage');
 
+	Route::get('teams/table/{team_id?}', Kompo\Auth\Teams\TeamsTable::class)->name('teams.table');
+
 });
 
 

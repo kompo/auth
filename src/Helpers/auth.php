@@ -34,7 +34,7 @@ if (!function_exists('_InputRegisterNames')) {
     function _InputRegisterNames($defaultName1 = null, $defaultName2 = null)
     {
         return config('kompo-auth.register_with_first_last_name') ? _Rows(
-            _Input('auth-your-first-name')->name('first_name')->default($defaultName1),
+            _Input('auth-your-first-name1')->name('first_name')->default($defaultName1),
             _Input('auth-your-last-name')->name('last_name')->default($defaultName2),
         ) : 
         _Input('auth-your-name')->name('name')->default($defaultName1);

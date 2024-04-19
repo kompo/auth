@@ -18,14 +18,20 @@ class MenuRolesSwitcherDropdown extends Form
             return;
         }
         
-        return _Select()->name('current_team_role')->options(
-            auth()->user()->teamRoles()->with('team')->get()->mapWithKeys(fn($teamRole) => [
-                $teamRole->id => _Rows(
-                    _Html($teamRole->getRoleName()),
-                    _Html($teamRole->getTeamName())->class('text-sm text-gray-400'),
-                )->selfPost('switchToTeamRole', ['id' => $teamRole->id])->redirect()
-            ])
-        )->value(currentTeamRoleId());
+        return _Dropdown(currentTeamRole()->getRoleName())
+            ->submenu(
+                auth()->user()->teamRoles()->where('id', '<>', currentTeamRoleId())->with('team')->get()->mapWithKeys(fn($teamRole) => [
+                    $teamRole->id => $this->getTeamRoleLabel($teamRole)->selfPost('switchToTeamRole', ['id' => $teamRole->id])->redirect()
+                ])
+            )->alignRight();
+    }
+
+    protected function getTeamRoleLabel($teamRole)
+    {
+        return _Rows(
+            _Html($teamRole->getRoleName()),
+            _Html($teamRole->getTeamName())->class('text-sm text-gray-400'),
+        )->class('w-72 px-4 py-2');
     }
 
     public function switchToTeamRole($id)

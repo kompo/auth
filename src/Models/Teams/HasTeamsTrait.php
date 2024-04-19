@@ -12,6 +12,10 @@ trait HasTeamsTrait
 	/* RELATIONS */
     public function currentTeamRole()
 	{
+        if (!$this->current_team_role_id) {
+            $this->switchToFirstTeamRole();
+        }
+
 		return $this->belongsTo(TeamRole::class, 'current_team_role_id');
 	}
 
@@ -71,7 +75,7 @@ trait HasTeamsTrait
             'team_name' => explode(' ', $this->name, 2)[0]."'s Team",
         ]);
 
-        $this->createTeamRole($team, TeamOwnerRole::ROLE_KEY);
+        $this->createTeamOwnerRole($team);
 
         return $team;
     }
@@ -90,12 +94,14 @@ trait HasTeamsTrait
 
     public function createSuperAdminRole($team)
     {
-        return $this->createTeamRole($team, SuperAdminRole::ROLE_KEY);
+        $this->createTeamRole($team, SuperAdminRole::ROLE_KEY);
+        $this->switchToFirstTeamRole();
     }
 
     public function createTeamOwnerRole($team)
     {
-        return $this->createTeamRole($team, TeamOwnerRole::ROLE_KEY);
+        $this->createTeamRole($team, TeamOwnerRole::ROLE_KEY);
+        $this->switchToFirstTeamRole();
     }
 
     public function createRolesFromInvitation($invitation)
@@ -158,9 +164,13 @@ trait HasTeamsTrait
     {
         $currentTeamRole = $this->currentTeamRole()->first();
 
-        \Cache::put('currentTeamRole'.$this->id, $currentTeamRole, 120);
-        \Cache::put('currentTeam'.$this->id, $currentTeamRole->team, 120);
-        \Cache::put('currentPermissions'.$this->id, $currentTeamRole->permissions()->pluck('permission_key'), 120);
+        try {
+            \Cache::put('currentTeamRole'.$this->id, $currentTeamRole, 120);
+            \Cache::put('currentTeam'.$this->id, $currentTeamRole->team, 120);
+            \Cache::put('currentPermissions'.$this->id, $currentTeamRole->permissions()->pluck('permission_key'), 120);            
+        } catch (\Throwable $e) {
+            \Log::info('Failed writing roles and permissions to cache '.$e->getMessage());
+        }
     }
 
     /* ROLES */

@@ -21,6 +21,11 @@ class Team extends Model
         return $this->belongsTo(Team::class, 'parent_team_id');
     }
 
+    public function teams()
+    {
+        return $this->hasMany(Team::class, 'parent_team_id');
+    }
+
     public function users()
     {
         return $this->belongsToMany(User::class, TeamRole::class)->withPivot('role')->withTimestamps();
@@ -31,15 +36,29 @@ class Team extends Model
     	return $this->hasMany(TeamRole::class);
     }
 
+    public function authUserTeamRoles()
+    {
+        return $this->teamRoles()->forAuthUser();
+    }
+
     public function teamInvitations()
     {
-    	return $this->hasMany(TeamInvitation::class);
+        return $this->hasMany(TeamInvitation::class);
     }
 
 	/* CALCULATED FIELDS */
 	public function hasUserWithEmail(string $email): int
     {
         return $this->users()->where('email', $email)->count();
+    }
+
+    public static function getMainParentTeam($team)
+    {
+        if (!$team->parentTeam) {
+            return $team;
+        }
+
+        return $this->getMainParentTeam($team->parentTeam);
     }
 
     /* SCOPES */

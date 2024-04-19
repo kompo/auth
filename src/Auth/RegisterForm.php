@@ -32,8 +32,6 @@ class RegisterForm extends ImgFormLayout
     {
         $team = $this->model->createPersonalTeamAndOwnerRole();
 
-        $this->model->switchToFirstTeamRole($team->id);
-
         fireRegisteredEvent($this->model);
 
         auth()->guard()->login($this->model);

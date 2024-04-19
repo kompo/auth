@@ -5,7 +5,10 @@ if (!function_exists("addMetaData")) {
     {
         $table->id();
         addedModifiedByColumns($table);
-        $table->timestamps();
+
+        $table->timestamp('created_at')->useCurrent();
+        $table->timestamp('updated_at')->useCurrentOnUpdate();
+
         $table->softDeletes();
     }
 }

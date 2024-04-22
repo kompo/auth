@@ -22,14 +22,16 @@ class MenuTeamsBreadcrumbs extends Form
 			$team = $team->parentTeam;
 		}
 
-		return _Flex4(
-			$teams->map(fn($team) => $this->getTeamSwitcherLink($team)),
+		return _Flex(
+			$teams->map(fn($team, $key) => $this->getTeamSwitcherLink($team, $key >= 1)),
 		);
 	}
 
-	protected function getTeamSwitcherLink($team)
+	protected function getTeamSwitcherLink($team, $withSlash = false)
 	{
-		return _Link($team->team_name)->class(currentTeam()->id == $team->id ? 'font-bold' : '')
+		$label = ($withSlash ? '&nbsp;&nbsp;/&nbsp;&nbsp;' : '').$team->team_name;
+
+		return _Link($label)->class(currentTeam()->id == $team->id ? 'font-bold' : '')
 			->selfPost('switchToTeamRole', ['team_id' => $team->id])
 			->redirect();
 	}

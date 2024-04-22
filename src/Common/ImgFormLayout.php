@@ -21,6 +21,7 @@ abstract class ImgFormLayout extends Form
                 _Img($this->imgUrl)->class('h-screen w-full')->bgCover(),
             )->class('relative hidden md:block')->col('col-md-7'),
             _Rows(
+                _LocaleSwitcher()->class('absolute top-0 right-0'),
                 _Rows(
                     $this->rightColumnBody(),
                 )->class('h-screen overflow-auto p-6 md:p-8 w-full')->class($this->rightColumnBodyWrapperClass)->style('max-width:500px'),

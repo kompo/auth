@@ -21,7 +21,7 @@ class MenuRolesSwitcherDropdown extends Form
         return _Dropdown(currentTeamRole()->getRoleName())
             ->submenu(
                 auth()->user()->teamRoles()->where('id', '<>', currentTeamRoleId())->with('team')->get()->mapWithKeys(fn($teamRole) => [
-                    $teamRole->id => $this->getTeamRoleLabel($teamRole)->selfPost('switchToTeamRole', ['id' => $teamRole->id])->redirect()
+                    $teamRole->id => $this->getTeamRoleLabel($teamRole)->selfPost('switchToTeamRole', ['id' => $teamRole->id])->redirect('dashboard')
                 ])
             )->alignRight();
     }
@@ -37,7 +37,5 @@ class MenuRolesSwitcherDropdown extends Form
     public function switchToTeamRole($id)
     {
         auth()->user()->switchToTeamRoleId($id);
-        
-        return redirect()->route('dashboard');
     }
 }

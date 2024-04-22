@@ -48,7 +48,7 @@ class RegisterForm extends ImgFormLayout
             _Rows(
                 _Html($this->emailRequest->getEmailForVerification()),
                 _Html('auth-your-email-has-been-verified!'),
-            ),
+            )->class('mb-6'),
 			_InputRegisterNames(),
             _InputRegisterPasswords(),
             _CheckboxTerms(),

@@ -14,10 +14,10 @@ if(!function_exists('_SearchResult')) {
     function _SearchResult($search, $title, $description = [])
     {
         return _Rows(
-            _Highlighted($search, $title)->class('font-semibold'),
+            _Highlighted($search, $title)->class('font-medium'),
             _Rows(
                 $description
             )->class('text-sm text-level1')
-        )->class('cursor-pointer bg-level5 rounded-xl px-2 md:px-6 py-3 !mb-2 mx-4 hover:bg-level3');
+        )->class('cursor-pointer bg-level4 rounded-xl px-2 md:px-6 py-3 !mb-2 mx-6 hover:bg-level5');
     }
 }

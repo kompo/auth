@@ -23,8 +23,9 @@ abstract class ImgFormLayout extends Form
             _Rows(
                 _Rows(
                     $this->rightColumnBody(),
-                )->class('h-screen overflow-auto p-6 md:p-8')->class($this->rightColumnBodyWrapperClass),
-            )->col('col-12 col-md-5 bg-level1'),
+                )->class('h-screen overflow-auto p-6 md:p-8 w-full')->class($this->rightColumnBodyWrapperClass)->style('max-width:500px'),
+            )->class('items-center')
+            ->col('col-12 col-md-5 bg-level1'),
 		)->class('no-gutters');
 	}
 }

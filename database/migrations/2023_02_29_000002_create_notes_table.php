@@ -22,6 +22,8 @@ class CreateNotesTable extends Migration
 
             $table->string('content_nt');
             $table->timestamp('date_nt')->default(now());
+
+            $table->tinyInteger('note_subtype')->nullable();
         });
     }
 

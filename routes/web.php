@@ -76,3 +76,9 @@ Route::layout('layouts.dashboard')->middleware(['auth'])->group(function(){
     Route::get('mail-preview-local', Kompo\Auth\Admin\AdminMailPreviewTable::class)->name('admin.mail-preview');
 
 });
+
+Route::middleware(['auth'])->group(function(){
+
+    Route::get('log-me-out', fn() => auth()->user()?->logMeOut());
+    
+});

@@ -9,6 +9,7 @@ class Team extends Model
 {
     use \Kompo\Auth\Models\Maps\MorphManyAddresses;
     use \Kompo\Auth\Models\Tags\HasManyTagsTrait;
+    use \Kompo\Auth\Models\Files\MorphManyFilesTrait;
 
 	/* RELATIONS */
 	public function owner()
@@ -58,7 +59,7 @@ class Team extends Model
             return $team;
         }
 
-        return $this->getMainParentTeam($team->parentTeam);
+        return static::getMainParentTeam($team->parentTeam);
     }
 
     /* SCOPES */

@@ -155,10 +155,11 @@ if (!function_exists('_BackLink')) {
 
 /* LAYOUTS */
 if (!function_exists('_TwoColumnsButtons')) {
-	function _TwoColumnsButtons()
+	function _TwoColumnsButtons($el1 = null, $el2 = null)
 	{
 		return _Columns(
-			...func_get_args()
+			$el1?->class('w-full'),
+			$el2?->class('w-full'),
 		);
 	}
 }

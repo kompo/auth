@@ -3,9 +3,10 @@
 /* TITLES */
 \Kompo\Elements\Element::macro('titleMain', fn() => $this->class('text-2xl font-medium'));
 \Kompo\Elements\Element::macro('titleCard', fn() => $this->class('text-base font-semibold mb-2'));
-\Kompo\Elements\Element::macro('titleModal', fn() => $this->class('text-xl font-semibold'));
+\Kompo\Elements\Element::macro('titleModal', fn() => $this->class('text-xl font-medium'));
 \Kompo\Elements\Element::macro('titleAccent', fn() => $this->class('text-lg font-medium text-info'));
-\Kompo\Elements\Element::macro('titleMini', fn() => $this->class('text-sm uppercase leading-widest font-bold'));
+\Kompo\Elements\Element::macro('titleMini', fn() => $this->class('text-sm uppercase leading-widest font-semibold'));
+\Kompo\Elements\Element::macro('titleMiniStandard', fn() => $this->class('text-medium font-semibold'));
 \Kompo\Elements\Element::macro('titleStat', fn() => $this->class('text-2xl font-black'));
 
 if(!function_exists('_TitleMain')) {
@@ -50,6 +51,13 @@ if(!function_exists('_TitleMiniWhite')) {
     }
 }
 
+if(!function_exists('_TitleMiniStandard')) {
+    function _TitleMiniStandard($label)
+    {
+        return _Html($label)->titleMiniStandard();
+    }
+}
+
 /* LABELS AND VALUES */
 if(!function_exists('_LabelMiniValue')) {
     function _LabelMiniValue($label = '', $value = null)
@@ -85,7 +93,7 @@ if(!function_exists('_TextSmGray')) {
 if(!function_exists('_HtmlYesNo')) {
     function _HtmlYesNo($value)
     {
-        return _Html($value ? 'Yes' : 'No');
+        return _Html($value ? __('Yes') : __('No'));
     }
 }
 

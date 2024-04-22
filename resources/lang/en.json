@@ -1,4 +1,5 @@
 {
+	"accept-invitation": "Accept invitation",
 	"auth-base-email-btn": "Submit",
 	"auth-email": "Email",
 	"auth-email-sent-confirmation-1": "We sent an email to this address. Please go to your inbox and continue the process from there",
@@ -22,7 +23,9 @@
 	"auth-there-is-already-an-account-for-this-email": "There is already an account for this email. Please log in.",
 	"auth-your-email-has-been-verified!": "Your email has been verified!",
 	"auth-your-first-name": "Your first name",
+	"auth-your-first-name1": "Your first name",
 	"auth-your-last-name": "Your last name",
+	"auth.your-invitation-email": "Your invitation email",
 	"email-email": "Email",
 	"email-email-type": "Email type",
 	"email-emails": "Emails",
@@ -75,5 +78,6 @@
 	"notifications-reset-password-notification-body": "You are receiving this email because we received a password reset request for your account.",
 	"notifications-verify-email-address": "Verify email address",
 	"phone-manage-phone": "Manage phone",
+	"register.the-terms": "the terms and conditions",
 	"teams-team-invitation": "Your are invited to join our team!"
 }

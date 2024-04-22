@@ -50,14 +50,14 @@ class TeamInvitationRegisterForm extends ImgFormLayout
     public function rightColumnBody()
     {
         return [
-            _Input('Your invitation email')->name('show_email', false)->readOnly()
+            _Input('auth.your-invitation-email')->name('show_email', false)->readOnly()
                 ->value($this->invitation->email)->inputClass('bg-gray-50 rounded-xl'),
 
             _InputRegisterNames(),
             _InputRegisterPasswords(),
             _CheckboxTerms(),
             _FlexEnd(
-                _SubmitButton('Accept Invitation')
+                _SubmitButton('auth.accept-invitation')
             )
         ];
     }

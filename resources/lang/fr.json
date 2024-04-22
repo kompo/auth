@@ -1,4 +1,5 @@
 {
+	"accept-invitation": "Accepter l'invitation",
 	"auth-base-email-btn": "Entrer",
 	"auth-email": "Courriel",
 	"auth-email-sent-confirmation-1": "ous avons envoyé un courriel à cette adresse. Veuillez accéder à votre boîte de réception et poursuivre le processus à partir de là.",
@@ -22,7 +23,9 @@
 	"auth-there-is-already-an-account-for-this-email": "Il existe déjà un compte pour ce courriel. Veuillez vous connecter.",
 	"auth-your-email-has-been-verified!": "Votre courriel a été vérifié!",
 	"auth-your-first-name": "Votre prénom",
+	"auth-your-first-name1": "Votre prénom",
 	"auth-your-last-name": "Votre nom de famille",
+	"auth.your-invitation-email": "Votre courriel d'invitation",
 	"email-email": "Courriel",
 	"email-email-type": "Type de courriel",
 	"email-emails": "Courriels",
@@ -75,5 +78,6 @@
 	"notifications-reset-password-notification-body": "Vous recevez ce courriel car nous avons reçu une demande de réinitialisation du mot de passe pour votre compte.",
 	"notifications-verify-email-address": "Vérifier votre courriel",
 	"phone-manage-phone": "Gérer le téléphone",
+	"register.the-terms": "les termes et conditions",
 	"teams-team-invitation": "Vous êtes invité(e) à rejoindre notre équipe !"
 }

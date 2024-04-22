@@ -20,6 +20,21 @@
 				<name>auth</name>
 				<children>
 					<concept_node>
+						<name>accept-invitation</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
 						<name>auth-base-email-btn</name>
 						<description/>
 						<comment/>
@@ -365,7 +380,37 @@
 						</translations>
 					</concept_node>
 					<concept_node>
+						<name>auth-your-first-name1</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
 						<name>auth-your-last-name</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
+						<name>auth.your-invitation-email</name>
 						<description/>
 						<comment/>
 						<translations>
@@ -1146,6 +1191,21 @@
 					</concept_node>
 					<concept_node>
 						<name>phone-manage-phone</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
+						<name>register.the-terms</name>
 						<description/>
 						<comment/>
 						<translations>

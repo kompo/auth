@@ -21,7 +21,7 @@ class BaseEmailForm extends ImgFormLayout
         } else {
 
             $emailRequest = EmailRequest::getOrCreateWithRegisterUrl($email);
-            
+
             $emailRequest->sendEmailVerificationNotification();
 
             return redirect()->to(\Url::signedRoute('check.verify.email', ['id' => $emailRequest]));
@@ -39,11 +39,11 @@ class BaseEmailForm extends ImgFormLayout
 	{
 		return [
             _Rows(
-                _Link('register.register-with-google')->button()->outlined()->class('shadow-md mb-2 !bg-transparent')
+                _Link('register.login-with-google')->button()->outlined()->class('mb-2 !bg-transparent border !border-level2')
                     ->href('login.sso', ['service' => 'google']),
-                _Link('register.register-with-microsoft')->button()->outlined()->class('shadow-md !bg-transparent')
+                _Link('register.login-with-microsoft')->button()->outlined()->class('!bg-transparent border !border-level2')
                     ->href('login.sso', ['service' => 'azure'])
-            )->class('mb-6'),
+            )->class('mb-8'),
             _Input('auth-my-email')->name('email'),
             _SubmitButton('auth-base-email-btn'),
         ];

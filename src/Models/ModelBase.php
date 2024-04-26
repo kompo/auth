@@ -10,10 +10,18 @@ class ModelBase extends LaravelModel
     use \Kompo\Auth\Models\Traits\HasRelationType;
 
     public const DISPLAY_ATTRIBUTE = null; //OVERRIDE IN CLASS
+    public const SEARCHABLE_NAME_ATTRIBUTE = null; //OVERRIDE IN CLASS
 
     /* CALCULATED FIELDS */
     public static function getNameDisplayKey()
     {
         return static::DISPLAY_ATTRIBUTE ?: static::SEARCHABLE_NAME_ATTRIBUTE;    
+    }
+
+    public function getNameDisplay()
+    {
+        $nameDisplayKey = $this->getNameDisplayKey() ?: 'name';
+
+        return $this->{$nameDisplayKey};
     }
 }

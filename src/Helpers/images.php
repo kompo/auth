@@ -19,3 +19,10 @@ if (!function_exists('_ImgCover')) {
 		return _Img($label)->bgCover();
 	}
 }
+
+if (!function_exists('_ImgPill')) {
+	function _ImgPill($label = '', $class = null)
+	{
+		return _ImgCover($label)->class($class ?: 'w-16 h-16')->class('rounded-full');
+	}
+}

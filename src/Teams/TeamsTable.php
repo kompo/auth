@@ -38,9 +38,10 @@ class TeamsTable extends Table
     public function headers()
     {
         return [
-            _Th('Team name'),
-            _Th('Child teams'),
-            _Th('Your role'),
+            _Th('teams.team-name'),
+            _Th('teams.nb-child-teams'),
+            _Th('teams.address'),
+//            _Th('teams.your-role'),
         ];
     }
 
@@ -49,7 +50,8 @@ class TeamsTable extends Table
         $el = _TableRow(
             _Html($team->team_name),
             _Html($team->teams_count ?: '-'),
-            _Html($team->authUserTeamRoles->map(fn($teamRole) => $teamRole->getRoleName())->implode(', ')),
+            _Html($team->primary_shipping_address_id ?: '-'),
+//            _Html($team->authUserTeamRoles->map(fn($teamRole) => $teamRole->getRoleName())->implode(', ')),
         );
 
         return $team->teams_count ? $el->href('teams.table', ['team_id' => $team->id]) : $el;

@@ -12,7 +12,7 @@ class ImpersonateForm extends Form
 	public function render()
 	{
 		if (isImpersonated()) {
-		 	return _Link('menu.leave-impersonation')->href('impersonate.leave');
+		 	return _Link('menu.leave-impersonation')->href('impersonate.leave')->class('px-4 text-level2');
 		}
 
 		if (!isSuperAdmin()) {

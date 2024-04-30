@@ -48,7 +48,7 @@ class AddressForm extends ModalScroll
         $isMainShipping = !$this->addressable?->primary_shipping_address_id || $this->addressable?->primary_shipping_address_id === $this->model->id;
 
     	return [
-            _CustomPlace(),
+            _CanadianPlace(),
             _Columns(
                 _Input('maps-address-apt_or_suite')->name('apt_or_suite'),
                 _Input('maps-address-description')->name('description_ad'),

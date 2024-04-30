@@ -59,7 +59,7 @@ if (!function_exists('_TripleDotsDropdown')) {
 if (!function_exists('_SideLink')) {
     function _SideLink($label = '')
     {
-        return _Link($label)->class('text-white pl-4 text-sm lg:text-base font-light py-1 px-3 hover:text-level1');
+        return _Link($label)->class('text-white pl-4 text-sm lg:text-base font-light py-1 px-3 hover:text-level5');
     }
 }
 

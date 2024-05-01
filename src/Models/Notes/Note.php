@@ -3,10 +3,11 @@
 namespace Kompo\Auth\Models\Notes;
 
 use Kompo\Auth\Models\Model;
-use Kompo\Auth\Models\Teams\Team;
 
 class Note extends Model
 {
+    use \Kompo\Auth\Models\Teams\BelongsToTeamTrait;
+
     protected $casts = [
         'date_nt' => 'datetime',
     ];
@@ -15,11 +16,6 @@ class Note extends Model
     public function notable()
     {
         return $this->morphTo();
-    }
-
-    public function team()
-    {
-        return $this->belongsTo(Team::class);
     }
 
     /* SCOPES */

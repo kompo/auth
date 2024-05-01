@@ -86,7 +86,7 @@ class KompoAuthServiceProvider extends ServiceProvider
     protected function registerPolicies()
     {
         $policies = [
-            \Kompo\Auth\Models\Teams\Team::class => \Kompo\Auth\Policies\TeamPolicy::class,
+            config('kompo-auth.team-model-namespace') => \Kompo\Auth\Policies\TeamPolicy::class,
             \App\Models\User::class => \Kompo\Auth\Policies\UserPolicy::class,
         ];
 
@@ -114,7 +114,7 @@ class KompoAuthServiceProvider extends ServiceProvider
     protected function loadRelationsMorphMap()
     {
         Relation::morphMap([
-            'team' => \Kompo\Auth\Models\Teams\Team::class,
+            'team' => config('kompo-auth.team-model-namespace'),
             'file' => \Kompo\Auth\Models\Files\File::class,
         ]);
     }

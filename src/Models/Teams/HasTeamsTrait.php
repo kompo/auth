@@ -21,12 +21,12 @@ trait HasTeamsTrait
 
     public function ownedTeams()
     {
-        return $this->hasMany(Team::class);
+        return $this->hasMany(config('kompo-auth.team-model-namespace'));
     }
 
     public function teams()
     {
-        return $this->belongsToMany(Team::class, TeamRole::class)->withPivot('role');
+        return $this->belongsToMany(config('kompo-auth.team-model-namespace'), TeamRole::class)->withPivot('role');
     }
 
     public function teamRoles()

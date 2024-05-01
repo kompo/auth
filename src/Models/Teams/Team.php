@@ -19,12 +19,12 @@ class Team extends Model
 
     public function parentTeam()
     {
-        return $this->belongsTo(Team::class, 'parent_team_id');
+        return $this->belongsTo(config('kompo-auth.team-model-namespace'), 'parent_team_id');
     }
 
     public function teams()
     {
-        return $this->hasMany(Team::class, 'parent_team_id');
+        return $this->hasMany(config('kompo-auth.team-model-namespace'), 'parent_team_id');
     }
 
     public function users()

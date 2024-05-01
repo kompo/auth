@@ -2,7 +2,6 @@
 
 namespace Kompo\Auth\Teams;
 
-use Kompo\Auth\Models\Teams\Team;
 use Kompo\Query;
 
 class TeamMembersList extends Query

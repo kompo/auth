@@ -7,7 +7,7 @@ trait BelongsToTeamTrait
     /* RELATIONS */
     public function team()
     {
-        return $this->belongsTo(Team::class);
+        return $this->belongsTo(config('kompo-auth.team-model-namespace'));
     }
 
     /* CALCULATED FIELDS */

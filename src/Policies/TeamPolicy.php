@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Policies;
 
-use Kompo\Auth\Models\Teams\Team;
+use App\Models\Teams\Team;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 

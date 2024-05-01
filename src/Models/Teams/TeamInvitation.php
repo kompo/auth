@@ -6,11 +6,9 @@ use Kompo\Auth\Models\ModelBase;
 
 class TeamInvitation extends ModelBase
 {
+    use \Kompo\Auth\Models\Teams\BelongsToTeamTrait;
+    
     /* RELATIONSHIPS */
-    public function team()
-    {
-        return $this->belongsTo(Team::class);
-    }
 
     /* CALCULATED FIELDS */
     public function getAcceptInvitationRoute()

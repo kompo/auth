@@ -10,4 +10,6 @@ return [
     'team_hierarchy_roles' => false,
 
     'sso-services' => ['google', 'azure'], 
+
+    'team-model-namespace' => App\Models\Teams\Team::class,
 ];

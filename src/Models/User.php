@@ -82,6 +82,15 @@ class User extends Authenticatable
         }
     }
 
+    public function logMeOut()
+    {
+        \Auth::guard()->logout();
+        request()->session()->invalidate();
+        request()->session()->regenerateToken();
+
+        return redirect()->to('/');
+    }
+
     /* IMPERSONATE PACKAGE */
     public function canImpersonate()
     {

@@ -7,9 +7,11 @@ use App\Models\User;
 
 class Team extends Model
 {
-    use \Kompo\Auth\Models\Maps\MorphManyAddresses;
     use \Kompo\Auth\Models\Tags\HasManyTagsTrait;
     use \Kompo\Auth\Models\Files\MorphManyFilesTrait;
+    use \Kompo\Auth\Models\Maps\MorphManyAddresses;
+    use \Kompo\Auth\Models\Email\MorphManyEmails;
+    use \Kompo\Auth\Models\Phone\MorphManyPhones;
 
 	/* RELATIONS */
 	public function owner()

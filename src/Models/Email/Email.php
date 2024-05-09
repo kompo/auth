@@ -40,4 +40,8 @@ class Email extends Model
     }
 
     /* CALCULATED FIELDS */
+    public function getEmailLabel()
+    {
+        return $this->address_em;
+    }
 }

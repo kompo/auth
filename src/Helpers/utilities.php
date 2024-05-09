@@ -1,5 +1,7 @@
 <?php
 
+use \Kompo\Elements\Element;
+
 /* Transformers */
 if(!function_exists('tinyintToBool')) {
 	function tinyintToBool($value): string
@@ -29,7 +31,16 @@ if(!function_exists('getAgeFromDob')) {
 			return '';
 		}
 
-		return carbonNow()->diffInYears(carbon($dateOfBirth)).' '.__('years');
+		return carbonNow()->diffInYears(carbon($dateOfBirth)).' '.__('general-years');
 	}
 }
+
+/* GENERAL KOMPO */
+if(!function_exists('isKompoEl')) {
+	function isKompoEl($el)
+	{
+		return $el instanceof Element;
+	}
+}
+
 

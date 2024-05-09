@@ -12,7 +12,7 @@ trait MorphManyPhones
 
     public function phone()
     {
-        return $this->morphOne(Phone::class, 'phonable');
+        return $this->morphOne(Phone::class, 'phonable')->latest();
     }
 
     public function primaryPhone()
@@ -105,13 +105,31 @@ trait MorphManyPhones
         $existingPhone = $this->phones()->matchNumber($number)->first();
 
         if (!$existingPhone) {
-            $existingPhone = new Phone();
-            $existingPhone->setPhonable($this);
-            $existingPhone->setPhoneNumber($number);
-            $existingPhone->save();
+            $this->createPhoneFromNumber($number);
         }
 
         return $existingPhone;
+    }
+
+    public function createOrDeleteMainPhoneFromNumber($number)
+    {
+        $existingPhone = $this->phone;
+
+        if (!$number) {
+            $existingPhone?->delete();
+        } else {
+            if (!$existingPhone || !$existingPhone->isSameNumber($number)) {
+                $this->createPhoneFromNumber($number);
+            }
+        }
+    }
+
+    public function createPhoneFromNumber($number)
+    {
+        $existingPhone = new Phone();
+        $existingPhone->setPhonable($this);
+        $existingPhone->setPhoneNumber($number);
+        $existingPhone->save();        
     }
 
     /* ELEMENTS */

@@ -12,7 +12,7 @@ trait MorphManyEmails
 
     public function email()
     {
-        return $this->morphOne(Email::class, 'emailable');
+        return $this->morphOne(Email::class, 'emailable')->latest();
     }
 
     public function primaryEmail()

@@ -49,7 +49,17 @@ class Phone extends Model
     /* CALCULATED FIELDS */
     public function getFullLabelWithExtension()
     {
-        return $this->number_ph . ($this->extension_ph ? (' - ext:' . $this->extension_ph) : '');
+        return $this->getPhoneNumber() . ($this->extension_ph ? (' - ext:' . $this->extension_ph) : '');
+    }
+
+    public function getPhoneNumber()
+    {
+        return $this->number_ph;
+    }
+
+    public function isSameNumber($number)
+    {
+        return $this->getPhoneNumber() == $number; //TODO change after phone sanitizing
     }
 
     /* ACTIONS */

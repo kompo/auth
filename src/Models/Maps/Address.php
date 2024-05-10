@@ -39,6 +39,10 @@ class Address extends Model
     }
 
     /* ATTRIBUTES */
+    public function getAddressLabelAttribute() //Important for displaying loaded value in Place.vue
+    {
+        return $this->address1.' '.$this->postal_code.' '.$this->city;
+    }
 
     /* CALCULATED FIELDS */
     public function getAddressLabel($full = false)

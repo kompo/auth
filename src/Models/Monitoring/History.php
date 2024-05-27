@@ -4,7 +4,7 @@ namespace Kompo\Auth\Models\Monitoring;
 
 use Kompo\Auth\Models\Model;
 
-class Activity extends Model
+class History extends Model
 {
     use \Illuminate\Database\Eloquent\SoftDeletes;
 

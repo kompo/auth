@@ -66,12 +66,12 @@ class User extends Authenticatable
     /* CALCULATED FIELDS */
     public function getFirstName()
     {
-        return $this->first_name;
+        return $this->first_name ?: guessFirstName($this->name);
     }
 
     public function getLastName()
     {
-        return $this->last_name;
+        return $this->last_name ?: guessLastName($this->name);
     }
 
     /* ACTIONS */

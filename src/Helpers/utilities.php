@@ -24,6 +24,29 @@ if(!function_exists('getFullName')) {
 	}
 }
 
+if(!function_exists('guessFirstName')) {
+	function guessFirstName($fullName)
+	{
+		$names = explodeName($fullName);
+		return count($names) == 1 ? '' : $names[0];
+	}
+}
+
+if(!function_exists('guessLastName')) {
+	function guessLastName($fullName)
+	{
+		$names = explodeName($fullName);
+		return count($names) == 1 ? $names[0] : $names[1];
+	}
+}
+
+if(!function_exists('explodeName')) {
+	function explodeName($fullName)
+	{
+		return explode(' ', $fullName, 2);
+	}
+}
+
 if(!function_exists('getAgeFromDob')) {
 	function getAgeFromDob($dateOfBirth): string
 	{

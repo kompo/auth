@@ -30,17 +30,17 @@ class NotesList extends Table
     public function top()
     {
         return _FlexBetween(
-            _Html('ka::notes.notes')->class('text-2xl font-semibold'),
-            _Button('ka::notes.add-note')->selfGet('getNoteForm')->inModal(),
+            _Html('notes.notes')->class('text-2xl font-semibold'),
+            _Button('notes.add-note')->selfGet('getNoteForm')->inModal(),
         );
     }
 
     public function headers()
     {
         return [
-            _Th('ka::notes.note'),
-            _Th('ka::general.created-by'),
-            _Th('ka::general.created-at'),
+            _Th('notes.note'),
+            _Th('notes.created-by'),
+            _Th('notes.created-at'),
         ];
     }
 

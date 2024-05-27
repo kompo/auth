@@ -25,11 +25,7 @@ trait BelongsToTeamTrait
     /* SCOPES */
     public function scopeForTeam($query, $teamIdOrIds = null)
     {
-        if (isWhereCondition($teamIdOrIds)) {
-            $query->where('team_id', $teamIdOrIds ?: currentTeamId());
-        } else {
-            $query->whereIn('team_id', $teamIdOrIds);
-        } 
+        scopeWhereBelongsTo($query, 'team_id', $teamIdOrIds, currentTeamId());
     }
 
     public function deletable()

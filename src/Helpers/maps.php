@@ -69,3 +69,17 @@ if (!function_exists('mapMarker')) {
         ];
     }
 }
+
+if (!function_exists('loadFormattedLabel')) {
+    function loadFormattedLabel($address)
+    {
+        if (!$address) {
+            return;
+        }
+
+        $address->address_label = $address?->getAddressInline(); //todo remove after changing Kompo to autoload if formattedLabel
+
+        return $address;
+    }
+}
+

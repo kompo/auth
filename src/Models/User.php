@@ -66,12 +66,12 @@ class User extends Authenticatable
     /* CALCULATED FIELDS */
     public function getFirstName()
     {
-        return $this->first_name;
+        return $this->first_name ?: guessFirstName($this->name);
     }
 
     public function getLastName()
     {
-        return $this->last_name;
+        return $this->last_name ?: guessLastName($this->name);
     }
 
     /* ACTIONS */
@@ -80,6 +80,15 @@ class User extends Authenticatable
         if (config('kompo-auth.register_with_first_last_name')) {
             $this->name = $this->first_name.' '.$this->last_name;
         }
+    }
+
+    public function logMeOut()
+    {
+        \Auth::guard()->logout();
+        request()->session()->invalidate();
+        request()->session()->regenerateToken();
+
+        return redirect()->to('/');
     }
 
     /* IMPERSONATE PACKAGE */

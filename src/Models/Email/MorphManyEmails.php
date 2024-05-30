@@ -12,7 +12,7 @@ trait MorphManyEmails
 
     public function email()
     {
-        return $this->morphOne(Email::class, 'emailable');
+        return $this->morphOne(Email::class, 'emailable')->latest();
     }
 
     public function primaryEmail()
@@ -23,13 +23,23 @@ trait MorphManyEmails
     /* CALCULATED FIELDS */
     public function getPrimaryEmailAddress(): string
     {
-        return $this->primaryEmail?->address_em ?: '';
+        return $this->primaryEmail?->getEmailLabel() ?: '';
+    }
+
+    public function getFirstValidEmail()
+    {
+        return $this->primaryEmail ?: $this->email()->first();
+    }
+
+    public function getFirstValidEmailLabel()
+    {
+        return $this->getFirstValidEmail()?->getEmailLabel();
     }
 
     /* ATTRIBUTES */
     public function getPrimaryEmailAddressAttribute(): string
     {
-        return $this->primaryEmail?->address_em ?: '';
+        return $this->primaryEmail?->getEmailLabel() ?: '';
     }
 
     /* ACTIONS */

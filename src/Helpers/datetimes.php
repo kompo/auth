@@ -59,6 +59,13 @@ if (!function_exists("_HtmlDate")) {
 	}
 }
 
+if (!function_exists("_HtmlDateTime")) {
+	function _HtmlDateTime($dateStr)
+	{
+		return _Html(carbonDateTime($dateStr)?->translatedFormat('d M Y H:i'));
+	}
+}
+
 if (!function_exists("_HtmlTime")) {
 	function _HtmlTime($dateStr)
 	{

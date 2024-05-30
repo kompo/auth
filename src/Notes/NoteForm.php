@@ -7,7 +7,7 @@ use Kompo\Auth\Models\Notes\Note;
 
 class NoteForm extends Modal
 {
-    public $_Title = 'ka::notes.add-note';
+    public $_Title = 'notes.add-note';
     public $model = Note::class;
 
     protected $notableType = \App\Models\User::class;
@@ -28,13 +28,13 @@ class NoteForm extends Modal
     public function body()
     {
         return _Rows(
-            _Input('ka::notes.content')->name('content_nt'),
-            _DateTime('ka::notes.datetime')->name('date_nt'),
+            _Input('notes.content')->name('content_nt'),
+            _DateTime('notes.datetime')->name('date_nt'),
         );
     }
 
     public function headerButtons()
     {
-        return $this->noHeaderButtons ? null : _SubmitButton('ka::notes.save')->closeModal()->refresh(NotesList::ID);
+        return $this->noHeaderButtons ? null : _SubmitButton('notes.save')->closeModal()->refresh(NotesList::ID);
     }
 }

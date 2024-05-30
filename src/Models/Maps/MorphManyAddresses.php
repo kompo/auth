@@ -14,7 +14,7 @@ trait MorphManyAddresses
 
     public function address()
     {
-        return $this->morphOne(Address::class, 'addressable');
+        return $this->morphOne(Address::class, 'addressable')->latest();
     }
 
     public function primaryBillingAddress()

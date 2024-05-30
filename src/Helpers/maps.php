@@ -2,6 +2,8 @@
 
 use \Kompo\Elements\Element;
 
+const SAX_ICON_MAP = 'location';
+
 /* MAP INPUTS */
 Element::macro('editableFields', fn() => $this->editableWith(
     _Link('general.edit')->rIcon(_Sax('edit'))->class('text-xs text-gray-600')->post('edit-place-fields')->inModal()
@@ -68,13 +70,16 @@ if (!function_exists('mapMarker')) {
     }
 }
 
-/* MAP LABELS */
-if (!function_exists('_AddressWithIcon')) {
-    function _AddressWithIcon($address)
+if (!function_exists('loadFormattedLabel')) {
+    function loadFormattedLabel($address)
     {
-        return _Flex2(
-            _Sax('location',20)->class('opacity-30'),
-            _Html($address),
-        )->mb2();
+        if (!$address) {
+            return;
+        }
+
+        $address->address_label = $address?->getAddressInline(); //todo remove after changing Kompo to autoload if formattedLabel
+
+        return $address;
     }
 }
+

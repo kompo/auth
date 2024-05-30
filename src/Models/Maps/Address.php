@@ -26,19 +26,15 @@ class Address extends Model
     /* SCOPES */
     public function scopeForAddressable($query, $addressableId, $addressableType)
     {
-        if (isWhereCondition($addressableId)) {
-            $query->where('addressable_id', $addressableId);
-        } else {
-            $query->whereIn('addressable_id', $addressableId);            
-        }
-        if (isWhereCondition($addressableType)) {
-            $query->where('addressable_type', $addressableType);
-        } else {
-            $query->whereIn('addressable_type', $addressableType);            
-        }
+        scopeWhereBelongsTo($query, 'addressable_id', $addressableId);
+        scopeWhereBelongsTo($query, 'addressable_type', $addressableType);
     }
 
     /* ATTRIBUTES */
+    public function getAddressLabelAttribute() //Important for displaying loaded value in Place.vue
+    {
+        return $this->address1.' '.$this->postal_code.' '.$this->city;
+    }
 
     /* CALCULATED FIELDS */
     public function getAddressLabel($full = false)

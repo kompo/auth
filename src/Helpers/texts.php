@@ -85,7 +85,7 @@ if(!function_exists('_TextSm')) {
 if(!function_exists('_TextSmGray')) {
     function _TextSmGray($label = '')
     {
-        return _Html($label)->textSmGray();
+        return _Html($label)->textSmGray()->class('opacity-60');
     }
 }
 

@@ -30,7 +30,6 @@ if(!function_exists('_PhoneButton')) {
 }
 
 
-
 /* EMAIL STUFF */
 Element::macro('hrefEmail', fn($email) => $this->href('mailto:'.$email));
 

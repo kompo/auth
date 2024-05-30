@@ -22,7 +22,7 @@ if (!function_exists('_CanadianPlace')) {
     function _CanadianPlace($label = 'crm.contact.address', $name = 'address1')
     {
         return _CustomPlace($label, $name)
-            ->placeholder('123 Main Street')
+            ->placeholder('inscriptions.123-Main-Street')
             ->defaultCenter(45.5017, -73.5673)
             ->componentRestrictions([
                 'country' => ['ca']

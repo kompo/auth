@@ -15,15 +15,16 @@ class CheckToVerifyEmailForm extends ImgFormLayout
 	{
 		return _Panel1(
 			$this->getEmailSentConfirmationEls(),
-            _Button('auth-resend-invitation-link')->selfPost('resendVerificationEmail')->inPanel1(),
+
+            _Button('auth-resend-invitation-link')->selfPost('resendVerificationEmail')->inPanel1()->class('w-full'),
         );
 	}
 
 	protected function getEmailSentConfirmationEls()
 	{
 		return _Rows(
-            _Html('auth-email-sent-confirmation-1')->mb4(),
-            _Html('auth-email-sent-confirmation-2')->mb4(),
+            _TitleModal('auth-email-sent-confirmation-1')->mb4(),
+            _TitleModalSub('auth-email-sent-confirmation-2')->class('mb-12'),
 		);
 	}
 

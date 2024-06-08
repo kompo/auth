@@ -2,7 +2,6 @@
 
 namespace Kompo\Auth\Teams;
 
-use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Form;
 
 class MenuRolesSwitcherDropdown extends Form
@@ -17,10 +16,12 @@ class MenuRolesSwitcherDropdown extends Form
         if (!auth()->user()) {
             return;
         }
-        
+
         return _Dropdown(currentTeamRole()->getRoleName())
             ->submenu(
-                auth()->user()->teamRoles()->where('id', '<>', currentTeamRoleId())->with('team')->get()->mapWithKeys(fn($teamRole) => [
+                auth()->user()->teamRoles()->where('id', '<>', currentTeamRoleId())->with('team')->get()->unique(
+                    fn($tr) => $tr->team_id . $tr->role_id
+                )->mapWithKeys(fn($teamRole) => [
                     $teamRole->id => $this->getTeamRoleLabel($teamRole)->selfPost('switchToTeamRole', ['id' => $teamRole->id])->redirect('dashboard')
                 ])
             )->alignRight();

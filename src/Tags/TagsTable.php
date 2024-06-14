@@ -11,7 +11,7 @@ class TagsTable extends Table
 {
     protected $tagContext = TagContextEnum::ALL;
     protected $tagType = Tag::TAG_TYPE_GENERAL;
-    protected $title = 'translate.tags.manage-tag';
+    protected $title = 'tags.manage-tag';
 
     public function query()
     {
@@ -23,7 +23,7 @@ class TagsTable extends Table
         return _Rows(
             _FlexBetween(
                 _Html($this->title)->miniTitle(),
-                _Button('translate.tags.add-tags')->selfCreate('getTagForm')->inModal()
+                _Button('tags.add-tags')->selfCreate('getTagForm')->inModal()
             )->class('mb-4'),
         );
     }

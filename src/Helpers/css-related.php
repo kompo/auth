@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 use \Kompo\Elements\Element;
 
@@ -11,7 +11,7 @@ Element::macro('p4', fn() => $this->class('p-4'));
 Element::macro('scrollY', fn($height = '300px') => $this->class('overflow-y-auto mini-scroll')->style('min-height:'.$height));
 
 \Kompo\Elements\Element::macro('miniTitle', function(){
-    return $this->class('text-sm text-level3 uppercase leading-widest font-bold');
+    return $this->class('text-sm uppercase leading-widest font-bold');
 });
 
 if (!function_exists('_MiniTitle')) {

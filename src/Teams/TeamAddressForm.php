@@ -4,8 +4,8 @@ namespace Kompo\Auth\Teams;
 
 class TeamAddressForm extends TeamBaseForm
 {
-    protected $_Title = 'Team Address';
-    protected $_Description = 'The team\'s address.';
+    protected $_Title = 'crm.team-address';
+    protected $_Description = 'crm.team-address-desc';
 
     protected function body()
     {

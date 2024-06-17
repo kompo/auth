@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 if (!function_exists('_ImgModel')) {
 	function _ImgModel($model, $column)
@@ -23,6 +23,6 @@ if (!function_exists('_ImgCover')) {
 if (!function_exists('_ImgPill')) {
 	function _ImgPill($label = '', $class = null)
 	{
-		return _ImgCover($label)->class($class ?: 'w-16 h-16')->class('rounded-full');
+		return _ImgCover($label)->class($class ?: 'w-12 h-12')->class('rounded-full');
 	}
 }

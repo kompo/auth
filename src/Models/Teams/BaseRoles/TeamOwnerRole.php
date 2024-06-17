@@ -5,8 +5,8 @@ namespace Kompo\Auth\Models\Teams\BaseRoles;
 class TeamOwnerRole
 {
     public const ROLE_KEY = 'owner';
-    
-    public const ROLE_NAME = 'Team owner';
 
-    public const ROLE_DESCRIPTION = 'Owner users can perform any action in their team.';
+    public const ROLE_NAME = 'crm.team-owner';
+
+    public const ROLE_DESCRIPTION = 'crm.team-owner-desc';
 }

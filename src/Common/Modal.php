@@ -5,7 +5,7 @@ namespace Kompo\Auth\Common;
 use Kompo\Modal as KompoModal;
 
 class Modal extends KompoModal
-{    
+{
     /* TO OVERRIDE METHODS */
     protected $_Title;
     protected $noHeaderButtons = false;
@@ -17,7 +17,7 @@ class Modal extends KompoModal
 
     public function headerButtons()
     {
-        return $this->noHeaderButtons ? null : _SubmitButton('general-save');
+        return $this->noHeaderButtons ? null : _SubmitButton('general.save');
     }
 
     /* BASE METHODS */

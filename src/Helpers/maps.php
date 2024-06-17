@@ -62,11 +62,7 @@ if (!function_exists('mapMarker')) {
             return;
         }
 
-        return [
-            'lat' => $address->lat,
-            'lng' => $address->lng,
-            'icon' => asset($iconUrl), //add the svg in public folder when starting a new project
-        ];
+        return _MarkerTrigger()->lat($address->lat)->lng($address->lng)->icon(asset($iconUrl));
     }
 }
 

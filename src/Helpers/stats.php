@@ -10,5 +10,5 @@ function _ProgressBar($pct, $bgColor = 'bg-level5', $campaignColor = null, $extr
         $progressPct = $progressPct->class($bgColor);
     }
 
-    return _Rows($progressPct)->class('bg-level1 bg-opacity-10 rounded')->style('height: 8px');
+    return _Rows($progressPct)->class('bg-greenmain bg-opacity-10 rounded')->style('height: 8px');
 }

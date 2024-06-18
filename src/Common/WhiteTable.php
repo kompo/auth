@@ -8,6 +8,6 @@ class WhiteTable extends KompoTable
 {
     public function createdDisplay()
     {
-        $this->itemsWrapperClass = 'bg-white rounded-2xl border border-level1';
+        $this->itemsWrapperClass = 'bg-white rounded-2xl border border-greenmain';
     }
 }

@@ -111,6 +111,6 @@ if(!function_exists('_Pill')) {
 if(!function_exists('_Pill3')) {
     function _Pill3($label = '')
     {
-        return _Pill($label)->class('bg-level3 text-level1');
+        return _Pill($label)->class('bg-level3 text-greenmain');
     }
 }

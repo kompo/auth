@@ -4,7 +4,7 @@ if(!function_exists('_HorizontalLinks')) {
 	function _HorizontalLinks($label = '')
 	{
 		return _LinkGroup()
-			->selectedClass('text-level1 font-medium', 'text-gray-500')
+			->selectedClass('text-greenmain font-medium', 'text-gray-500')
 			->optionClass('p-4 cursor-pointer');
 	}
 }

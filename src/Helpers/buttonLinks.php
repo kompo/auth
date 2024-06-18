@@ -3,7 +3,7 @@
 use \Kompo\Elements\Element;
 
 /* BASE BUTTONS AND LINKS */
-Element::macro('button2', fn() => $this->class('!bg-level2 !text-greenmain'));
+Element::macro('button2', fn() => $this->class('!bg-warning !text-greenmain'));
 Element::macro('buttonBig', fn() => $this->class('!px-6 !py-3 !text-lg'));
 
 if (!function_exists('_ButtonBig')) {
@@ -30,7 +30,7 @@ if (!function_exists('_Button2')) {
 if (!function_exists('_Button2Outlined')) {
 	function _Button2Outlined($label = '')
 	{
-		return _Button($label)->outlined()->class('text-level2 border-level2');
+		return _Button($label)->outlined()->class('text-warning border-warning');
 	}
 }
 
@@ -51,7 +51,7 @@ if (!function_exists('_LinkOutlined')) {
 if (!function_exists('_Link2')) {
 	function _Link2($label = '')
 	{
-		return _Link($label)->class('!text-level2');
+		return _Link($label)->class('!text-warning');
 	}
 }
 
@@ -65,7 +65,7 @@ if (!function_exists('_Link2Button')) {
 if (!function_exists('_Link2Outlined')) {
 	function _Link2Outlined($label = '')
 	{
-		return _Link($label)->button()->outlined()->class('!text-level2 !border-level2');
+		return _Link($label)->button()->outlined()->class('!text-warning !border-warning');
 	}
 }
 

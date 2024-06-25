@@ -8,6 +8,7 @@ class Modal extends KompoModal
 {
     /* TO OVERRIDE METHODS */
     protected $_Title;
+    protected $_Icon;
     protected $noHeaderButtons = false;
 
     public function body()
@@ -25,7 +26,7 @@ class Modal extends KompoModal
     {
         return _Modal(
             _ModalHeader(
-                _TitleModal($this->_Title),
+                _TitleModal($this->_Title, $this->_Icon),
                 $this->headerButtons(),
             ),
             _ModalBody(

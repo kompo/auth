@@ -24,8 +24,8 @@ if (!function_exists('_Breadcrumbs')) {
     {
         return _Flex4(
             $backLink->icon('arrow-left'),
-            _Html('|')->class('text-level2 font-thin'),
-            $mainLink->class('text-level2 font-medium'),
+            _Html('|')->class('text-warning font-thin'),
+            $mainLink->class('text-warning font-medium'),
         )->class('text-2xl md:text-3xl font-bold');
     }
 }
@@ -37,7 +37,7 @@ if (!function_exists('_BreadcrumbsNew')) {
 
         return _Flex4(
             collect($els)->map(fn($el, $i) => $el->rIcon($i + 1 == count($els) ? null : _Sax('arrow-right-1')))
-        )->class('text-level2 mb-4');
+        )->class('text-warning mb-4');
     }
 }
 
@@ -46,7 +46,7 @@ if (!function_exists('_TripleDotsDropdown')) {
     {
         return _Dropdown()
             ->icon(
-                _Svg('dots-vertical')->class('text-xl text-level2')
+                _Svg('dots-vertical')->class('text-xl text-warning')
             )
             ->submenu(
                 $submenu

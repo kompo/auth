@@ -39,9 +39,9 @@ class BaseEmailForm extends ImgFormLayout
 	{
 		return [
             _Rows(
-                _Link('register.login-with-google')->button()->outlined()->class('mb-2 !bg-transparent border !border-level2')
+                _Link('register.login-with-google')->button()->outlined()->class('mb-2 !bg-transparent border !border-warning')
                     ->href('login.sso', ['service' => 'google']),
-                _Link('register.login-with-microsoft')->button()->outlined()->class('!bg-transparent border !border-level2')
+                _Link('register.login-with-microsoft')->button()->outlined()->class('!bg-transparent border !border-warning')
                     ->href('login.sso', ['service' => 'azure'])
             )->class('mb-8'),
             _Input('auth-my-email')->name('email'),

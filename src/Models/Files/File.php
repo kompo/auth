@@ -214,7 +214,7 @@ class File extends Model implements Searchable
     {
         if ($year = request('year')) {
             return _Flex4(
-                _Link(__('ka::general.year').' '.$year)->class('text-level1 font-bold')->icon('arrow-left')
+                _Link(__('ka::general.year').' '.$year)->class('text-greenmain font-bold')->icon('arrow-left')
                     ->getElements('getYearsMonthsFilter')->inPanel('file-manager-year-month-filter'),
                 _LinkGroup()->name('month', false)->class('mb-0')
                     ->options(
@@ -227,13 +227,13 @@ class File extends Model implements Searchable
         }
 
         return _Flex4(
-            _Html('ka::general.filter-by-year')->class('text-level1 font-medium'),
+            _Html('ka::general.filter-by-year')->class('text-greenmain font-medium'),
             _LinkGroup()->name('year', false)->class('mb-0')
                 ->options(
                     static::getFilesCountFor()->mapWithKeys(fn($stat) => [
                         $stat->label => static::yearMonthOption($stat->label, $stat->cn)
                     ])
-                )->selectedClass('text-level1 border-b-2 border-level1', 'text-level1 border-b-2 border-transparent')
+                )->selectedClass('text-greenmain border-b-2 border-greenmain', 'text-greenmain border-b-2 border-transparent')
                 ->filter()
                 ->onSuccess(fn($e) => $e->getElements('getYearsMonthsFilter')->inPanel('file-manager-year-month-filter'))
         )->class('mb-4');
@@ -260,7 +260,7 @@ class File extends Model implements Searchable
             ->class('mb-0')
             ->containerClass('row no-gutters')
             ->optionClass('w-20 lg:w-24')
-            ->selectedClass('bg-info text-level1', 'text-level1')
+            ->selectedClass('bg-info text-greenmain', 'text-greenmain')
             ->filter();
     }
 
@@ -285,7 +285,7 @@ class File extends Model implements Searchable
         return [
 
             _Flex(
-                _Link()->icon(_Sax('paperclip-2'))->class('text-level1 text-2xl')
+                _Link()->icon(_Sax('paperclip-2'))->class('text-greenmain text-2xl')
                     ->balloon('files-attach-files', 'up')
                     ->toggleId($panelId, $toggleOnLoad),
                 _Html()->class('text-xs text-gray-600 font-semibold')->id('file-size-div')

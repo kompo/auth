@@ -32,8 +32,6 @@ if(!function_exists('_TitleModal')) {
 
         return _Html($label)->titleModal()
             ->icon(_ModalIcon($icon))
-            ->class('text-2xl sm:text-3xl font-semibold text-info')
-            ->class('mb-4 md:mb-0')
             ->class('flex items-center');
     }
 }

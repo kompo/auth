@@ -6,6 +6,10 @@ use Kompo\Auth\Models\Model;
 
 class Notification extends Model
 {
+    protected $casts = [
+        'type' => NotificationTypeEnum::class,
+    ];
+
     /* RELATIONS */
     public function about()
     {
@@ -66,6 +70,11 @@ class Notification extends Model
     }
 
     /* ELEMENTS */
+    public function notificationContent()
+    {
+        return $this->type->getContent($this->about);
+    }
+    
     public function notificationCard($key = 0)
     {
         $content = $this->notificationContent();

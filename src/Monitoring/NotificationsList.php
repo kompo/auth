@@ -2,8 +2,8 @@
 
 namespace Kompo\Auth\Monitoring;
 
-use Kompo\Auth\Models\Monitoring\Notification;
 use Illuminate\Support\Carbon;
+use Kompo\Auth\Facades\NotificationModel;
 use Kompo\Query;
 
 class NotificationsList extends Query
@@ -20,7 +20,7 @@ class NotificationsList extends Query
 
     public function query()
     {
-        return Notification::whereNotNull('type')->with('about')
+        return NotificationModel::whereNotNull('type')->with('about')
             ->where('team_id', currentTeam()->id)
             ->where('user_id', auth()->user()->id)
             ->where(function($q){
@@ -88,7 +88,7 @@ class NotificationsList extends Query
             $owner->invitationUrl()
         );
 
-        Notification::find($notificationId)->delete();
+        NotificationModel::find($notificationId)->delete();
 
         return __('monitoring-notification-sent');
     }

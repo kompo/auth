@@ -65,6 +65,10 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->booted(function () {
             \Route::middleware('web')->group(__DIR__.'/../routes/web.php');
         });
+
+        $this->app->bind('notification-model', function () {
+            return new (config('kompo-auth.notification-model-namespace'));
+        });
     }
 
     protected function loadHelpers()

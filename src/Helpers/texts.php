@@ -24,9 +24,15 @@ if(!function_exists('_TitleCard')) {
 }
 
 if(!function_exists('_TitleModal')) {
-    function _TitleModal($label = '')
+    function _TitleModal($label = '', $icon = null)
     {
-        return _Html($label)->titleModal()->class('text-black');
+        if (!$label && !$icon) {
+            return;
+        }
+
+        return _Html($label)->titleModal()
+            ->icon(_ModalIcon($icon))
+            ->class('flex items-center');
     }
 }
 

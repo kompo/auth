@@ -26,7 +26,7 @@ if(!function_exists('_TitleCard')) {
 if(!function_exists('_TitleModal')) {
     function _TitleModal($label = '')
     {
-        return _Html($label)->titleModal();
+        return _Html($label)->titleModal()->class('text-black');
     }
 }
 
@@ -85,7 +85,7 @@ if(!function_exists('_TextSm')) {
 if(!function_exists('_TextSmGray')) {
     function _TextSmGray($label = '')
     {
-        return _Html($label)->textSmGray()->class('opacity-60');
+        return _Html($label)->textSmGray()->class('opacity-80');
     }
 }
 

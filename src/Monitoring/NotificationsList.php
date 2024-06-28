@@ -14,7 +14,7 @@ class NotificationsList extends Query
 
     public function noItemsFound()
     {
-        return _Html('ka::dashboard.no-notifications')->icon('icon-check')
+        return _Html('dashboard-no-notifications')->icon('icon-check')
             ->class('text-white text-sm');
     }
 

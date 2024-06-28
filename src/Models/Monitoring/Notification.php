@@ -72,7 +72,39 @@ class Notification extends Model
     /* ELEMENTS */
     public function notificationContent()
     {
-        return $this->type->getContent($this->about);
+        return $this->type->getContent($this);
+    }
+
+    public function reminderDropdown()
+    {
+        return _Dropdown('maryanne.button-remind-me-again')->rIcon('icon-down')
+            ->class('vlBtn !bg-level4 !text-level1')
+            ->submenu(
+                $this->reminderButton('maryanne.button-tomorrow', 1),
+                $this->reminderButton('maryanne.button-in-3-days', 3),
+                $this->reminderButton('maryanne.button-next-week', 7),
+            )
+            ->alignRight();
+    }
+
+    protected function reminderButton($label, $days)
+    {
+        return _Link($label)->class('px-4 py-2 border-b border-gray-100')
+            ->post('notification-reminder', [
+                'id' => $this->id,
+                'reminder_days' => $days,
+            ])->removeSelf();
+    }
+
+    public function genericNotificationCard($title, $button)
+    {
+        return _Rows(
+            _Html($title)->class('mb-2'),
+            _Flex(
+                $button,
+                $this->reminderDropdown(),
+            )->class('space-x-4')
+        );
     }
     
     public function notificationCard($key = 0)

@@ -15,7 +15,7 @@ enum NotificationTypeEnum: int
         };
     }
 
-    public function getContent($about)
+    public function getContent($notification)
     {
         return match ($this) {
             self::GENERIC => null,

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Kompo\Auth\Http\Controllers\NotificationsController;
 use Laravel\Socialite\Facades\Socialite;
 
 //PACKAGES
@@ -78,5 +79,11 @@ Route::layout('layouts.dashboard')->middleware(['auth'])->group(function(){
 Route::middleware(['auth'])->group(function(){
 
     Route::get('log-me-out', fn() => auth()->user()?->logMeOut());
+
+	//Notification
+	Route::post('notification-reminder/{id}/{reminder_days}', [NotificationsController::class, 'remind'])
+		->name('notifications.remind');
+	Route::delete('notification-delete/{id}', [NotificationsController::class, 'delete'])
+		->name('notifications.delete');
     
 });

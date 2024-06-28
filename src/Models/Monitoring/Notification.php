@@ -96,13 +96,13 @@ class Notification extends Model
             ])->removeSelf();
     }
 
-    public function genericNotificationCard($title, $button)
+    public function genericNotificationCard($title, $button, $hasReminderButton = false)
     {
         return _Rows(
             _Html($title)->class('mb-2'),
             _Flex(
                 $button,
-                $this->reminderDropdown(),
+                !$hasReminderButton ? null : $this->reminderDropdown(),
             )->class('space-x-4')
         );
     }

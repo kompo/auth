@@ -6,19 +6,23 @@ enum NotificationTypeEnum: int
 {
     use \Kompo\Auth\Models\Traits\EnumKompo;
 
-    case GENERIC = 1;
+    case CUSTOM = 1;
 
     public function label()
     {
         return match ($this) {
-            self::GENERIC => 'Generic',
+            self::CUSTOM => 'translate.custom-notification',
         };
     }
 
     public function getContent($notification)
     {
         return match ($this) {
-            self::GENERIC => null,
+            self::CUSTOM => $notification->genericNotificationCard(
+                    $notification->custom_message, 
+                    !$notification->custom_button_text ? null : _Link($notification->custom_button_text)->button()->href($notification->custom_button_href),
+                    $notification->has_reminder_button,
+            ),
         };
     }
 }

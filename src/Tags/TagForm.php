@@ -9,7 +9,7 @@ class TagForm extends Modal
 {
 	public $model = Tag::class;
 
-	public $_Title = 'translate.tags.manage-tag';
+	public $_Title = 'tags.manage-tag';
 	public $_Icon = 'image';
 
 	public $class = 'overflow-y-auto mini-scroll';
@@ -34,8 +34,8 @@ class TagForm extends Modal
     public function body()
     {
     	return _Rows(
-            _Translatable('translate.tags.name')->name('name'),
-            _SubmitButton('translate.tags.save'),
+            _Translatable('tags.name')->name('name'),
+            _SubmitButton('tags.save'),
     	);
     }
 }

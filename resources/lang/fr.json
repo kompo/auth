@@ -60,6 +60,7 @@
 	"files-upload-files": "Téléverser des fichiers",
 	"files-upload-one-multiple-files": "Téléverser un ou plusieurs fichiers",
 	"files-your-files-exceed-max-size": "Vos fichiers dépassent la taille maximale",
+	"finance.balance-locked": "Votre solde est bloqué jusqu'à :  :date",
 	"general-years": "ans",
 	"maps-address-address1": "Adresse",
 	"maps-address-apt_or_suite": "Appartement ou suite",
@@ -80,5 +81,9 @@
 	"notifications-verify-email-address": "Vérifier votre courriel",
 	"phone-manage-phone": "Gérer le téléphone",
 	"register.the-terms": "les termes et conditions",
+	"tags.manage-tag": "Gérer l'étiquette",
+	"tags.name": "Nom",
+	"tags.save": "Sauvegarder",
+	"tags.type-general": "Général",
 	"teams-team-invitation": "Vous êtes invité(e) à rejoindre notre équipe !"
 }

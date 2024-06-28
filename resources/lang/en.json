@@ -60,6 +60,7 @@
 	"files-upload-files": "Upload files",
 	"files-upload-one-multiple-files": "Upload one or multiple files",
 	"files-your-files-exceed-max-size": "Your files exceed max size",
+	"finance.balance-locked": "Your balance is locked until: :date",
 	"general-years": "years",
 	"maps-address-address1": "Address",
 	"maps-address-apt_or_suite": "Apt or suite",
@@ -80,5 +81,9 @@
 	"notifications-verify-email-address": "Verify email address",
 	"phone-manage-phone": "Manage phone",
 	"register.the-terms": "the terms and conditions",
+	"tags.manage-tag": "Manage tag",
+	"tags.name": "Name",
+	"tags.save": "Save",
+	"tags.type-general": "General",
 	"teams-team-invitation": "Your are invited to join our team!"
 }

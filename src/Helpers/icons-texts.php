@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 const SAX_ICON_CALENDAR = 'calendar';
 
@@ -27,7 +27,7 @@ if (!function_exists('_AddressWithIcon')) {
 if (!function_exists('_CalendarWithIcon')) {
     function _CalendarWithIcon($item)
     {
-        return _LabelWithIcon(SAX_ICON_MAP, $item);
+        return _LabelWithIcon(SAX_ICON_CALENDAR, $item);
     }
 }
 
@@ -38,8 +38,8 @@ if (!function_exists('_LabelWithIcon')) {
     	$label = isKompoEl($label) ? $label : _Html($label);
 
         return _Flex2(
-            _Sax($icon, 20)->class('opacity-30'),
+            _Sax($icon, 20)->class('opacity-30 pt-2'),
             $label,
-        )->mb2();
+        )->mb2()->class('!items-start');
     }
 }

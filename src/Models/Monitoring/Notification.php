@@ -3,9 +3,14 @@
 namespace Kompo\Auth\Models\Monitoring;
 
 use Kompo\Auth\Models\Model;
+use Kompo\Auth\Models\Teams\BelongsToTeamTrait;
+use Kompo\Auth\Models\Traits\BelongsToUserTrait;
 
 class Notification extends Model
 {
+    use BelongsToUserTrait;
+    use BelongsToTeamTrait;
+
     protected $casts = [
         'type' => NotificationTypeEnum::class,
     ];
@@ -77,12 +82,12 @@ class Notification extends Model
 
     public function reminderDropdown()
     {
-        return _Dropdown('maryanne.button-remind-me-again')->rIcon('icon-down')
-            ->class('vlBtn !bg-level4 !text-level1')
+        return _Dropdown('translate.button-remind-me-again')->rIcon('icon-down')
+            ->class('vlBtn !text-warning !border-warning border !bg-transparent')
             ->submenu(
-                $this->reminderButton('maryanne.button-tomorrow', 1),
-                $this->reminderButton('maryanne.button-in-3-days', 3),
-                $this->reminderButton('maryanne.button-next-week', 7),
+                $this->reminderButton('translate.button-tomorrow', 1),
+                $this->reminderButton('translate.button-in-3-days', 3),
+                $this->reminderButton('translate.button-next-week', 7),
             )
             ->alignRight();
     }

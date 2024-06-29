@@ -3,6 +3,7 @@
 namespace Kompo\Auth\Http\Controllers;
 
 use App\Models\Notification;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Kompo\Auth\Facades\NotificationModel;
 

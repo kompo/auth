@@ -22,17 +22,21 @@ class MenuRolesSwitcherDropdown extends Form
                 auth()->user()->teamRoles()->where('id', '<>', currentTeamRoleId())->with('team')->get()->unique(
                     fn($tr) => $tr->team_id . $tr->role_id
                 )->mapWithKeys(fn($teamRole) => [
-                    $teamRole->id => $this->getTeamRoleLabel($teamRole)->selfPost('switchToTeamRole', ['id' => $teamRole->id])->redirect('dashboard')
+                    $teamRole->id => $this->getTeamRoleLabel($teamRole, $teamRole->team->rolePill())->selfPost('switchToTeamRole', ['id' => $teamRole->id])->redirect('dashboard')
                 ])
-            )->alignRight();
+            )->alignRight()->class('scrollableDropdown');
     }
 
-    protected function getTeamRoleLabel($teamRole)
+    protected function getTeamRoleLabel($teamRole, $pill = null)
     {
-        return _Rows(
-            _Html($teamRole->getRoleName()),
-            _Html($teamRole->getTeamName())->class('text-sm text-gray-400'),
-        )->class('w-72 px-4 py-2');
+        return _FlexBetween(
+            _Rows(
+                _Html($teamRole->getRoleName()),
+                _Html($teamRole->getTeamName())->class('text-sm text-gray-400'),
+            ),
+
+            $pill,
+        )->class('w-72 px-4 py-2 gap-4');
     }
 
     public function switchToTeamRole($id)

@@ -1,1 +1,6 @@
 @import './Maps';
+
+.scrollableDropdown > .vlDropdownMenu {
+    @apply overflow-y-auto;
+    max-height: 80vh;
+}

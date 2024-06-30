@@ -11,7 +11,7 @@ enum NotificationTypeEnum: int
     public function label()
     {
         return match ($this) {
-            self::CUSTOM => 'translate.custom-notification',
+            self::CUSTOM => 'notifications-custom-notification',
         };
     }
 

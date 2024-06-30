@@ -74,6 +74,11 @@ class User extends Authenticatable
         return $this->last_name ?: guessLastName($this->name);
     }
 
+    public function getRolesSortBy()
+    {
+        return 'role_id';
+    }
+
     /* ACTIONS */
     public function handleRegisterNames()
     {

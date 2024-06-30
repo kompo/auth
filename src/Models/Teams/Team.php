@@ -64,6 +64,11 @@ class Team extends Model
         return static::getMainParentTeam($team->parentTeam);
     }
 
+    public function rolePill()
+    {
+        return null;
+    }
+
     /* SCOPES */
     public function scopeForParentTeam($query, $teamIdOrIds)
     {

@@ -19,7 +19,9 @@ class MenuRolesSwitcherDropdown extends Form
 
         return _Dropdown(currentTeamRole()->getRoleName())
             ->submenu(
-                auth()->user()->teamRoles()->where('id', '<>', currentTeamRoleId())->with('team')->get()->unique(
+                auth()->user()->teamRoles()->where('id', '<>', currentTeamRoleId())->with('team')->get()
+                ->sortBy(auth()->user()->getRolesSortBy())
+                ->unique(
                     fn($tr) => $tr->team_id . $tr->role_id
                 )->mapWithKeys(fn($teamRole) => [
                     $teamRole->id => $this->getTeamRoleLabel($teamRole, $teamRole->team->rolePill())->selfPost('switchToTeamRole', ['id' => $teamRole->id])->redirect('dashboard')

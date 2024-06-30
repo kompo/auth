@@ -38,7 +38,7 @@ if (!function_exists('_LabelWithIcon')) {
     	$label = isKompoEl($label) ? $label : _Html($label);
 
         return _Flex2(
-            _Sax($icon, 20)->class('opacity-30 pt-2'),
+            _Sax($icon, 20)->class('opacity-30'),
             $label,
         )->mb2()->class('!items-start');
     }

@@ -105,13 +105,13 @@ class Notification extends Model
     {
         return _Rows(
             _Html($title)->class('mb-2'),
-            _Flex(
+            _Rows(
                 $button,
                 !$hasReminderButton ? null : $this->reminderDropdown(),
-            )->class('space-x-4')
+            )->class('space-y-2')
         );
     }
-    
+
     public function notificationCard($key = 0)
     {
         $content = $this->notificationContent();

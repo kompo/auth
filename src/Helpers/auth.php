@@ -10,6 +10,10 @@ if (!function_exists('_LinkAlreadyHaveAccount')) {
 if (!function_exists('_ProfileImg')) {
     function _ProfileImg($user, $sizeClass = 'h-8 w-8')
     {
+        if (!$user?->profile_photo_url) {
+            return null;
+        }
+
         return _Img($user?->profile_photo_url)
             ->class($sizeClass)
             ->class('rounded-full object-cover border');

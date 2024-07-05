@@ -33,8 +33,8 @@ class MenuRolesSwitcherDropdown extends Form
     {
         return _FlexBetween(
             _Rows(
-                _Html($teamRole->getRoleName()),
-                _Html($teamRole->getTeamName())->class('text-sm text-gray-400'),
+                _Html($teamRole->getTeamName())->class('text-sm font-medium'),
+                _Html($teamRole->getRoleName())->class('text-sm text-greenmain opacity-70'),
             ),
 
             $pill,

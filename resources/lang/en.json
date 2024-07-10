@@ -5,7 +5,7 @@
 	"auth-email": "Email",
 	"auth-email-sent-confirmation-1": "We sent an email to this address. Please go to your inbox and continue the process from there",
 	"auth-email-sent-confirmation-2": "The link is valid for 20 minutes",
-	"auth-files-actions": "Files",
+	"auth-files-actions": "File",
 	"auth-forgot-your-password?": "Forgot your password?",
 	"auth-i-already-have-an-account-log-in-instead": "I already have an account",
 	"auth-login": "Login",

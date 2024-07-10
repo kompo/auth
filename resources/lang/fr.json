@@ -5,7 +5,7 @@
 	"auth-email": "Courriel",
 	"auth-email-sent-confirmation-1": "Nous avons envoyé un courriel à cette adresse. Veuillez accéder à votre boîte de réception et poursuivre le processus à partir de là.",
 	"auth-email-sent-confirmation-2": "Le lien est valable 20 minutes",
-	"auth-files-actions": "Fichiers",
+	"auth-files-actions": "Fichier",
 	"auth-forgot-your-password?": "Mot de passe oublié?",
 	"auth-i-already-have-an-account-log-in-instead": "J'ai déja un compte",
 	"auth-login": "Connexion",

@@ -19,6 +19,8 @@ class File extends Model implements Searchable
     use BelongsToUserTrait;
     use MorphToManyTagsTrait;
 
+    use FileActionsKomponents;
+
     use HasSearchableNameTrait;
     public const SEARCHABLE_NAME_ATTRIBUTE = 'name';
 

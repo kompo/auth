@@ -3,9 +3,9 @@
 namespace Kompo\Auth\Notes;
 
 use Kompo\Auth\Models\Notes\Note;
-use Kompo\Table;
+use Kompo\Query;
 
-class NotesList extends Table
+class NotesList extends Query
 {
     protected $notableType = \App\Models\User::class;
     protected $notableId;
@@ -16,6 +16,9 @@ class NotesList extends Table
     {
         $this->notableType = $this->prop('notable_type') ?? $this->notableType;
         $this->notableId = $this->prop('notable_id');
+
+        $this->perPage = $this->prop('limit') ?? 10;
+		$this->hasPagination = $this->prop('has_pagination');
 
         $this->id(self::ID);
     }
@@ -30,8 +33,8 @@ class NotesList extends Table
     public function top()
     {
         return _FlexBetween(
-            _Html('notes.notes')->class('text-2xl font-semibold'),
-            _Button('notes.add-note')->selfGet('getNoteForm')->inModal(),
+            _TitleCard('notes.notes'),
+            _CreateCard()->selfCreate('getNoteForm')->inModal(),
         );
     }
 
@@ -46,11 +49,17 @@ class NotesList extends Table
 
     public function render($note)
     {
-        return _TableRow(
-            _Html($note->content_nt),
-            _Html($note->addedBy->name),
-            _Html($note->date_nt->format('Y-m-d H:i')),
-        )->selfGet('getNoteForm', ['id' => $note->id])->inModal();
+        return _FlexBetween(
+            _Flex(
+                $note->addedBy->getProfilePhotoPill() ?: _Sax('message-text', 20),
+                _Rows(
+                    _Html($note->content_nt),
+                    _Html($note->date_nt?->diffForHumans() . ' - ' . $note->addedBy->name)->class('text-sm text-gray-400'),
+                ),
+            )->class('gap-4'),
+
+            _Delete($note),
+        )->class('py-3')->selfGet('getNoteForm', ['id' => $note->id])->inModal();
     }
 
     public function getNoteForm($id = null)

@@ -29,7 +29,7 @@ class NoteForm extends Modal
     {
         return _Rows(
             _Input('notes.content')->name('content_nt'),
-            _DateTime('notes.datetime')->name('date_nt'),
+            _DateTime('notes.datetime')->name('date_nt')->default(now()),
         );
     }
 

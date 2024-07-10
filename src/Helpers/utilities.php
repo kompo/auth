@@ -58,6 +58,11 @@ if(!function_exists('getAgeFromDob')) {
 	}
 }
 
+function sizeAsKb($size)
+{
+	return round($size / 1024, 2).' KB';
+}
+
 /* GENERAL KOMPO */
 if(!function_exists('isKompoEl')) {
 	function isKompoEl($el)

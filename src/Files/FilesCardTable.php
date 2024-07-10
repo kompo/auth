@@ -36,19 +36,19 @@ class FilesCardTable extends Query
 	public function top()
 	{
 		return _FlexBetween(
-            _TitleCard('files-my-files'),
+            _TitleCard('files.files'),
             _CreateCard()->selfCreate('getFileForm')->inModal(),
-        )->class('mb-4');
+        )->class('mb-2');
 	}
 
 	public function render($file)
 	{
 		return _FlexBetween(
 			_Flex(
-				$file->thumb?->class('mr-2 shrink-0'),
+				$file->thumb?->class('shrink-0 text-greenmain opacity-60 mr-1'),
 				_Rows(
 					_Html($file->name),
-					_Html($file->created_at->diffForHumans() . ' - ' . sizeAsKb($file->size))->class('text-sm text-gray-400'),
+					_Html($file->created_at->diffForHumans() . ' - ' . sizeAsKb($file->size))->class('text-sm text-geenmain opacity-50'),
 				),
 			)->class('gap-4'),
         	_Delete($file),

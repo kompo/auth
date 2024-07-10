@@ -120,7 +120,7 @@ if (!function_exists('_Update')) {
 if (!function_exists('_Delete')) {
 	function _Delete($model, $label = '')
 	{
-		return _DeleteLink($label)->byKey($model)->iconDelete();
+		return _DeleteLink($label)->byKey($model)->iconDelete()->class('opacity-40');
 	}
 }
 

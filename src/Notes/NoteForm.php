@@ -7,7 +7,10 @@ use Kompo\Auth\Models\Notes\Note;
 
 class NoteForm extends Modal
 {
-    public $_Title = 'notes.add-note';
+    public $class = 'max-w-lg';
+    public $style = 'width: 98vw';
+
+    public $_Title = 'notes.note';
     public $model = Note::class;
 
     protected $noHeaderButtons = true;
@@ -30,14 +33,14 @@ class NoteForm extends Modal
     public function body()
     {
         return _Rows(
-            _Input('notes.content')->name('content_nt'),
-            _DateTime('notes.datetime')->name('date_nt')->default(now()),
+            _Textarea()->name('content_nt')->class('mb-3'),
+            _DateTime()->name('date_nt')->default(now())->class('mb-12'),
 
             _FlexBetween(
                 !$this->model->id ? null : 
-                    _DeleteButton('translate.notes.delete')->class('flex-1')->byKey($this->model)->closeModal()->refresh(NotesList::ID),
-                _SubmitButton('notes.save')->class('flex-1')->closeModal()->refresh(NotesList::ID),
-            )->class('gap-4')
-        );
+                    _DeleteButton('notes.delete')->outlined()->class('flex-1')->byKey($this->model)->closeModal()->refresh(NotesList::ID),
+                    _SubmitButton('notes.save')->class('flex-1')->closeModal()->refresh(NotesList::ID),
+            )->class('gap-3')
+        )->class('mx-2 mb-2');
     }
 }

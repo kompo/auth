@@ -61,6 +61,7 @@
 	"files-upload-files": "Upload files",
 	"files-upload-one-multiple-files": "Upload one or multiple files",
 	"files-your-files-exceed-max-size": "Your files exceed max size",
+	"files.files": "Files",
 	"finance.balance-locked": "Your balance is locked until: :date",
 	"general-years": "years",
 	"maps-address-address1": "Address",

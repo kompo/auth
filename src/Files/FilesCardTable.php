@@ -52,14 +52,19 @@ class FilesCardTable extends Query
 				),
 			)->class('gap-4'),
         	_Delete($file),
-       )->class('py-3')->selfUpdate('getFileForm', ['id' => $file->id])->inModal();
+       )->class('py-3')->selfUpdate('getFileActionsModal', ['id' => $file->id])->inModal();
 	}
 
-    public function getFileForm($id = null)
+	public function getFileForm($id = null)
     {
         return new FileForm($id, [
         	'fileable_id' => $this->fileableId,
         	'fileable_type' => $this->fileableType,
         ]);
+    }
+
+    public function getFileActionsModal($id = null)
+    {
+        return new FileActionsModal($id);
     }
 }

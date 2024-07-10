@@ -22,6 +22,9 @@ class File extends Model implements Searchable
     use FileActionsKomponents;
 
     use HasSearchableNameTrait;
+
+    public $fileType = 'file';
+
     public const SEARCHABLE_NAME_ATTRIBUTE = 'name';
 
     protected $casts = [

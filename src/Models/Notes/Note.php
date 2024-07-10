@@ -46,4 +46,9 @@ class Note extends Model
 
         return parent::save($options);
     }
+
+    public function deletable()
+    {
+        return $this->added_by == auth()->id() || auth()->user()->isSuperAdmin();
+    }
 }

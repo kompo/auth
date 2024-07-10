@@ -10,6 +10,8 @@ class NoteForm extends Modal
     public $_Title = 'notes.add-note';
     public $model = Note::class;
 
+    protected $noHeaderButtons = true;
+
     protected $notableType = \App\Models\User::class;
     protected $notableId;
     
@@ -30,11 +32,12 @@ class NoteForm extends Modal
         return _Rows(
             _Input('notes.content')->name('content_nt'),
             _DateTime('notes.datetime')->name('date_nt')->default(now()),
-        );
-    }
 
-    public function headerButtons()
-    {
-        return $this->noHeaderButtons ? null : _SubmitButton('notes.save')->closeModal()->refresh(NotesList::ID);
+            _FlexBetween(
+                !$this->model->id ? null : 
+                    _DeleteButton('translate.notes.delete')->class('flex-1')->byKey($this->model)->closeModal()->refresh(NotesList::ID),
+                _SubmitButton('notes.save')->class('flex-1')->closeModal()->refresh(NotesList::ID),
+            )->class('gap-4')
+        );
     }
 }

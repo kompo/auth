@@ -49,17 +49,13 @@ class NotesList extends Query
 
     public function render($note)
     {
-        return _FlexBetween(
-            _Flex(
-                $note->addedBy->getProfilePhotoPill() ?: _Sax('message-text', 20),
-                _Rows(
-                    _Html($note->content_nt),
-                    _Html($note->date_nt?->diffForHumans() . ' - ' . $note->addedBy->name)->class('text-sm text-gray-400'),
-                ),
-            )->class('gap-4'),
-
-            _Delete($note),
-        )->class('py-3')->selfGet('getNoteForm', ['id' => $note->id])->inModal();
+        return _Flex(
+            $note->addedBy->getProfilePhotoPill() ?: _Sax('message-text', 20),
+            _Rows(
+                _Html($note->content_nt),
+                _Html($note->date_nt?->diffForHumans() . ' - ' . $note->addedBy->name)->class('text-sm text-gray-400'),
+            ),
+        )->class('gap-4 py-3')->selfGet('getNoteForm', ['id' => $note->id])->inModal();
     }
 
     public function getNoteForm($id = null)

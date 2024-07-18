@@ -50,6 +50,21 @@
 						</translations>
 					</concept_node>
 					<concept_node>
+						<name>auth-download</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
 						<name>auth-email</name>
 						<description/>
 						<comment/>
@@ -81,6 +96,21 @@
 					</concept_node>
 					<concept_node>
 						<name>auth-email-sent-confirmation-2</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
+						<name>auth-files-actions</name>
 						<description/>
 						<comment/>
 						<translations>
@@ -231,6 +261,21 @@
 					</concept_node>
 					<concept_node>
 						<name>auth-password</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
+						<name>auth-preview</name>
 						<description/>
 						<comment/>
 						<translations>

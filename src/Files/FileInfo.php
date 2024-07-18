@@ -2,12 +2,12 @@
 
 namespace Kompo\Auth\Files;
 
-use Kompo\Auth\Models\Files\File;
+use Kompo\Auth\Facades\FileModel;
 use Kompo\Form;
 
 class FileInfo extends Form
 {
-    public $model = File::class;
+    public $model = FileModel::getClass();
 
     public function render()
     {

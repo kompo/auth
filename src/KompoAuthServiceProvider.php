@@ -5,6 +5,7 @@ namespace Kompo\Auth;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Kompo\Auth\Facades\FileModel;
 
 class KompoAuthServiceProvider extends ServiceProvider
 {
@@ -74,6 +75,10 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->app->bind('notification-model', function () {
             return new (config('kompo-auth.notification-model-namespace'));
         });
+
+        $this->app->bind('file-model', function () {
+            return new (config('kompo-files.file-model-namespace'));
+        });
     }
 
     protected function loadHelpers()
@@ -124,7 +129,7 @@ class KompoAuthServiceProvider extends ServiceProvider
     {
         Relation::morphMap([
             'team' => config('kompo-auth.team-model-namespace'),
-            'file' => \Kompo\Auth\Models\Files\File::class,
+            'file' => FileModel::getClass(),
         ]);
     }
 

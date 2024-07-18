@@ -176,6 +176,14 @@ class File extends Model implements Searchable
         return config('kompo-files.types');
     }
 
+    public static function formattedTypesOptions()
+    {
+        return collect(static::typesOptions())->mapWithKeys(
+            fn($label, $value) => [$value => ucfirst($label[0])]
+        );
+    }
+
+
     public static function fileFilters($titleKompo, $more = null)
     {
         return _Rows(

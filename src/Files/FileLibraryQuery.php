@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Files;
 
-use Kompo\Auth\Models\Files\File;
+use Kompo\Auth\Facades\FileModel;
 use Kompo\Query;
 
 class FileLibraryQuery extends Query
@@ -30,12 +30,12 @@ class FileLibraryQuery extends Query
 
 	public function query()
 	{
-		return File::getLibrary();
+		return FileModel::getLibrary();
 	}
 
 	public function top()
 	{
-		return File::fileFilters(
+		return FileModel::fileFilters(
 			_MiniTitle('files-link-from-library'),
 		);
 	}
@@ -51,18 +51,18 @@ class FileLibraryQuery extends Query
 
 	public function linkFileTo($id)
 	{
-		$file = File::findOrFail($id);
+		$file = FileModel::findOrFail($id);
 
 		$file->linkToOrAssociate($this->parentId, $this->parentType);
 	}
 
 	public function getTagsMultiSelect($withoutIds = [])
 	{
-		return File::conditionalTagsMultiselect($withoutIds);
+		return FileModel::conditionalTagsMultiselect($withoutIds);
 	}
 
 	public function getYearsMonthsFilter()
 	{
-		return File::yearlyMonthlyLinkGroup();
+		return FileModel::yearlyMonthlyLinkGroup();
 	}
 }

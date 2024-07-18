@@ -3,7 +3,7 @@
 namespace Kompo\Auth\Files;
 
 use Kompo\Auth\Common\Modal;
-use Kompo\Auth\Models\Files\File;
+use Kompo\Auth\Facades\FileModel;
 
 class FileForm extends Modal
 {
@@ -21,7 +21,7 @@ class FileForm extends Modal
 
 	public function handle()
 	{
-        File::uploadMultipleFiles(request()->file('files'), $this->fileableType, $this->fileableId);
+        FileModel::uploadMultipleFiles(request()->file('files'), $this->fileableType, $this->fileableId);
 	}
 
 	public function body()

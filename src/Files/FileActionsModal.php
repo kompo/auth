@@ -3,12 +3,12 @@
 namespace Kompo\Auth\Files;
 
 use Kompo\Auth\Common\Modal;
-use Kompo\Auth\Models\Files\File;
+use Kompo\Auth\Facades\FileModel;
 
 class FileActionsModal extends Modal
 {
     protected $_Title = 'translate.files-actions';
-    public $model = File::class;
+    public $model = FileModel::getClass();
 
     protected $noHeaderButtons = true;
 

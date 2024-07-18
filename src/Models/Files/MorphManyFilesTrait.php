@@ -2,19 +2,19 @@
 
 namespace Kompo\Auth\Models\Files;
 
-use Kompo\Auth\Models\Files\File;
+use Kompo\Auth\Facades\FileModel;
 
 trait MorphManyFilesTrait
 {
     /* RELATIONS */
     public function file()
     {
-        return $this->morphOne(File::class, 'fileable');
+        return $this->morphOne(FileModel::getClass(), 'fileable');
     }
 
     public function files()
     {
-        return $this->morphMany(File::class, 'fileable');
+        return $this->morphMany(FileModel::getClass(), 'fileable');
     }
 
     /* CALCULATED FIELDS */

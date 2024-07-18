@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Files;
 
-use Kompo\Auth\Models\Files\File;
+use Kompo\Auth\Facades\FileModel;
 use Kompo\Table;
 
 class FilesManagerView extends Table
@@ -24,7 +24,7 @@ class FilesManagerView extends Table
         $year = request('year');
         $month = request('month');
 
-		return File::getLibrary([
+		return FileModel::getLibrary([
             'filename' => $search,
             'fileable_type' => $type,
             'year' => $year,
@@ -34,7 +34,7 @@ class FilesManagerView extends Table
 
 	public function top()
 	{
-		return File::fileFilters(
+		return FileModel::fileFilters(
 			_TitleMain('files-file-manager')->class('mb-4'),
 		);
 	}
@@ -47,7 +47,7 @@ class FilesManagerView extends Table
             ->inModal(),
         	_Panel(
     			_TitleCard('files-file-infos'),
-            	File::emptyPanel(),
+            	FileModel::emptyPanel(),
             )->id('file-info-panel')
             ->closable()
             ->class('dashboard-card p-4 mb-4 ml-0 sm:ml-4'), //width managed in CSS
@@ -99,7 +99,7 @@ class FilesManagerView extends Table
 
 	public function getYearsMonthsFilter()
 	{
-		return File::yearlyMonthlyLinkGroup();
+		return FileModel::yearlyMonthlyLinkGroup();
 	}
 
 	public function getFileUploadModal()

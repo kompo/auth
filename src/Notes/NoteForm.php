@@ -3,7 +3,7 @@
 namespace Kompo\Auth\Notes;
 
 use Kompo\Auth\Common\Modal;
-use Kompo\Auth\Models\Notes\Note;
+use Kompo\Auth\Facades\NoteModel;
 
 class NoteForm extends Modal
 {
@@ -11,7 +11,7 @@ class NoteForm extends Modal
     public $style = 'width: 98vw';
 
     public $_Title = 'notes.note';
-    public $model = Note::class;
+    public $model = NoteModel::getClass();
 
     protected $noHeaderButtons = true;
 

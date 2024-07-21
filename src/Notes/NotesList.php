@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Notes;
 
-use Kompo\Auth\Models\Notes\Note;
+use Kompo\Auth\Facades\NoteModel;
 use Kompo\Query;
 
 class NotesList extends Query
@@ -25,7 +25,7 @@ class NotesList extends Query
 
     public function query()
     {
-        return Note::forNotableType($this->notableType)
+        return NoteModel::forNotableType($this->notableType)
             ->forNotableId($this->notableId)
             ->latest();
     }

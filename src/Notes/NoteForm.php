@@ -19,8 +19,8 @@ class NoteForm extends Modal
     
     public function created()
     {
-        $this->model(FileModel::getClass());
-        
+        $this->model(NoteModel::getClass());
+
         $this->notableType = $this->prop('notable_type') ?? $this->notableType;
         $this->notableId = $this->prop('notable_id');
     }

@@ -11,7 +11,6 @@ class NoteForm extends Modal
     public $style = 'width: 98vw';
 
     public $_Title = 'notes.note';
-    public $model = NoteModel::getClass();
 
     protected $noHeaderButtons = true;
 
@@ -20,6 +19,8 @@ class NoteForm extends Modal
     
     public function created()
     {
+        $this->model(FileModel::getClass());
+        
         $this->notableType = $this->prop('notable_type') ?? $this->notableType;
         $this->notableId = $this->prop('notable_id');
     }

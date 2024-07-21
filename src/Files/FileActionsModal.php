@@ -8,9 +8,12 @@ use Kompo\Auth\Facades\FileModel;
 class FileActionsModal extends Modal
 {
     protected $_Title = 'auth-files-actions';
-    public $model = FileModel::getClass();
-
     protected $noHeaderButtons = true;
+
+    public function created()
+    {
+        $this->model(FileModel::getClass());
+    }
 
     public function body()
     {

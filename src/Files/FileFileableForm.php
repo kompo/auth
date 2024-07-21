@@ -7,8 +7,6 @@ use Kompo\Form;
 
 class FileFileableForm extends Form
 {
-    public $model = FileModel::getCLass();
-
     public $style = 'max-height:95vh; min-width: 350px;';
 
     protected $defaultType;
@@ -16,6 +14,8 @@ class FileFileableForm extends Form
 
     public function created()
     {
+        $this->model(FileModel::getClass());
+
         $this->defaultType = $this->model->fileable_type ?: collect(FileModel::typesOptions())->keys()->first();
         $this->defaultId = $this->model->fileable_id;
     }

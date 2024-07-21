@@ -7,8 +7,6 @@ use Kompo\Auth\Facades\FileModel;
 
 class FileUploadModalManager extends Modal
 {
-    public $model = FileModel::getClass();
-
 	public $class = 'overflow-y-auto mini-scroll';
 	public $style = 'max-height:95vh; min-width: 350px;';
 
@@ -16,6 +14,11 @@ class FileUploadModalManager extends Modal
 	protected $_Icon = 'document-text';
 
     protected $noHeaderButtons = true;
+
+    public function created()
+    {
+        $this->model(FileModel::getClass());
+    }
 
 	public function handle()
     {

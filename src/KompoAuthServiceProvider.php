@@ -80,7 +80,7 @@ class KompoAuthServiceProvider extends ServiceProvider
             return new (config('kompo-files.file-model-namespace'));
         });
 
-        $this->app->bind('file-model', function () {
+        $this->app->bind('note-model', function () {
             return new (config('kompo-auth.note-model-namespace'));
         });
     }

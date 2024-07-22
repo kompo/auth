@@ -3,12 +3,10 @@
 namespace Kompo\Auth\Files;
 
 use Kompo\Auth\Common\Modal;
-use Kompo\Auth\Models\Files\File;
+use Kompo\Auth\Facades\FileModel;
 
 class FileUploadModalManager extends Modal
 {
-    public $model = File::class;
-
 	public $class = 'overflow-y-auto mini-scroll';
 	public $style = 'max-height:95vh; min-width: 350px;';
 
@@ -17,10 +15,15 @@ class FileUploadModalManager extends Modal
 
     protected $noHeaderButtons = true;
 
+    public function created()
+    {
+        $this->model(FileModel::getClass());
+    }
+
 	public function handle()
     {
         if(!$this->model->id) {
-            File::uploadMultipleFiles(request()->file('files'), $this->model->fileable_type, $this->model->fileable_id, request('tags'));
+            FileModel::uploadMultipleFiles(request()->file('files'), $this->model->fileable_type, $this->model->fileable_id, request('tags'));
         } else {
             $this->model->fileable_type = request('fileable_type');
             $this->model->fileable_id = request('fileable_id');

@@ -5,14 +5,14 @@ namespace Kompo\Auth\Facades;
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @mixin \Kompo\Auth\Models\Monitoring\Notification
+ * @mixin \Kompo\Auth\Models\Notes\Note
  */
-class NotificationModel extends Facade
+class NoteModel extends Facade
 {
     use FacadeUtils;
 
     protected static function getFacadeAccessor()
     {
-        return NOTIFICATION_MODEL_KEY;
+        return 'note-model';
     }
 }

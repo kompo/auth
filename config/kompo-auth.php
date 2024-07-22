@@ -14,4 +14,5 @@ return [
     'team-model-namespace' => App\Models\Teams\Team::class,
 
     'notification-model-namespace' => Kompo\Auth\Models\Monitoring\Notification::class,
+    'note-model-namespace' => Kompo\Auth\Models\Notes\Note::class,
 ];

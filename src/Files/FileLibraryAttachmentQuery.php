@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Files;
 
-use Kompo\Auth\Models\Files\File;
+use Kompo\Auth\Facades\FileModel;
 
 class FileLibraryAttachmentQuery extends FileLibraryQuery
 {
@@ -55,7 +55,7 @@ class FileLibraryAttachmentQuery extends FileLibraryQuery
 
 	public static function selectedFiles($selectedIds = [])
 	{
-		$selectedFiles = File::whereIn('id', $selectedIds ?: [])->get();
+		$selectedFiles = FileModel::whereIn('id', $selectedIds ?: [])->get();
 
 		return _Rows(
 			!$selectedFiles->count() ? null : _MultiSelect()->name('selected_files', false)

@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Files;
 
-use Kompo\Auth\Models\Files\File;
+use Kompo\Auth\Facades\FileModel;
 use Kompo\Query;
 
 class FilesCardTable extends Query
@@ -27,7 +27,7 @@ class FilesCardTable extends Query
 
 	public function query()
 	{
-		return File::where('team_id', $this->teamId)
+		return FileModel::where('team_id', $this->teamId)
 			->where('fileable_type', $this->fileableType)
 			->where('fileable_id', $this->fileableId)
 			->orderByDesc('created_at');

@@ -64,6 +64,17 @@ class Team extends Model
         return static::getMainParentTeam($team->parentTeam);
     }
 
+    public function getAllParents()
+    {
+        if ($this->parent_team_id) {
+            $parentTeam = $this->parentTeam;
+
+            return $parentTeam->getAllParents()->prepend($parentTeam);
+        }
+
+        return collect();
+    }
+
     public function rolePill()
     {
         return null;

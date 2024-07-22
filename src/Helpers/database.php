@@ -1,5 +1,7 @@
 <?php 
 
+//TODO delete this code because moved to kompo/kompo
+
 if (!function_exists('addMetaData')) {
     function addMetaData($table)
     {

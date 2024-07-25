@@ -15,10 +15,3 @@ if(!function_exists('throwValidationConfirmation')) {
         abort(449, $message);
     }
 }
-
-if(!function_exists('balanceLockedMessage')) {
-    function balanceLockedMessage($date)
-    {
-        return __('finance.balance-locked', ['date' => $date]); // You can translate this using this syntax 'balance-locked' => 'Your balance is locked until :date.',
-    }
-}

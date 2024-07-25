@@ -6,6 +6,8 @@ namespace Kompo\Auth\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Kompo\Auth\Models\Teams\Permission;
+use Kompo\Auth\Models\Teams\TeamRole;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable

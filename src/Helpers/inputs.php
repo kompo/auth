@@ -1,5 +1,7 @@
 <?php
 
+use Kompo\Auth\Inputs\NumberRange;
+
 if (!function_exists('_ColorPicker')) {
 	function _ColorPicker($label = '')
 	{
@@ -11,5 +13,11 @@ if (!function_exists('_InputEmail')) {
 	function _InputEmail($label = '')
 	{
 		return _Input($label)->type('email');
+	}
+}
+if (!function_exists('_NumberRange')) {
+	function _NumberRange()
+	{
+		return NumberRange::form();
 	}
 }

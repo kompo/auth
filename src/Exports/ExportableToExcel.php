@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Exports;
+namespace Kompo\Auth\Exports;
 
-use App\Kompo\Common\Query;
-use App\Kompo\Traits\ExportableUtilsTrait;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Support\Facades\Log;
+use Kompo\Auth\Exports\Traits\ExportableUtilsTrait;
+use Kompo\Query;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
@@ -56,7 +56,7 @@ abstract class ExportableToExcel extends Query implements FromArray, WithHeading
         try {
             return $this->parseHeaders($this->headers());
         } catch (\Exception $e) {
-            Log::error($e->getMessage(), ['class' => static::class, 'trace' => $e->getTraceAsString(), 'user' => auth()->user(), 'campaign' => currentCampaign()]);
+            Log::error($e->getMessage(), ['class' => static::class, 'trace' => $e->getTraceAsString(), 'user' => auth()->user()]);
             abort(500);
         }
         
@@ -206,7 +206,7 @@ abstract class ExportableToExcel extends Query implements FromArray, WithHeading
         try{
             $dom->loadHTML($html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
         } catch (\Exception $e) {
-            Log::error($e->getMessage(), ['class' => static::class, 'html' => $html, 'trace' => $e->getTraceAsString(), 'user' => auth()->user(), 'campaign' => currentCampaign()]);
+            Log::error($e->getMessage(), ['class' => static::class, 'html' => $html, 'trace' => $e->getTraceAsString(), 'user' => auth()->user()]);
 
             return $html;
         }

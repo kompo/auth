@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Exports\Contracts;
+namespace Kompo\Auth\Exports\Contracts;
 
 interface ExportableChild
 {

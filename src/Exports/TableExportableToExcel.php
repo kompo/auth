@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Exports;
+namespace Kompo\Auth\Exports;
 
 use Kompo\TableRow;
 

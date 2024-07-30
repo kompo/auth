@@ -131,6 +131,25 @@ class File extends Model implements Searchable
         parent::delete();
     }
 
+    public static function getFileTypeRawQuery()
+    {
+        $rawCaseQuery = 'CASE ';
+		
+		foreach (FileTypeEnum::cases() as $case) {
+			$mimeTypes = collect($case->mimeTypes())->map(function ($mime) {
+				return "'$mime'";
+			})->implode(',');
+
+			if ($mimeTypes) {
+				$rawCaseQuery .= "WHEN mime_type IN ({$mimeTypes}) THEN {$case->value} ";
+			}
+		}
+
+		$rawCaseQuery .= 'ELSE ' .  FileTypeEnum::UNKNOWN->value . ' END';
+
+        return $rawCaseQuery;
+    }
+
     public static function uploadMultipleFiles($files, $fileableType = null, $fileableId = null, $tags = [])
     {
         $fileHandler = new FileHandler();

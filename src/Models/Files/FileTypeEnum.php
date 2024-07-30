@@ -4,6 +4,8 @@ namespace Kompo\Auth\Models\Files;
 
 enum FileTypeEnum: int
 {
+    use \Kompo\Auth\Models\Traits\EnumKompo;
+    
     case IMAGE = 1;
     case PDF = 2;
     case COMPRESSED = 3;
@@ -13,6 +15,20 @@ enum FileTypeEnum: int
     case VIDEO = 7;
 
     case UNKNOWN = 8;
+
+    public function label()
+    {
+        return match ($this) {
+            self::IMAGE => 'translate.image',
+            self::PDF => 'translate.pdf',
+            self::COMPRESSED => 'translate.compressed',
+            self::DOCUMENT => 'translate.document',
+            self::SPREADSHEET => 'translate.spreadsheet',
+            self::AUDIO => 'translate.audio',
+            self::VIDEO => 'translate.video',
+            default => 'translate.unknown',
+        };
+    }
 
     public function mimeTypes()
     {

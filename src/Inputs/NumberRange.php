@@ -11,8 +11,8 @@ class NumberRange extends Rows
     protected function setElementsFromArguments($args)
     {
         $this->elements = [
-            _InputNumber()->placeholder('translate.min')->class('!mb-0'),
-            _InputNumber()->placeholder('translate.max')->class('!mb-0'),
+            _InputNumber()->placeholder('filter-min')->class('!mb-0'),
+            _InputNumber()->placeholder('filter-max')->class('!mb-0'),
         ];
     }
 

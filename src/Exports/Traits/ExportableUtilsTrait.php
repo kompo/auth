@@ -34,8 +34,8 @@ trait ExportableUtilsTrait
         $url = \URL::signedRoute('report.download', ['filename' => $filename]);
 
         return _Rows(
-            _Html('translate.reports.export-completed')->icon('icon-check')->class('text-lg font-semibold'),
-            _Link('translate.reports.download-file')->outlined()->toggleClass('hidden')->class('mt-4')
+            _Html('reports-export-completed')->icon('icon-check')->class('text-lg font-semibold'),
+            _Link('reports-download-file')->outlined()->toggleClass('hidden')->class('mt-4')
                 ->href($url),
         )->class('bg-white rounded-lg p-6');
     }

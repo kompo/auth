@@ -4,3 +4,10 @@
     @apply overflow-y-auto;
     max-height: 80vh;
 }
+
+.select-over-modal .vlOptions{
+    position: fixed;
+    left: auto !important;
+    width: auto !important;
+    top: 0px;
+}

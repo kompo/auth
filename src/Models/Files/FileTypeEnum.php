@@ -19,14 +19,14 @@ enum FileTypeEnum: int
     public function label()
     {
         return match ($this) {
-            self::IMAGE => 'translate.image',
-            self::PDF => 'translate.pdf',
-            self::COMPRESSED => 'translate.compressed',
-            self::DOCUMENT => 'translate.document',
-            self::SPREADSHEET => 'translate.spreadsheet',
-            self::AUDIO => 'translate.audio',
-            self::VIDEO => 'translate.video',
-            default => 'translate.unknown',
+            self::IMAGE => __('file-type-image'),
+            self::PDF => __('file-type-pdf'),
+            self::COMPRESSED => __('file-type-compressed'),
+            self::DOCUMENT => __('file-type-document'),
+            self::SPREADSHEET => __('file-type-spreadsheet'),
+            self::AUDIO => __('file-type-audio'),
+            self::VIDEO => __('file-type-video'),
+            default => __('file-type-unknown'),
         };
     }
 

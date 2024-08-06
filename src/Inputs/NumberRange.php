@@ -50,6 +50,13 @@ class NumberRange extends Rows
         return parent::__call($methodName, $parameters);
     }
 
+    public function onChange($function)
+    {
+        $this->callFunctionOnElements('onChange', [$function]);
+
+        return $this;
+    }
+
     public function callFunctionOnElements($functionName, $parameters = [])
     {
         foreach ($this->elements as $key => $element) {

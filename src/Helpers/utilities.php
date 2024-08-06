@@ -2,6 +2,24 @@
 
 use \Kompo\Elements\Element;
 
+Kompo\Elements\Layout::macro('applyToAllElements', function($callback, $exlude = []) {
+	$this->elements = collect($this->elements)->map(function($el, $i) use ($callback, $exlude) {
+		if(!in_array($i, $exlude)) {
+			return $callback($el);
+		}
+
+		return $el;
+	})->all();
+
+	return $this;
+});
+
+Kompo\Elements\Layout::macro('stopPropagation', function() {
+	return $this->attr([
+		'onclick' => 'event.stopPropagation()',
+	]);
+});
+
 /* Transformers */
 if(!function_exists('tinyintToBool')) {
 	function tinyintToBool($value): string

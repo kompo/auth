@@ -221,7 +221,7 @@ trait HasTeamsTrait
     public function getCurrentPermissionKeys()
     {
         return \Cache::remember('currentPermissionKeys'.$this->id, 120,
-            fn() => $this->currentTeamRole->permissions()->pluck('permission_key')
+            fn() => $this->currentTeamRole->getAllPermissionsKeys()
         );
     }
 

@@ -83,6 +83,10 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->app->bind('note-model', function () {
             return new (config('kompo-auth.note-model-namespace'));
         });
+
+        $this->app->bind('team-model', function () {
+            return new (config('kompo-auth.team-model-namespace'));
+        });
     }
 
     protected function loadHelpers()

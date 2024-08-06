@@ -6,6 +6,7 @@ use Kompo\Auth\Models\Model;
 use Kompo\Auth\Models\Teams\BaseRoles\SuperAdminRole;
 use Kompo\Auth\Models\Teams\BaseRoles\TeamOwnerRole;
 use Kompo\Auth\Models\Teams\Permission;
+use Kompo\Auth\Models\Teams\Roles\Role;
 
 class TeamRole extends Model
 {
@@ -24,10 +25,22 @@ class TeamRole extends Model
         return $this->belongsToMany(Permission::class);
     }
 
+    public function roleRelation()
+    {
+        return $this->belongsTo(Role::class, 'role');
+    }
+
     /* SCOPES */
     public function scopeRelatedToTeam($query, $teamId = null)
     {
         $query->when($teamId, fn($q) => $q->where('team_id', $teamId));
+    }
+
+    public function getAllPermissionsKeys()
+    {
+        return collect($this->permissions()->select('permission_key')->when($this->roleRelation, 
+            fn($q) => $q->union($this->roleRelation->permissions()->select('permission_key'))
+        )->distinct()->pluck('permission_key'));
     }
 
     /* CALCULATED FIELDS */

@@ -90,6 +90,11 @@ class Team extends Model
         }
     }
 
+    public function scopeSearch($query, $search)
+    {
+        $query->where('team_name', 'LIKE', wildcardSpace($search));
+    }
+
 	/* ACTIONS */
 	public function detachFromTeam($user)
 	{

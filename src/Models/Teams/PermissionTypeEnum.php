@@ -22,6 +22,16 @@ enum PermissionTypeEnum: int
         };
     }
 
+    public function code()
+    {
+        return match($this) {
+            self::READ => 'read',
+            self::WRITE => 'write',
+            self::ALL => 'all',
+            self::DENY => 'deny',
+        };
+    }
+
     public function color()
     {
         return match($this) {

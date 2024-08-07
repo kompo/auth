@@ -22,7 +22,17 @@ class TeamRole extends Model
     /* RELATIONS */
     public function permissions()
     {
-        return $this->belongsToMany(Permission::class);
+        return $this->belongsToMany(Permission::class)->withPivot('permission_type');
+    }
+
+    public function validPermissions()
+    {
+        return $this->permissions()->wherePivot('permission_type', '!=', PermissionTypeEnum::DENY);
+    }
+
+    public function deniedPermissions()
+    {
+        return $this->permissions()->wherePivot('permission_type', PermissionTypeEnum::DENY);
     }
 
     public function roleRelation()
@@ -38,9 +48,13 @@ class TeamRole extends Model
 
     public function getAllPermissionsKeys()
     {
-        return collect($this->permissions()->select('permission_key')->when($this->roleRelation, 
-            fn($q) => $q->union($this->roleRelation->permissions()->select('permission_key'))
-        )->distinct()->pluck('permission_key'));
+        return collect($this->validPermissions()->selectRaw('CONCAT(permission_team_role.permission_type, permission_key) as permission_key')->when($this->roleRelation, 
+            fn($q) => $q->union($this->roleRelation->validPermissions()->selectRaw('CONCAT(permission_role.permission_type, permission_key) as permission_type'))
+        )
+        ->whereNotIn('permissions.id', $this->roleRelation->deniedPermissions()->select('permissions.id')->wherePivot('permission_type', PermissionTypeEnum::DENY)
+            ->union($this->deniedPermissions()->select('permissions.id')->wherePivot('permission_type', PermissionTypeEnum::DENY))
+            ->pluck('permissions.id')
+        )->pluck('permission_key'))->unique()->map(fn($key) => substr($key, 0, 1) . ':' . substr($key, 1));
     }
 
     /* CALCULATED FIELDS */

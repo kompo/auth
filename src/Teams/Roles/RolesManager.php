@@ -32,6 +32,7 @@ class RolesManager extends Table
     
     public function render($permission)
     {
+
         return _TableRow(
             _Html($permission?->permission_name)->class('text-gray-600'),
 
@@ -39,6 +40,7 @@ class RolesManager extends Table
                 return _CheckboxMultipleStates($role->id . '-' . $permission->id, 
                         PermissionTypeEnum::values(),
                         PermissionTypeEnum::colors(),
+                        $role->permissions->first(fn($p) => $p->id == $permission->id)?->pivot?->permission_type
                     )
                     ->onChange(fn($e) => $e
                         ->selfPost('changeRolePermission', ['role' => $role->id, 'permission' => $permission->id])
@@ -54,6 +56,15 @@ class RolesManager extends Table
         if($value) {
             $value = PermissionTypeEnum::from($value);
         } 
+
+        $role = Role::findOrFail(request('role'));
+
+        if (!$value) {
+            return $role->permissions()->detach(request('permission'));
+        } 
+
+        $role->createOrUpdatePermission(request('permission'), $value);
+
     }
 
     public function getRoleForm()

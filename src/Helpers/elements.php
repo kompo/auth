@@ -22,7 +22,7 @@ function _Aud($src)
     return _Audio($src);
 }
 
-function _CheckboxMultipleStates($name, $values = [], $colors = [])
+function _CheckboxMultipleStates($name, $values = [], $colors = [], $default = null)
 {
     $values = collect([null])->merge($values);
     $colors = collect([null])->merge($colors);
@@ -31,16 +31,19 @@ function _CheckboxMultipleStates($name, $values = [], $colors = [])
 
     for ($i = 0; $i < count($values); $i++) {
         $nextIndex = $i + 1 == $values->count() ? 0 : $i + 1;
-        $value = $values->get($nextIndex);
+        $nextValue = $values->get($nextIndex);
 
-        $parsedOptions->put($value ?: 0, _Html()->class($name)->class('border border-black rounded w-4 h-4')
-            ->when($i == 0, fn($el) => $el->class('perm-selected'))
-            ->when($i !== 0, fn($el) => $el->class('hidden')->class($colors->get($i))));
+        $value = $values->get($i);
+
+        $parsedOptions->put($nextValue ?: 0, _Html()->class($name)->class('border border-black rounded w-4 h-4')
+            ->class($colors->get($i) ?: '')
+            ->when($default == $value, fn($el) => $el->class('perm-selected'))
+            ->when($default != $value, fn($el) => $el->class('hidden')));
     }
 
     return _LinkGroup()->name($name, false)->options($parsedOptions->toArray())
-    ->containerClass('')->selectedClass('x', '')
-    ->default(null)
-    ->run('() => {changeLinkGroupColor("'. $name .'")}');
+        ->containerClass('')->selectedClass('x', '')
+        ->default($default)
+        ->onChange(fn($e) => $e->run('() => {changeLinkGroupColor("'. $name .'")}'));
 
 }

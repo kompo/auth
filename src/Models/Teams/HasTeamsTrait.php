@@ -213,20 +213,9 @@ trait HasTeamsTrait
     }
 
     /* PERMISSIONS */
-
-    protected function getPermissionType($permissionKey)
-    {
-        return PermissionTypeEnum::from((int) substr($permissionKey, 0, 1));
-    }
-
-    protected function getPermissionKey($permissionKey)
-    {
-        return substr($permissionKey, 2);
-    }
-
     public function hasPermission($permissionKey, PermissionTypeEnum $type = PermissionTypeEnum::ALL)
     {
-        return $this->getCurrentPermissionKeys()->first(fn($key) => $permissionKey == $this->getPermissionKey($key) && PermissionTypeEnum::hasPermission($this->getPermissionType($key)->value, $type->value));
+        return $this->getCurrentPermissionKeys()->first(fn($key) => $permissionKey == getPermissionKey($key) && PermissionTypeEnum::hasPermission(getPermissionType($key), $type));
     }
 
     public function getCurrentPermissionKeys()

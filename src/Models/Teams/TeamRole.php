@@ -46,15 +46,26 @@ class TeamRole extends Model
         $query->when($teamId, fn($q) => $q->where('team_id', $teamId));
     }
 
+    public function validPermissionsQuery()
+    {
+        return $this->validPermissions()->selectRaw(getPermissionKeySql('permission_team_role'))
+            ->union($this->roleRelation->validPermissions()->selectRaw(getPermissionKeySql('permission_role'))
+        );
+    }
+
+    public function deniedPermissionsQuery()
+    {
+        return $this->deniedPermissions()->select('permissions.id')
+            ->union($this->roleRelation->deniedPermissions()->select('permissions.id')
+        );
+    }
+
     public function getAllPermissionsKeys()
     {
-        return collect($this->validPermissions()->selectRaw('CONCAT(permission_team_role.permission_type, permission_key) as permission_key')->when($this->roleRelation, 
-            fn($q) => $q->union($this->roleRelation->validPermissions()->selectRaw('CONCAT(permission_role.permission_type, permission_key) as permission_type'))
-        )
-        ->whereNotIn('permissions.id', $this->roleRelation->deniedPermissions()->select('permissions.id')->wherePivot('permission_type', PermissionTypeEnum::DENY)
-            ->union($this->deniedPermissions()->select('permissions.id')->wherePivot('permission_type', PermissionTypeEnum::DENY))
-            ->pluck('permissions.id')
-        )->pluck('permission_key'))->unique()->map(fn($key) => substr($key, 0, 1) . ':' . substr($key, 1));
+        return $this->validPermissionsQuery()
+            ->whereNotIn('permissions.id', 
+                $this->deniedPermissionsQuery()->pluck('permissions.id')
+            )->distinct()->pluck('permission_key');
     }
 
     /* CALCULATED FIELDS */

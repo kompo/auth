@@ -12,6 +12,8 @@ class RoleForm extends Modal
     protected $_Title = 'translate.add-role';
     protected $noHeaderButtons = true;
 
+    public $class = 'min-w-96';
+
     public $model = Role::class;
 
     public function beforeSave()
@@ -32,13 +34,23 @@ class RoleForm extends Modal
             _Image('translate.role-icon')->name('icon'),
             _MultiSelect('translate.role-team-levels')->name('team_levels', false)->options(
                 TeamLevelEnum::optionsWithLabels(),
-            ),
+            )->default($this->model->allowedTeamLevels->pluck('team_level')->toArray())
+            ->overModal('team-levels'),
 
             _Select('translate.profile')->name('profile')->options(
                 ProfileEnum::optionsWithLabels(),
+            )->overModal('profile'),
+
+            _Rows(
+                _Toggle('translate.accept-roll-to-child')->name('accept_roll_to_child'),
+                _Toggle('translate.accept-roll-to-neighbourg')->name('accept_roll_to_neighbourg'),
             ),
 
-            _SubmitButton('generic.save')->closeModal()->refresh('roles-manager'),
+            _Flex(
+                $this->model->id ? _DeleteButton('generic.delete')->outlined()->byKey($this->model)->class('w-full') : null,
+                _SubmitButton('generic.save')->closeModal()->refresh('roles-manager')->class('w-full'),
+            )->class('gap-4')
+            
             // _Input('Role Permissions')->name('role_permissions')->required(),
         );
     }

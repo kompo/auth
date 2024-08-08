@@ -52,8 +52,8 @@ enum PermissionTypeEnum: int
         return collect(self::cases())->map(fn($case) => $case->color());
     }
 
-    public static function hasPermission($permission, $type)
+    public static function hasPermission(self $given, self $expected)
     {
-        return ($permission & $type) == $type;
+        return ($given->value & $expected->value) == $expected->value;
     }
 }

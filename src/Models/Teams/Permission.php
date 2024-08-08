@@ -14,6 +14,12 @@ class Permission extends Model
         return Permission::where('permission_key', $permissionKey)->first();
     }
 
+    // SCOPES 
+    public function scopeForSection($query, $sectionId)
+    {
+        $query->where('permission_section_id', $sectionId);
+    }
+
     /* ACTIONS */
 
     /* ELEMENTS */

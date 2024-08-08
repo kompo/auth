@@ -40,6 +40,18 @@ class Role extends Model
         return $this->hasMany(RoleTeamLevel::class, 'role');
     }
 
+    // CALCULATED FIELDS 
+    public function getFirstPermissionTypeOfSection($sectionId)
+    {
+        return $this->permissions()->forSection($sectionId)->first()->pivot->permission_type;
+    }
+
+    // SCOPES
+    public function scopeForTeamLevel($query, $teamLevel)
+    {
+        return $query->whereHas('allowedTeamLevels', fn($q) => $q->where('team_level', $teamLevel));
+    }
+
     // ACTIONS
     public function assignTeamLevels($teamLevels)
     {

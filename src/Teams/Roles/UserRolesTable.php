@@ -7,6 +7,9 @@ use Kompo\Table;
 
 class UserRolesTable extends Table
 {
+    const ID = 'user-roles-table';
+    public $id = self::ID;
+
     public $userId;
     protected $user;
 
@@ -21,14 +24,14 @@ class UserRolesTable extends Table
         return _FlexEnd(
             _Dropdown('translate.actions')->button()
                 ->submenu(
-                    _Link('translate.assign-role'),
+                    _Link('translate.assign-role')->class('py-1 px-3')->selfGet('getAssignRoleModal')->inModal(),
                 ),
         );
     }
 
     public function query()
     {
-        return $this->user->teamRoles()->query();
+        return $this->user->teamRoles();
     }
 
     public function headers()

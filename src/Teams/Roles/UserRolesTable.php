@@ -2,10 +2,11 @@
 
 namespace Kompo\Auth\Teams\Roles;
 
+use Kompo\Auth\Common\WhiteTable;
+use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Models\User;
-use Kompo\Table;
 
-class UserRolesTable extends Table
+class UserRolesTable extends WhiteTable
 {
     const ID = 'user-roles-table';
     public $id = self::ID;
@@ -26,12 +27,12 @@ class UserRolesTable extends Table
                 ->submenu(
                     _Link('translate.assign-role')->class('py-1 px-3')->selfGet('getAssignRoleModal')->inModal(),
                 ),
-        );
+        )->class('mb-3');
     }
 
     public function query()
     {
-        return $this->user->teamRoles();
+        return $this->user->teamRoles()->withTrashed()->orderBy('deleted_at', 'asc')->orderBy('created_at', 'desc')->get();
     }
 
     public function headers()
@@ -47,17 +48,21 @@ class UserRolesTable extends Table
 
     public function render($teamRole) {
         return _TableRow(
-            _Html($teamRole->roleRelation->name),
-            _Rows(
-                _Html($teamRole->team->team_name),
-            ),
+            _Html($teamRole->roleRelation->name)->class('font-semibold'),
+            $teamRole->team->getFullInfoTableElement(),
             _Html($teamRole->created_at->format('d/m/Y')),
-            _Html($teamRole->status ?? 'status'),
+            $teamRole->statusPill(),
 
             _TripleDotsDropdown(
-
+                !$teamRole->status->canBeFinished() ? null : _Link('translate.terminate')->class('py-1 px-3')->selfPost('terminateRole', ['team_role_id' => $teamRole->id])->refresh(),
             ),
         );
+    }
+
+    public function terminateRole($teamRoleId)
+    {
+        $teamRole = TeamRole::findOrFail($teamRoleId);
+        $teamRole->delete();
     }
 
     public function getAssignRoleModal()

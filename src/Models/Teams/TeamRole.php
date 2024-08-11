@@ -140,6 +140,11 @@ class TeamRole extends Model
         return $this->role_hierarchy->accessGrantBelow();
     }
 
+    public function getStatusAttribute()
+    {
+        return TeamRoleStatusEnum::getFromTeamRole($this);
+    }
+
     /* ACTIONS */
 
     /* ELEMENTS */
@@ -176,5 +181,10 @@ class TeamRole extends Model
     public static function roleHierarchyOptions()
     {
         return RoleHierarchyEnum::optionsWithLabels();
+    }
+
+    public function statusPill()
+    {
+        return _Pill($this->status->label())->class($this->status->color());
     }
 }

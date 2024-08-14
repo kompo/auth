@@ -43,7 +43,7 @@ function _CheckboxMultipleStates($name, $values = [], $colors = [], $default = n
 
     return _LinkGroup()->name($name, false)->options($parsedOptions->toArray())
         ->containerClass('')->selectedClass('x', '')
-        ->default($default)
+        ->when($default, fn($el) => $el->default($default))
         ->onChange(fn($e) => $e->run('() => {changeLinkGroupColor("'. $name .'")}'));
 
 }

@@ -40,7 +40,7 @@ class PermissionSectionRolesTable extends Table
             ...getRoles()->map(function ($role) {
                 return _Panel(
                     $this->sectionCheckbox($role),
-                )->id('role-permission-section-'.$role->id.'-'.$this->permissionSectionId);
+                )->id($this->getPermissionSectionPanelKey($role, $this->permissionSection));
             }),
         )->class('bg-level4 roles-manager-rows')->class('button-toggle' . $this->permissionSectionId)
             ->run('() => { toggleSubGroup('.$this->permissionSectionId.', "") }')->class('hover:bg-level4 cursor-pointer');
@@ -62,8 +62,8 @@ class PermissionSectionRolesTable extends Table
                         $role->permissions->first(fn($p) => $p->id == $permission->id)?->pivot?->permission_type
                     )->class('!mb-0')
                     ->onChange(fn($e) => $e
-                        ->selfPost('changeRolePermission', ['role' => $role->id, 'permission' => $permission->id])
-                        ->selfGet('sectionCheckbox', ['role' => $role->id])->inPanel('role-permission-section-'.$role->id.'-'.$this->permissionSectionId)
+                        ->selfPost('changeRolePermission', ['role' => $role->id, 'permission' => $permission->id]) && 
+                        $e->selfGet('sectionCheckbox', ['role' => $role->id])->inPanel($this->getPermissionSectionPanelKey($role, $this->permissionSection))
                     ) ;
             }),
         )->class('roles-manager-rows');
@@ -121,5 +121,10 @@ class PermissionSectionRolesTable extends Table
         } 
 
         $role->createOrUpdatePermission(request('permission'), $value);
+    }
+
+    protected function getPermissionSectionPanelKey($role, $permissionSection)
+    {
+        return 'role-permission-section-'.$role->id.'-'.$permissionSection->id;
     }
 }

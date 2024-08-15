@@ -34,6 +34,11 @@ trait HasTeamsTrait
     	return $this->hasMany(TeamRole::class);
     }
 
+    public function activeTeamRoles()
+    {
+        return $this->teamRoles()->whereHas('team', fn($q) => $q->active());
+    }
+
     /* SCOPES */
     
 
@@ -213,9 +218,18 @@ trait HasTeamsTrait
     }
 
     /* PERMISSIONS */
-    public function hasPermission($permissionKey, PermissionTypeEnum $type = PermissionTypeEnum::ALL)
+    public function hasPermission($permissionKey, PermissionTypeEnum $type = PermissionTypeEnum::ALL, $teamId = null)
     {
-        return $this->getCurrentPermissionKeys()->first(fn($key) => $permissionKey == getPermissionKey($key) && PermissionTypeEnum::hasPermission(getPermissionType($key), $type));
+        $permissionsList = $teamId ? $this->getCurrentPermissionKeysInTeam($teamId) : $this->getCurrentPermissionKeys();
+
+        return $permissionsList->first(fn($key) => $permissionKey == getPermissionKey($key) && PermissionTypeEnum::hasPermission(getPermissionType($key), $type));
+    }
+
+    public function getCurrentPermissionKeysInTeam($teamId)
+    {
+        return \Cache::remember('currentPermissionKeys'.$this->id . '|' . $teamId, 120,
+            fn() => TeamRole::getAllPermissionsKeysForMultipleRoles($this->activeTeamRoles->filter(fn($tr) => $tr->hasAccessToTeam($teamId))),
+        );
     }
 
     public function getCurrentPermissionKeys()

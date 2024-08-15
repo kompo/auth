@@ -79,6 +79,21 @@ class TeamRole extends Model
             )->distinct()->pluck('permission_key');
     }
 
+    public static function getAllPermissionsKeysForMultipleRoles($teamRoles)
+    {
+        if (!$teamRoles->count()) {
+            return collect([]);
+        }
+
+        return Permission::selectRaw('permission_key')
+                ->whereIn('permissions.id', 
+                    $teamRoles->reduce(fn($acc, $teamRole) => $acc->union($teamRole->validPermissionsQuery()), $teamRoles[0]->validPermissionsQuery())->select('permissions.id')
+                )
+                ->whereNotIn('permissions.id', 
+                    $teamRoles->reduce(fn($acc, $teamRole) => $acc->union($teamRole->deniedPermissionsQuery()), $teamRoles[0]->deniedPermissionsQuery())->select('permissions.id')
+                )->distinct()->pluck('permission_key');
+    }
+
     /* CALCULATED FIELDS */
     public function getRoleName()
     {
@@ -151,9 +166,42 @@ class TeamRole extends Model
         return $this->role_hierarchy->accessGrantBelow();
     }
 
+    public function getRoleHierarchyAccessNeighbors()
+    {
+        return $this->role_hierarchy->accessGrantNeighbours();
+    }
+
     public function getStatusAttribute()
     {
         return TeamRoleStatusEnum::getFromTeamRole($this);
+    }
+
+    public function getAllTeamsWithAccess()
+    {
+        $teams = collect([$this->team->id]);
+
+        if ($this->getRoleHierarchyAccessBelow()) {
+            $teams = $teams->concat($this->team->getAllChildrenRawSolution());
+        }
+
+        if ($this->getRoleHierarchyAccessNeighbors()) {
+            $teams = $teams->concat($this->team->parentTeam->teams()->pluck('id'));
+        }
+
+        return $teams;
+    }
+
+    public function hasAccessToTeam($teamId)
+    {
+        if ($this->getRoleHierarchyAccessBelow() && $this->team->hasChildrenIdRawSolution($teamId)) {
+            return true;
+        }
+
+        if ($this->getRoleHierarchyAccessNeighbors() && $this->team->parentTeam->teams()->where('id', $teamId)->exists()) {
+            return true;
+        }
+
+        return false;
     }
 
     /* ACTIONS */

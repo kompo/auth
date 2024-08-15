@@ -80,6 +80,14 @@ class Team extends Model
         return null;
     }
 
+    public function getFullInfoTableElement()
+    {
+        return _Rows(
+            _Html($this->team_name)->class('font-semibold'),
+            _Html($this->getParentTeams()->pluck('team_name')->implode('<br>'))->class('text-sm text-gray-500'),
+        );
+    }
+
     /* SCOPES */
     public function scopeForParentTeam($query, $teamIdOrIds)
     {

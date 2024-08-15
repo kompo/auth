@@ -13,6 +13,6 @@ class FileModel extends Facade
     
     protected static function getFacadeAccessor()
     {
-        return FILE_MODEL_KEY;   
+        return FILE_MODEL_KEY;
     }
 }

@@ -5,9 +5,26 @@
     max-height: 80vh;
 }
 
+.select-over-modal {
+    --select-translate: 0px;
+    --select-width: 200px;
+}
+
 .select-over-modal .vlOptions{
     position: fixed;
     left: auto !important;
     width: auto !important;
     top: 0px;
+
+    transform: translateY(var(--select-translate)) !important;
+    width: var(--select-width) !important;
+}
+
+.roles-manager-rows>*:nth-child(1) {
+    flex: 2 1 0%;
+}
+
+.roles-manager-rows>* {
+    flex: 1 1 0%;
+    @apply p-3;
 }

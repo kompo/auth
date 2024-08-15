@@ -1,6 +1,10 @@
 <?php 
 
 /* GENERAL CONVENTIONS */
+
+use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+use Kompo\Auth\Models\Teams\Roles\Role;
+
 if(!function_exists('authUser')) {
 	function authUser()
 	{
@@ -36,4 +40,33 @@ if(!function_exists('isImpersonated')) {
 	{
 		return authUser()?->isImpersonated();
 	}
+}
+
+
+function getRoles()
+{
+	return \Cache::remember('roles', 180, function () {
+		return Role::all();
+	});
+}
+
+const PERMISSION_SEPARATOR = ':';
+
+function parsePermissionKey($permissionKey, PermissionTypeEnum $permissionType)
+{
+	return $permissionType->value . PERMISSION_SEPARATOR . $permissionKey;
+}
+
+function getPermissionKey($permissionKey)
+{
+	return substr($permissionKey, 2);
+}
+
+function getPermissionType($permissionKey)
+{
+	return PermissionTypeEnum::from((int) substr($permissionKey, 0, 1));
+}
+
+function getPermissionKeySql($pivotTable){
+	return "CONCAT($pivotTable.permission_type, '" . PERMISSION_SEPARATOR . "', permission_key) as permission_key";
 }

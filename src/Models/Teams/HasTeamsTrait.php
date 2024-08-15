@@ -213,15 +213,15 @@ trait HasTeamsTrait
     }
 
     /* PERMISSIONS */
-    public function hasPermission($permissionKey)
+    public function hasPermission($permissionKey, PermissionTypeEnum $type = PermissionTypeEnum::ALL)
     {
-        return $this->getCurrentPermissionKeys()->contains($permissionKey);
+        return $this->getCurrentPermissionKeys()->first(fn($key) => $permissionKey == getPermissionKey($key) && PermissionTypeEnum::hasPermission(getPermissionType($key), $type));
     }
 
     public function getCurrentPermissionKeys()
     {
         return \Cache::remember('currentPermissionKeys'.$this->id, 120,
-            fn() => $this->currentTeamRole->permissions()->pluck('permission_key')
+            fn() => $this->currentTeamRole->getAllPermissionsKeys()
         );
     }
 

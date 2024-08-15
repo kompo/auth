@@ -11,11 +11,10 @@ class FileFileableForm extends Form
 
     protected $defaultType;
     protected $defaultId;
+    public $model = FileModel::class;
 
     public function created()
     {
-        $this->model(FileModel::getClass());
-
         $this->defaultType = $this->model->fileable_type ?: collect(FileModel::typesOptions())->keys()->first();
         $this->defaultId = $this->model->fileable_id;
     }

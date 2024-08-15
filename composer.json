@@ -7,7 +7,6 @@
             "Kompo\\Auth\\": "src/"
         }
     },
-    "minimum-stability": "stable",
     "require": {
         "php": "^7.3|^8.0",
         "laravel/framework": ">=5.6.0",
@@ -18,7 +17,8 @@
         "spatie/laravel-backup": "^8.1",
         "spatie/laravel-mail-preview": "^6.0",
         "laravel/socialite": "^5.12",
-        "socialiteproviders/microsoft-azure": "^5.2"
+        "socialiteproviders/microsoft-azure": "^5.2",
+        "maatwebsite/excel": "^3.1"
     },
     "extra": {
         "laravel": {

@@ -14,11 +14,7 @@ class FileUploadModalManager extends Modal
 	protected $_Icon = 'document-text';
 
     protected $noHeaderButtons = true;
-
-    public function created()
-    {
-        $this->model(FileModel::getClass());
-    }
+    public $model = FileModel::class;
 
 	public function handle()
     {

@@ -38,6 +38,10 @@ Route::layout('layouts.guest')->middleware(['guest:web'])->group(function(){
 	
 });
 
+Route::middleware(['signed'])->group(function(){
+    Route::get('report-download/{filename}', Kompo\Auth\Http\Controllers\ReportDownloadController::class)->name('report.download');
+});
+
 
 //TEAMS
 Route::middleware(['signed', 'throttle:10,1'])->group(function(){
@@ -55,6 +59,8 @@ Route::layout('layouts.dashboard')->middleware(['auth'])->group(function(){
 
 	Route::get('teams/manage', Kompo\Auth\Teams\TeamManagementPage::class)->name('teams.manage');
 	Route::get('user/manage/{id?}', Kompo\Auth\Teams\UserRolesAndPermissionsPage::class)->name('user.manage');
+
+	Route::get('roles/manage', Kompo\Auth\Teams\Roles\RolesManager::class)->name('roles.manage');
 
 });
 

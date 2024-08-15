@@ -2,16 +2,14 @@
 
 namespace Kompo\Auth\Facades;
 
-use Illuminate\Support\Facades\Facade;
+use Kompo\Komponents\Form\KompoModelFacade;
 
 /**
  * @mixin \Kompo\Auth\Models\Notes\Note
  */
-class NoteModel extends Facade
+class NoteModel extends KompoModelFacade
 {
-    use FacadeUtils;
-
-    protected static function getFacadeAccessor()
+    protected static function getModelBindKey()
     {
         return 'note-model';
     }

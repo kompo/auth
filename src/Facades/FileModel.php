@@ -2,17 +2,15 @@
 
 namespace Kompo\Auth\Facades;
 
-use Illuminate\Support\Facades\Facade;
+use Kompo\Komponents\Form\KompoModelFacade;
 
 /**
  * @mixin \Kompo\Auth\Models\Files\File
  */
-class FileModel extends Facade
+class FileModel extends KompoModelFacade
 {
-    use FacadeUtils;
-    
-    protected static function getFacadeAccessor()
+    protected static function getModelBindKey()
     {
-        return FILE_MODEL_KEY;   
+        return FILE_MODEL_KEY;
     }
 }

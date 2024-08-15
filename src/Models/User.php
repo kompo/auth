@@ -57,6 +57,17 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
+    public static function booted()
+    {
+        static::addGlobalScope('withoutBlocked', function ($builder) {
+            $builder->whereNull('blocked_at');
+        });
+
+        static::addGlobalScope('withoutBanned', function ($builder) {
+            $builder->whereNull('banned_at');
+        });
+    }
+
     /* SCOPES */
     public function scopeHasNameLike($query, $search)
     {
@@ -94,6 +105,30 @@ class User extends Authenticatable
         request()->session()->regenerateToken();
 
         return redirect()->to('/');
+    }
+
+    public function block()
+    {
+        $this->blocked_at = now();
+        $this->save();
+    }
+
+    public function unblock()
+    {
+        $this->blocked_at = null;
+        $this->save();
+    }
+
+    public function ban()
+    {
+        $this->banned_at = now();
+        $this->save();
+    }
+
+    public function unban()
+    {
+        $this->banned_at = null;
+        $this->save();
     }
 
     /* IMPERSONATE PACKAGE */

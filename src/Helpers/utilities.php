@@ -2,6 +2,24 @@
 
 use \Kompo\Elements\Element;
 
+Kompo\Elements\Layout::macro('applyToAllElements', function($callback, $exlude = []) {
+	$this->elements = collect($this->elements)->map(function($el, $i) use ($callback, $exlude) {
+		if(!in_array($i, $exlude)) {
+			return $callback($el);
+		}
+
+		return $el;
+	})->all();
+
+	return $this;
+});
+
+Kompo\Elements\Layout::macro('stopPropagation', function() {
+	return $this->attr([
+		'onclick' => 'event.stopPropagation()',
+	]);
+});
+
 /* Transformers */
 if(!function_exists('tinyintToBool')) {
 	function tinyintToBool($value): string
@@ -71,4 +89,37 @@ if(!function_exists('isKompoEl')) {
 	}
 }
 
+if (!function_exists('getAppClass')) {
+	function getAppClass($namespaceInApp, $defaultNamespace = null)
+	{
+		if (class_exists($namespaceInApp)) {
+			return $namespaceInApp;
+		}
 
+		return $defaultNamespace;
+	}
+}
+
+/* URIS */
+if (!function_exists('getPushParameterFn')) {
+	function getPushParameterFn($parameter, $value, $valueInJs = false)
+	{		
+		$getActualTabFn = <<<javascript
+			function getActualTab(id = null)
+			{
+				return [...document.querySelector((id ? '#' + id + ' ' : '') + ".vlTabContent").children].findIndex((c) => !c.getAttribute("aria-hidden"));
+			}
+		javascript;
+
+		$regexParam = "/(&|\?)$parameter=[^&]*/";
+	
+		if ($valueInJs) {
+			$value = '${' . $value . '}';
+		}
+	
+		$fn = '() => {'. $getActualTabFn . ' const hrefWithoutActualParam = location.href.replace('. $regexParam.', ""); const charToAppend = hrefWithoutActualParam.indexOf("?") == -1 ? "?" : "&"; window.history.pushState(null, null, `${hrefWithoutActualParam}${charToAppend}'
+		. $parameter . '=' . $value . '`);}';
+	
+		return $fn;
+	}
+}

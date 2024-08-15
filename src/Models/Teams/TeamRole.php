@@ -1,12 +1,12 @@
 <?php
 
 namespace Kompo\Auth\Models\Teams;
-use App\Models\User;
+
+use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Models\Model;
 use Kompo\Auth\Models\Teams\BaseRoles\SuperAdminRole;
 use Kompo\Auth\Models\Teams\BaseRoles\TeamOwnerRole;
 use Kompo\Auth\Models\Teams\Permission;
-use Kompo\Auth\Models\Teams\Roles\Role;
 
 class TeamRole extends Model
 {
@@ -18,6 +18,17 @@ class TeamRole extends Model
     protected $casts = [
         'role_hierarchy' => RoleHierarchyEnum::class,
     ];
+
+    public static function booted()
+    {
+        static::addGlobalScope('withoutTerminated', function ($builder) {
+            $builder->whereNull('terminated_at');
+        });
+
+        static::addGlobalScope('withoutSuspended', function ($builder) {
+            $builder->whereNull('suspended_at');
+        });
+    }
 
     /* RELATIONS */
     public function permissions()
@@ -37,7 +48,7 @@ class TeamRole extends Model
 
     public function roleRelation()
     {
-        return $this->belongsTo(Role::class, 'role');
+        return $this->belongsTo(RoleModel::getClass(), 'role');
     }
 
     /* SCOPES */
@@ -146,6 +157,23 @@ class TeamRole extends Model
     }
 
     /* ACTIONS */
+    public function terminate()
+    {
+        $this->terminated_at = now();
+        $this->save();
+    }
+
+    public function suspend()
+    {
+        $this->suspended_at = now();
+        $this->save();
+    }
+
+    public function removeSuspention()
+    {
+        $this->suspended_at = null;
+        $this->save();
+    }
 
     /* ELEMENTS */
     public static function buttonGroupField($label = 'Role')

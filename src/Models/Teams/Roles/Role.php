@@ -30,16 +30,6 @@ class Role extends Model
         return $this->permissions()->wherePivot('permission_type', PermissionTypeEnum::DENY);
     }
 
-    public function getTeamLevels()
-    {
-        return $this->allowedTeamLevels()->pluck('team_level');
-    }
-
-    public function allowedTeamLevels()
-    {
-        return $this->hasMany(RoleTeamLevel::class, 'role');
-    }
-
     // CALCULATED FIELDS 
     public function getFirstPermissionTypeOfSection($sectionId)
     {
@@ -47,20 +37,8 @@ class Role extends Model
     }
 
     // SCOPES
-    public function scopeForTeamLevel($query, $teamLevel)
-    {
-        return $query->whereHas('allowedTeamLevels', fn($q) => $q->where('team_level', $teamLevel));
-    }
 
     // ACTIONS
-    public function assignTeamLevels($teamLevels)
-    {
-        $this->allowedTeamLevels()->delete();
-
-        $this->allowedTeamLevels()->createMany(
-            collect($teamLevels)->map(fn($level) => ['team_level' => $level])
-        );
-    }
 
     public function createOrUpdatePermission($permissionId, $value)
     {

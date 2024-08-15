@@ -37,7 +37,11 @@ enum TeamRoleStatusEnum: int {
 
     public static function getFromTeamRole($teamRole)
     {
-        if ($teamRole->deleted_at) {
+        if ($teamRole->suspended_at) {
+            return self::SUSPENDED;
+        }
+        
+        if ($teamRole->terminated_at) {
             return self::FINISHED;
         }
 

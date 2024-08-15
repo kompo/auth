@@ -44,7 +44,7 @@ class RolesManager extends Table
 
     public function getRoleForm($id = null)
     {
-        return new RoleForm($id);
+        return new (config('kompo-auth.role-form-namespace'))($id);
     }
 
     public function js()

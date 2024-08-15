@@ -32,7 +32,7 @@ class UserRolesTable extends WhiteTable
 
     public function query()
     {
-        return $this->user->teamRoles()->withTrashed()->orderBy('deleted_at', 'asc')->orderBy('created_at', 'desc')->get();
+        return $this->user->teamRoles();
     }
 
     public function headers()
@@ -67,7 +67,7 @@ class UserRolesTable extends WhiteTable
 
     public function getAssignRoleModal()
     {
-        return new AssignRoleModal(null, [
+        return new (config('kompo-auth.assign-role-modal-namespace'))(null, [
             'user_id' => $this->userId,
         ]);
     }

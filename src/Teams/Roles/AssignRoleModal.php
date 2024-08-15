@@ -3,9 +3,9 @@
 namespace Kompo\Auth\Teams\Roles;
 
 use Kompo\Auth\Common\Modal;
+use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Facades\TeamModel;
 use Kompo\Auth\Models\Teams\RoleHierarchyEnum;
-use Kompo\Auth\Models\Teams\Roles\Role;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Models\User;
 
@@ -17,6 +17,7 @@ class AssignRoleModal extends Modal
 
     protected $defaultTeamId = null;
     protected $defaultUserId = null;
+    protected $refreshId = UserRolesTable::ID;
 
     public function created()
     {
@@ -47,7 +48,7 @@ class AssignRoleModal extends Modal
                 ->when($this->defaultTeamId, fn($el) => $el->disabled()->value($this->defaultTeamId)
                     ->options([$this->defaultTeamId => TeamModel::findOrFail($this->defaultTeamId)->team_name])
                 )
-                ->onChange(fn($e) => $e->selfGet('getRolesByLevel')->inPanel('roles-select-panel'))
+                ->onChange(fn($e) => $e->selfGet('getRolesByTeam')->inPanel('roles-select-panel'))
                 ->overModal('select-team'),
 
             _Select('translate.user')->name('user_id')
@@ -67,17 +68,17 @@ class AssignRoleModal extends Modal
 
             _Flex(
                 !$this->model->id ? null : _DeleteButton('translate.delete-assignation')->outlined()->byKey($this->model)->class('w-full'),
-                _SubmitButton('translate.save-assignation')->closeModal()->refresh(UserRolesTable::ID)->class('w-full'),
+                _SubmitButton('translate.save-assignation')->closeModal()->refresh($this->refreshId)->class('w-full'),
             )->class('gap-4')
         );
     }
 
-    public function getRolesByLevel($teamId)
+    public function getRolesByTeam($teamId)
     {
         $team = TeamModel::findOrFail($teamId);
         
         return _Select('translate.role')->name('role')
-            ->options(Role::forTeamLevel($team->team_level)->pluck('name', 'id')->toArray())
+            ->options(RoleModel::all()->pluck('name', 'id')->toArray())
             ->overModal('select-role');
     }
 

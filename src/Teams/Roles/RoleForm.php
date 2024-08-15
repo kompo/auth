@@ -3,9 +3,8 @@
 namespace Kompo\Auth\Teams\Roles;
 
 use Kompo\Auth\Common\Modal;
-use App\Models\Teams\TeamLevelEnum;
+use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Models\Teams\ProfileEnum;
-use Kompo\Auth\Models\Teams\Roles\Role;
 
 class RoleForm extends Modal
 {
@@ -14,7 +13,7 @@ class RoleForm extends Modal
 
     public $class = 'min-w-96';
 
-    public $model = Role::class;
+    public $model = RoleModel::class;
 
     public function beforeSave()
     {
@@ -32,10 +31,8 @@ class RoleForm extends Modal
             _Input('translate.role-name')->name('name')->required(),
             _Textarea('translate.role-description')->name('description'),
             _Image('translate.role-icon')->name('icon'),
-            _MultiSelect('translate.role-team-levels')->name('team_levels', false)->options(
-                TeamLevelEnum::optionsWithLabels(),
-            )->default($this->model->allowedTeamLevels->pluck('team_level')->toArray())
-            ->overModal('team-levels'),
+
+            _Rows($this->extraFields()),
 
             _Select('translate.profile')->name('profile')->options(
                 ProfileEnum::optionsWithLabels(),
@@ -53,5 +50,10 @@ class RoleForm extends Modal
             
             // _Input('Role Permissions')->name('role_permissions')->required(),
         );
+    }
+
+    protected function extraFields()
+    {
+        return null;
     }
 }

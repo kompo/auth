@@ -172,7 +172,7 @@ trait HasTeamsTrait
         try {
             \Cache::put('currentTeamRole'.$this->id, $currentTeamRole, 120);
             \Cache::put('currentTeam'.$this->id, $currentTeamRole->team, 120);
-            \Cache::put('currentPermissions'.$this->id, $currentTeamRole->permissions()->pluck('permission_key'), 120);            
+            \Cache::put('currentPermissions'.$this->id, $currentTeamRole->permissions()->pluck('complex_permission_key'), 120);            
         } catch (\Throwable $e) {
             \Log::info('Failed writing roles and permissions to cache '.$e->getMessage());
         }
@@ -229,9 +229,8 @@ trait HasTeamsTrait
     {
         return \Cache::remember('teamsWithPermission'.$this->id . '|' . $permissionKey . '|' . $type->value, 120,
             fn() => $this->activeTeamRoles->filter(function($teamRole) use ($permissionKey, $type) {
-                return $teamRole->getAllPermissionsKeys()->first(fn($pk) => getPermissionKey($pk) == TeamRole::getAllPermissionsKeysForMultipleRolesQuery($this->activeTeamRoles)
-                    ->where('permission_key', $permissionKey)
-                    ->first()?->permission_key && PermissionTypeEnum::hasPermission(getPermissionType($pk), $type));
+                return $teamRole->getAllPermissionsKeys()->first(fn($pk) => getPermissionKey($pk) == Permission::whereIn('permissions.id', TeamRole::getAllPermissionsKeysForMultipleRolesQuery($this->activeTeamRoles)
+                ->pluck('id'))->where('permission_key', $permissionKey)->first()?->permission_key && PermissionTypeEnum::hasPermission(getPermissionType($pk), $type));
             })->reduce(fn($carry, $item) => $carry->concat($item->getAllTeamsWithAccess()), collect([]))
         );
     }

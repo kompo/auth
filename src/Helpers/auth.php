@@ -157,7 +157,7 @@ if(!function_exists('currentPermissions')) {
         }
 
         return \Cache::remember('currentPermissions'.auth()->id(), 120,
-            fn() => auth()->user()->currentTeamRole->permissions()->pluck('permission_key')
+            fn() => auth()->user()->currentTeamRole->permissions()->pluck('complex_permission_key')
         );
     }
 }

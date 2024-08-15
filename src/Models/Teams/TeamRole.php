@@ -59,8 +59,8 @@ class TeamRole extends Model
 
     public function validPermissionsQuery()
     {
-        return $this->validPermissions()->selectRaw(getPermissionKeySql('permission_team_role'))
-            ->union($this->roleRelation->validPermissions()->selectRaw(getPermissionKeySql('permission_role'))
+        return $this->validPermissions()->selectRaw(constructComplexPermissionKeySql('permission_team_role'). ', permission_key, permissions.id')
+            ->union($this->roleRelation->validPermissions()->selectRaw(constructComplexPermissionKeySql('permission_role'). ', permission_key, permissions.id')
         );
     }
 
@@ -82,7 +82,7 @@ class TeamRole extends Model
     public function getAllPermissionsKeys()
     {
         return \Cache::remember('teamRolePermissions'.$this->id, 180, 
-            fn() => $this->getAllPermissionsKeysQuery()->pluck('permission_key')
+            fn() => $this->getAllPermissionsKeysQuery()->pluck('complex_permission_key')
         );
     }
 
@@ -92,18 +92,15 @@ class TeamRole extends Model
             return Permission::whereRaw('1=0');
         }
 
-        return Permission::selectRaw('permission_key')
-                ->whereIn('permissions.id', 
-                    $teamRoles->reduce(fn($acc, $teamRole) => $acc->union($teamRole->validPermissionsQuery()), $teamRoles[0]->validPermissionsQuery())->select('permissions.id')
-                )
+        return $teamRoles->reduce(fn($acc, $teamRole) => $acc->union($teamRole->validPermissionsQuery()), $teamRoles[0]->validPermissionsQuery())
                 ->whereNotIn('permissions.id', 
                     $teamRoles->reduce(fn($acc, $teamRole) => $acc->union($teamRole->deniedPermissionsQuery()), $teamRoles[0]->deniedPermissionsQuery())->select('permissions.id')
-                )->distinct();
+                )->distinct('complex_permission_key');
     }
 
     public static function getAllPermissionsKeysForMultipleRoles($teamRoles)
     {
-        return static::getAllPermissionsKeysForMultipleRolesQuery($teamRoles)->pluck('permission_key');
+        return static::getAllPermissionsKeysForMultipleRolesQuery($teamRoles)->pluck('complex_permission_key');
     }
 
     /* CALCULATED FIELDS */

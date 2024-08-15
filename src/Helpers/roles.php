@@ -67,6 +67,6 @@ function getPermissionType($permissionKey)
 	return PermissionTypeEnum::from((int) substr($permissionKey, 0, 1));
 }
 
-function getPermissionKeySql($pivotTable){
-	return "CONCAT($pivotTable.permission_type, '" . PERMISSION_SEPARATOR . "', permission_key) as permission_key";
+function constructComplexPermissionKeySql($pivotTable){
+	return "CONCAT($pivotTable.permission_type, '" . PERMISSION_SEPARATOR . "', permission_key) as complex_permission_key";
 }

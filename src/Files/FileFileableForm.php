@@ -11,7 +11,7 @@ class FileFileableForm extends Form
 
     protected $defaultType;
     protected $defaultId;
-    protected $model = FileModel::class;
+    public $model = FileModel::class;
 
     public function created()
     {

@@ -175,6 +175,11 @@ class TeamRole extends Model
         $this->save();
     }
 
+    public function deleteAsignation()
+    {
+        $this->delete();
+    }
+
     /* ELEMENTS */
     public static function buttonGroupField($label = 'Role')
     {

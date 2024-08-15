@@ -9,7 +9,7 @@ class FileActionsModal extends Modal
 {
     protected $_Title = 'auth-files-actions';
     protected $noHeaderButtons = true;
-    protected $model = FileModel::class;
+    public $model = FileModel::class;
 
     public function body()
     {

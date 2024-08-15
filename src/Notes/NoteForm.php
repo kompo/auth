@@ -13,7 +13,7 @@ class NoteForm extends Modal
     public $_Title = 'notes.note';
 
     protected $noHeaderButtons = true;
-    protected $model = NoteModel::class;
+    public $model = NoteModel::class;
 
     protected $notableType = \App\Models\User::class;
     protected $notableId;

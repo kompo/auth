@@ -34,9 +34,9 @@ class Note extends Model
         return $query->where('notable_id', $notableId);
     }
 
-    public function scopeForTeam($query, $team)
+	public function scopeForTeam($query, $team = null)
     {
-        return $query->where('team_id', $team->id);
+        return $query->where('team_id', $team?->id ?? currentTeamId());
     }
 
     /* ACTIONS */

@@ -1,7 +1,8 @@
 <?php
 
 namespace Kompo\Auth\Models\Teams;
-use App\Models\User;
+
+use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Models\Model;
 use Kompo\Auth\Models\Teams\BaseRoles\SuperAdminRole;
 use Kompo\Auth\Models\Teams\BaseRoles\TeamOwnerRole;
@@ -18,16 +19,88 @@ class TeamRole extends Model
         'role_hierarchy' => RoleHierarchyEnum::class,
     ];
 
+    public static function booted()
+    {
+        static::addGlobalScope('withoutTerminated', function ($builder) {
+            $builder->whereNull('terminated_at');
+        });
+
+        static::addGlobalScope('withoutSuspended', function ($builder) {
+            $builder->whereNull('suspended_at');
+        });
+    }
+
     /* RELATIONS */
     public function permissions()
     {
-        return $this->belongsToMany(Permission::class);
+        return $this->belongsToMany(Permission::class)->withPivot('permission_type');
+    }
+
+    public function validPermissions()
+    {
+        return $this->permissions()->wherePivot('permission_type', '!=', PermissionTypeEnum::DENY);
+    }
+
+    public function deniedPermissions()
+    {
+        return $this->permissions()->wherePivot('permission_type', PermissionTypeEnum::DENY);
+    }
+
+    public function roleRelation()
+    {
+        return $this->belongsTo(RoleModel::getClass(), 'role');
     }
 
     /* SCOPES */
     public function scopeRelatedToTeam($query, $teamId = null)
     {
         $query->when($teamId, fn($q) => $q->where('team_id', $teamId));
+    }
+
+    public function validPermissionsQuery()
+    {
+        return $this->validPermissions()->selectRaw(constructComplexPermissionKeySql('permission_team_role'). ', permission_key, permissions.id')
+            ->union($this->roleRelation->validPermissions()->selectRaw(constructComplexPermissionKeySql('permission_role'). ', permission_key, permissions.id')
+        );
+    }
+
+    public function deniedPermissionsQuery()
+    {
+        return $this->deniedPermissions()->select('permissions.id')
+            ->union($this->roleRelation->deniedPermissions()->select('permissions.id')
+        );
+    }
+
+    public function getAllPermissionsKeysQuery()
+    {
+        return $this->validPermissionsQuery()
+            ->whereNotIn('permissions.id', 
+                $this->deniedPermissionsQuery()->pluck('permissions.id')
+            )->distinct();
+    }
+
+    public function getAllPermissionsKeys()
+    {
+        return \Cache::remember('teamRolePermissions'.$this->id, 180, 
+            fn() => $this->getAllPermissionsKeysQuery()->pluck('complex_permission_key')
+        );
+    }
+
+    public static function getAllPermissionsKeysForMultipleRolesQuery($teamRoles)
+    {
+        if (!$teamRoles->count()) {
+            return Permission::whereRaw('1=0');
+        }
+
+        return $teamRoles->reduce(fn($acc, $teamRole) => $acc->union($teamRole->validPermissionsQuery()), $teamRoles[0]->validPermissionsQuery())
+                ->whereNotIn('permissions.id', 
+                    $teamRoles->reduce(fn($acc, $teamRole) => $acc->union($teamRole->deniedPermissionsQuery()), $teamRoles[0]->deniedPermissionsQuery())->select('permissions.id')
+                )->distinct('complex_permission_key');
+    }
+
+    public static function getAllPermissionsKeysForMultipleRoles($teamRoles)
+    {
+        return static::getAllPermissionsKeysForMultipleRolesQuery($teamRoles)->pluck('complex_permission_key');
     }
 
     /* CALCULATED FIELDS */
@@ -102,7 +175,67 @@ class TeamRole extends Model
         return $this->role_hierarchy->accessGrantBelow();
     }
 
+    public function getRoleHierarchyAccessNeighbors()
+    {
+        return $this->role_hierarchy->accessGrantNeighbours();
+    }
+
+    public function getStatusAttribute()
+    {
+        return TeamRoleStatusEnum::getFromTeamRole($this);
+    }
+
+    public function getAllTeamsWithAccess()
+    {
+        $teams = collect([$this->team->id]);
+
+        if ($this->getRoleHierarchyAccessBelow()) {
+            $teams = $teams->concat($this->team->getAllChildrenRawSolution());
+        }
+
+        if ($this->getRoleHierarchyAccessNeighbors()) {
+            $teams = $teams->concat($this->team->parentTeam?->teams()?->pluck('id') ?: []);
+        }
+
+        return $teams;
+    }
+
+    public function hasAccessToTeam($teamId)
+    {
+        if ($this->getRoleHierarchyAccessBelow() && $this->team->hasChildrenIdRawSolution($teamId)) {
+            return true;
+        }
+
+        if ($this->getRoleHierarchyAccessNeighbors() && $this->team->parentTeam->teams()->where('id', $teamId)->exists()) {
+            return true;
+        }
+
+        return false;
+    }
+
     /* ACTIONS */
+    public function terminate()
+    {
+        $this->terminated_at = now();
+        $this->save();
+    }
+
+    public function suspend()
+    {
+        $this->suspended_at = now();
+        $this->save();
+    }
+
+    public function removeSuspention()
+    {
+        $this->suspended_at = null;
+        $this->save();
+    }
+
+    public function deleteAsignation()
+    {
+        $this->delete();
+    }
 
     /* ELEMENTS */
     public static function buttonGroupField($label = 'Role')
@@ -138,5 +271,10 @@ class TeamRole extends Model
     public static function roleHierarchyOptions()
     {
         return RoleHierarchyEnum::optionsWithLabels();
+    }
+
+    public function statusPill()
+    {
+        return _Pill($this->status->label())->class($this->status->color());
     }
 }

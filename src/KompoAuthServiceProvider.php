@@ -2,6 +2,7 @@
 
 namespace Kompo\Auth;
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -58,6 +59,9 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->loadListeners();
 
         $this->loadMiddlewares();
+
+        $this->loadCommands();
+        $this->loadCrons();
     }
 
     /**
@@ -82,6 +86,14 @@ class KompoAuthServiceProvider extends ServiceProvider
 
         $this->app->bind('note-model', function () {
             return new (config('kompo-auth.note-model-namespace'));
+        });
+
+        $this->app->bind('team-model', function () {
+            return new (config('kompo-auth.team-model-namespace'));
+        });
+
+        $this->app->bind('role-model', function () {
+            return new (config('kompo-auth.role-model-namespace'));
         });
     }
 
@@ -150,5 +162,17 @@ class KompoAuthServiceProvider extends ServiceProvider
     protected function loadMiddlewares()
     {
         $this->app['router']->aliasMiddleware('sso.validate-driver', \Kompo\Auth\Http\Middleware\ValidateSsoDriver::class);
+    }
+
+    protected function loadCommands()
+    {
+        // $this->commands([
+
+        // ]);
+    }
+
+    protected function loadCrons()
+    {
+        $schedule = $this->app->make(Schedule::class);
     }
 }

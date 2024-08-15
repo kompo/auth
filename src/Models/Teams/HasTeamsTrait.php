@@ -34,6 +34,11 @@ trait HasTeamsTrait
     	return $this->hasMany(TeamRole::class);
     }
 
+    public function activeTeamRoles()
+    {
+        return $this->teamRoles()->whereHas('team', fn($q) => $q->active());
+    }
+
     /* SCOPES */
     
 
@@ -167,7 +172,7 @@ trait HasTeamsTrait
         try {
             \Cache::put('currentTeamRole'.$this->id, $currentTeamRole, 120);
             \Cache::put('currentTeam'.$this->id, $currentTeamRole->team, 120);
-            \Cache::put('currentPermissions'.$this->id, $currentTeamRole->permissions()->pluck('permission_key'), 120);            
+            \Cache::put('currentPermissions'.$this->id, $currentTeamRole->permissions()->pluck('complex_permission_key'), 120);            
         } catch (\Throwable $e) {
             \Log::info('Failed writing roles and permissions to cache '.$e->getMessage());
         }
@@ -213,16 +218,40 @@ trait HasTeamsTrait
     }
 
     /* PERMISSIONS */
-    public function hasPermission($permissionKey)
+    public function hasPermission($permissionKey, PermissionTypeEnum $type = PermissionTypeEnum::ALL, $teamId = null)
     {
-        return $this->getCurrentPermissionKeys()->contains($permissionKey);
+        $permissionsList = $teamId ? $this->getCurrentPermissionKeysInTeam($teamId) : $this->getCurrentPermissionsInAllTeams();
+
+        return $permissionsList->first(fn($key) => $permissionKey == getPermissionKey($key) && PermissionTypeEnum::hasPermission(getPermissionType($key), $type));
+    }
+
+    public function getTeamsIdsWithPermission($permissionKey, PermissionTypeEnum $type = PermissionTypeEnum::ALL)
+    {
+        return \Cache::remember('teamsWithPermission'.$this->id . '|' . $permissionKey . '|' . $type->value, 120,
+            fn() => $this->activeTeamRoles->filter(function($teamRole) use ($permissionKey, $type) {
+                return $teamRole->getAllPermissionsKeys()->first(fn($pk) => getPermissionKey($pk) == Permission::whereIn('permissions.id', TeamRole::getAllPermissionsKeysForMultipleRolesQuery($this->activeTeamRoles)
+                ->pluck('id'))->where('permission_key', $permissionKey)->first()?->permission_key && PermissionTypeEnum::hasPermission(getPermissionType($pk), $type));
+            })->reduce(fn($carry, $item) => $carry->concat($item->getAllTeamsWithAccess()), collect([]))
+        );
+    }
+
+    public function getCurrentPermissionsInAllTeams()
+    {
+        return \Cache::remember('currentPermissionsInAllTeams'.$this->id, 120,
+            fn() => TeamRole::getAllPermissionsKeysForMultipleRoles($this->activeTeamRoles),
+        );
+    }
+
+    public function getCurrentPermissionKeysInTeam($teamId)
+    {
+        return \Cache::remember('currentPermissionKeys'.$this->id . '|' . $teamId, 120,
+            fn() => TeamRole::getAllPermissionsKeysForMultipleRoles($this->activeTeamRoles->filter(fn($tr) => $tr->hasAccessToTeam($teamId))),
+        );
     }
 
     public function getCurrentPermissionKeys()
     {
-        return \Cache::remember('currentPermissionKeys'.$this->id, 120,
-            fn() => $this->currentTeamRole->permissions()->pluck('permission_key')
-        );
+        return $this->currentTeamRole->getAllPermissionsKeys();
     }
 
     public function givePermissionTo($permissionKey, $teamRoleId = null)

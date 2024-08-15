@@ -11,13 +11,13 @@ Select::macro('overModal', function ($id) {
 		let inputWidth = input.width();
 		let inputOffset = input.offset();
 		let inputHeight = input.height();
-		const dropdown = $("#'. $id .'").closest(".vlInputWrapper").find(".vlOptions");
+		const selectContainer = $("#'. $id .'").closest(".select-over-modal");
 
-		let style = dropdown.attr("style") || "";
-		style += "transform: translateY(" + (inputOffset.top + inputHeight) + "px) !important;";
-		style += "width:" + inputWidth + "px !important;";
+		let style = selectContainer.attr("style") || "";
+		style += "--select-translate:" + (inputOffset.top + inputHeight) + "px !important;";
+		style += "--select-width:" + inputWidth + "px !important;";
 
-		dropdown.attr("style", style);
+		selectContainer.attr("style", style);
 	}'));
 });
 

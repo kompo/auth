@@ -10,7 +10,7 @@ trait HasAddedModifiedByTrait
     {
         if (auth()->check()) {
             if (!$this->getKey()) {
-                $this->added_by = auth()->id();
+                $this->added_by = $this->added_by ?: auth()->id();
             }
             $this->modified_by = auth()->id();
         }

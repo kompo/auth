@@ -5,12 +5,12 @@ namespace Kompo\Auth\Facades;
 use Kompo\Komponents\Form\KompoModelFacade;
 
 /**
- * @mixin \Kompo\Auth\Models\Files\File
+ * @mixin \Kompo\Auth\Models\Teams\Roles\Role;
  */
-class FileModel extends KompoModelFacade
+class RoleModel extends KompoModelFacade
 {
     protected static function getModelBindKey()
     {
-        return FILE_MODEL_KEY;
+        return 'role-model';
     }
 }

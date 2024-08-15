@@ -2,16 +2,14 @@
 
 namespace Kompo\Auth\Facades;
 
-use Illuminate\Support\Facades\Facade;
+use Kompo\Komponents\Form\KompoModelFacade;
 
 /**
  * @mixin \Kompo\Auth\Models\Monitoring\Notification
  */
-class NotificationModel extends Facade
+class NotificationModel extends KompoModelFacade
 {
-    use FacadeUtils;
-
-    protected static function getFacadeAccessor()
+    protected static function getModelBindKey()
     {
         return NOTIFICATION_MODEL_KEY;
     }

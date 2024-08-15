@@ -2,11 +2,11 @@
 
 namespace Kompo\Auth\Facades;
 
-use Illuminate\Support\Facades\Facade;
+use Kompo\Komponents\Form\KompoModelFacade;
 
-class TeamModel extends Facade
+class TeamModel extends KompoModelFacade
 {
-    public static function getFacadeAccessor()
+    public static function getModelBindKey()
     {
         return 'team-model';
     }

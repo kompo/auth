@@ -7,10 +7,7 @@ use Kompo\Form;
 
 class FileInfo extends Form
 {
-    public function created()
-    {
-        $this->model(FileModel::getClass());
-    }
+    protected $model = FileModel::class;
 
     public function render()
     {

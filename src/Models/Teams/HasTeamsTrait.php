@@ -220,9 +220,27 @@ trait HasTeamsTrait
     /* PERMISSIONS */
     public function hasPermission($permissionKey, PermissionTypeEnum $type = PermissionTypeEnum::ALL, $teamId = null)
     {
-        $permissionsList = $teamId ? $this->getCurrentPermissionKeysInTeam($teamId) : $this->getCurrentPermissionKeys();
+        $permissionsList = $teamId ? $this->getCurrentPermissionKeysInTeam($teamId) : $this->getCurrentPermissionsInAllTeams();
 
         return $permissionsList->first(fn($key) => $permissionKey == getPermissionKey($key) && PermissionTypeEnum::hasPermission(getPermissionType($key), $type));
+    }
+
+    public function getTeamsIdsWithPermission($permissionKey, PermissionTypeEnum $type = PermissionTypeEnum::ALL)
+    {
+        return \Cache::remember('teamsWithPermission'.$this->id . '|' . $permissionKey . '|' . $type->value, 120,
+            fn() => $this->activeTeamRoles->filter(function($teamRole) use ($permissionKey, $type) {
+                return $teamRole->getAllPermissionsKeys()->first(fn($pk) => getPermissionKey($pk) == TeamRole::getAllPermissionsKeysForMultipleRolesQuery($this->activeTeamRoles)
+                    ->where('permission_key', $permissionKey)
+                    ->first()?->permission_key && PermissionTypeEnum::hasPermission(getPermissionType($pk), $type));
+            })->reduce(fn($carry, $item) => $carry->concat($item->getAllTeamsWithAccess()), collect([]))
+        );
+    }
+
+    public function getCurrentPermissionsInAllTeams()
+    {
+        return \Cache::remember('currentPermissionsInAllTeams'.$this->id, 120,
+            fn() => TeamRole::getAllPermissionsKeysForMultipleRoles($this->activeTeamRoles),
+        );
     }
 
     public function getCurrentPermissionKeysInTeam($teamId)
@@ -234,9 +252,7 @@ trait HasTeamsTrait
 
     public function getCurrentPermissionKeys()
     {
-        return \Cache::remember('currentPermissionKeys'.$this->id, 120,
-            fn() => $this->currentTeamRole->getAllPermissionsKeys()
-        );
+        return $this->currentTeamRole->getAllPermissionsKeys();
     }
 
     public function givePermissionTo($permissionKey, $teamRoleId = null)

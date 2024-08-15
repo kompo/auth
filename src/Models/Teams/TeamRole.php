@@ -71,18 +71,25 @@ class TeamRole extends Model
         );
     }
 
-    public function getAllPermissionsKeys()
+    public function getAllPermissionsKeysQuery()
     {
         return $this->validPermissionsQuery()
             ->whereNotIn('permissions.id', 
                 $this->deniedPermissionsQuery()->pluck('permissions.id')
-            )->distinct()->pluck('permission_key');
+            )->distinct();
     }
 
-    public static function getAllPermissionsKeysForMultipleRoles($teamRoles)
+    public function getAllPermissionsKeys()
+    {
+        return \Cache::remember('teamRolePermissions'.$this->id, 180, 
+            fn() => $this->getAllPermissionsKeysQuery()->pluck('permission_key')
+        );
+    }
+
+    public static function getAllPermissionsKeysForMultipleRolesQuery($teamRoles)
     {
         if (!$teamRoles->count()) {
-            return collect([]);
+            return Permission::whereRaw('1=0');
         }
 
         return Permission::selectRaw('permission_key')
@@ -91,7 +98,12 @@ class TeamRole extends Model
                 )
                 ->whereNotIn('permissions.id', 
                     $teamRoles->reduce(fn($acc, $teamRole) => $acc->union($teamRole->deniedPermissionsQuery()), $teamRoles[0]->deniedPermissionsQuery())->select('permissions.id')
-                )->distinct()->pluck('permission_key');
+                )->distinct();
+    }
+
+    public static function getAllPermissionsKeysForMultipleRoles($teamRoles)
+    {
+        return static::getAllPermissionsKeysForMultipleRolesQuery($teamRoles)->pluck('permission_key');
     }
 
     /* CALCULATED FIELDS */
@@ -185,7 +197,7 @@ class TeamRole extends Model
         }
 
         if ($this->getRoleHierarchyAccessNeighbors()) {
-            $teams = $teams->concat($this->team->parentTeam->teams()->pluck('id'));
+            $teams = $teams->concat($this->team->parentTeam?->teams()?->pluck('id') ?: []);
         }
 
         return $teams;

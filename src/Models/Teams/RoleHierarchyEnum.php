@@ -16,11 +16,11 @@ enum RoleHierarchyEnum: string
     {
         return match ($this) 
         {
-            static::DIRECT => 'translate.role-direct',
-            static::DIRECT_AND_BELOW => 'translate.role-direct-and-below',
-            static::DIRECT_AND_NEIGHBOURS => 'translate.role-direct-and-neighbours',
-            static::DIRECT_AND_BELOW_AND_NEIGHBOURS => 'translate.role-direct-and-below-and-neighbours',
-            static::DISABLED_BELOW => 'Disabled for this team and below',
+            static::DIRECT => 'permissions-roll-direct',
+            static::DIRECT_AND_BELOW => 'permissions-roll-direct-and-down',
+            static::DIRECT_AND_NEIGHBOURS => 'permissions-roll-direct-and-neighbours',
+            static::DIRECT_AND_BELOW_AND_NEIGHBOURS => 'permissions-roll-direct-and-down-and-neighbours',
+            static::DISABLED_BELOW => 'permissions-disabled-for-this-team-and-down',
         };
     }
 

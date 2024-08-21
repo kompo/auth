@@ -12,7 +12,7 @@ use Kompo\Auth\Models\User;
 class AssignRoleModal extends Modal
 {
     public $model = TeamRole::class;
-    protected $_Title = 'translate.assign-role';
+    protected $_Title = 'permissions-assign-role';
     protected $noHeaderButtons = true;
 
     protected $defaultTeamId = null;
@@ -43,7 +43,7 @@ class AssignRoleModal extends Modal
     public function body()
     {
         return _Rows(
-            _Select('translate.team')->name('team_id')
+            _Select('permissions-team')->name('team_id')
                 ->when(!$this->defaultTeamId, fn($el) => $el->searchOptions(2, 'searchTeams'))
                 ->when($this->defaultTeamId, fn($el) => $el->disabled()->value($this->defaultTeamId)
                     ->options([$this->defaultTeamId => TeamModel::findOrFail($this->defaultTeamId)->team_name])
@@ -51,7 +51,7 @@ class AssignRoleModal extends Modal
                 ->onChange(fn($e) => $e->selfGet('getRolesByTeam')->inPanel('roles-select-panel'))
                 ->overModal('select-team'),
 
-            _Select('translate.user')->name('user_id')
+            _Select('permissions-user')->name('user_id')
                 ->when(!$this->defaultUserId, fn($el) => $el->searchOptions(2, 'searchUsers'))
                 ->when($this->defaultUserId, fn($el) => $el->disabled()->value($this->defaultUserId)
                     ->options([$this->defaultUserId => User::findOrFail($this->defaultUserId)->name])
@@ -59,16 +59,16 @@ class AssignRoleModal extends Modal
                 ->overModal('select-user'),
 
             _Panel(
-                _Select('translate.role')->name('role'),
+                _Select('permissions-role')->name('role'),
             )->id('roles-select-panel'),
 
-            _Toggle('translate.roll-to-child')->name('roll_to_child', false),
+            _Toggle('permissions-roll-down')->name('roll_to_child', false),
 
-            _Toggle('translate.roll-to-neighbourg')->name('roll_to_neighbourg', false),
+            _Toggle('permissions-roll-to-neighbour')->name('roll_to_neighbourg', false),
 
             _Flex(
-                !$this->model->id ? null : _DeleteButton('translate.delete-assignation')->outlined()->byKey($this->model)->class('w-full'),
-                _SubmitButton('translate.save-assignation')->closeModal()->refresh($this->refreshId)->class('w-full'),
+                !$this->model->id ? null : _DeleteButton('permissions-delete-assignation')->outlined()->byKey($this->model)->class('w-full'),
+                _SubmitButton('permissions-save-assignation')->closeModal()->refresh($this->refreshId)->class('w-full'),
             )->class('gap-4')
         );
     }
@@ -77,7 +77,7 @@ class AssignRoleModal extends Modal
     {
         $team = TeamModel::findOrFail($teamId);
         
-        return _Select('translate.role')->name('role')
+        return _Select('permissions-role')->name('role')
             ->options(RoleModel::all()->pluck('name', 'id')->toArray())
             ->overModal('select-role');
     }

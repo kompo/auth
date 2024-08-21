@@ -12,9 +12,9 @@ enum TeamRoleStatusEnum: int {
     public function label()
     {
         return match ($this) {
-            self::IN_PROGRESS => __('translate.in-progress'),
-            self::FINISHED => __('translate.finished'),
-            self::SUSPENDED => __('translate.suspended'),
+            self::IN_PROGRESS => __('permissions-in-progress'),
+            self::FINISHED => __('permissions-finished'),
+            self::SUSPENDED => __('permissions-suspended'),
         };
     }
 

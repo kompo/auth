@@ -12,9 +12,9 @@ enum ProfileEnum: int
     public function label()
     {
         return match($this) {
-            self::GENERAL => 'translate.profile-general',
-            self::ACCOUNTING => 'translate.profile-accounting',
-            self::CHILD => 'translate.profile-child',
+            self::GENERAL => 'profile-general',
+            self::ACCOUNTING => 'profile-accounting',
+            self::CHILD => 'profile-child',
         };
     }
 }

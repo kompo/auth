@@ -7,7 +7,7 @@ use Kompo\Auth\Facades\TeamModel;
 
 class TeamForm extends Modal
 {
-    protected $_Title = 'translate.edit-a-team';
+    protected $_Title = 'team-edit-a-team';
     protected $noHeaderButtons = true;
     public $class = 'max-w-lg w-full';
 
@@ -40,7 +40,7 @@ class TeamForm extends Modal
 
             _Rows($this->lastFormPart()),
 
-            _SubmitButton('translate.save')->closeModal()->class('mt-4'),
+            _SubmitButton('team-save')->closeModal()->class('mt-4'),
         );
     }
 
@@ -48,11 +48,11 @@ class TeamForm extends Modal
     {
         return [
             _Image()->name('file'),
-            _Input('translate.team-code')->name('importcode'),
-            _Input('translate.team-name')->name('team_name'),
+            _Input('team-code')->name('importcode'),
+            _Input('team-name')->name('team_name'),
 
-            _DateTime('translate.date-from')->name('active_at')->default(now()),
-            _DateTime('translate.date-to')->name('inactive_at'),
+            _DateTime('team-date-from')->name('active_at')->default(now()),
+            _DateTime('team-date-to')->name('inactive_at'),
         ];
     }
 
@@ -60,22 +60,22 @@ class TeamForm extends Modal
     {
         return [
             $this->addressInput(),
-            _InputEmail('translate.email')->name('email', false),
-            _Input('translate.phone')->name('phone', false)->default($this->model->getFirstValidPhoneLabel()),
-            _Input('translate.facebook-url')->name('facebook_url'),
-            _Input('translate.instagram')->name('instagram'),
+            _InputEmail('team-email')->name('email', false),
+            _Input('team-phone')->name('phone', false)->default($this->model->getFirstValidPhoneLabel()),
+            _Input('team-facebook-url')->name('facebook_url'),
+            _Input('team-instagram')->name('instagram'),
         ];
     }
 
     protected function addressInput()
     {
-        return _Place('translate.address')->name('address');
+        return _Place('team-address')->name('address');
     }
 
     protected function lastFormPart()
     {
         return [
-            _Textarea('translate.note')->name('note'),
+            _Textarea('team-note')->name('note'),
         ];
     }
 

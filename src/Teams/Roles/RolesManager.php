@@ -22,7 +22,7 @@ class RolesManager extends Table
                     return _Flex4(
                         _Html($role?->name),
                         !$role ? null : _TripleDotsDropdown(
-                            _Link('translate.edit')->class('py-1 px-2')->selfGet('getRoleForm', ['id' => $role?->id])->inModal()
+                            _Link('permissions-edit')->class('py-1 px-2')->selfGet('getRoleForm', ['id' => $role?->id])->inModal()
                         ),
                     );
                 }),

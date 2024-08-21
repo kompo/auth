@@ -23,9 +23,9 @@ class UserRolesTable extends WhiteTable
     public function top()
     {
         return _FlexEnd(
-            _Dropdown('translate.actions')->button()
+            _Dropdown('permissions-actions')->button()
                 ->submenu(
-                    _Link('translate.assign-role')->class('py-1 px-3')->selfGet('getAssignRoleModal')->inModal(),
+                    _Link('permissions-assign-role')->class('py-1 px-3')->selfGet('getAssignRoleModal')->inModal(),
                 ),
         )->class('mb-3');
     }
@@ -38,10 +38,10 @@ class UserRolesTable extends WhiteTable
     public function headers()
     {
         return [
-            _Th('translate.role'),
-            _Th('translate.team'),
-            _Th('translate.date'),
-            _Th('translate.status'),
+            _Th('permissions-role'),
+            _Th('permissions-team'),
+            _Th('permissions-date'),
+            _Th('permissions-status'),
             _Th()->class('w-8'),
         ];
     }
@@ -54,7 +54,7 @@ class UserRolesTable extends WhiteTable
             $teamRole->statusPill(),
 
             _TripleDotsDropdown(
-                !$teamRole->status->canBeFinished() ? null : _Link('translate.terminate')->class('py-1 px-3')->selfPost('terminateRole', ['team_role_id' => $teamRole->id])->refresh(),
+                !$teamRole->status->canBeFinished() ? null : _Link('permissions-terminate')->class('py-1 px-3')->selfPost('terminateRole', ['team_role_id' => $teamRole->id])->refresh(),
             ),
         );
     }

@@ -8,7 +8,7 @@ use Kompo\Auth\Models\Teams\ProfileEnum;
 
 class RoleForm extends Modal
 {
-    protected $_Title = 'translate.add-role';
+    protected $_Title = 'permissions-add-role';
     protected $noHeaderButtons = true;
 
     public $class = 'min-w-96';
@@ -23,24 +23,24 @@ class RoleForm extends Modal
     public function body()
     {
         return _Rows(
-            _Input('translate.role-name')->name('name')->required(),
-            _Textarea('translate.role-description')->name('description'),
-            _Image('translate.role-icon')->name('icon'),
+            _Input('permissions-role-name')->name('name')->required(),
+            _Textarea('permissions-role-description')->name('description'),
+            _Image('permissions-role-icon')->name('icon'),
 
             _Rows($this->extraFields()),
 
-            _Select('translate.profile')->name('profile')->options(
+            _Select('permissions-profile')->name('profile')->options(
                 $this->profileOptions(),
             )->overModal('profile'),
 
             _Rows(
-                _Toggle('translate.accept-roll-to-child')->name('accept_roll_to_child'),
-                _Toggle('translate.accept-roll-to-neighbourg')->name('accept_roll_to_neighbourg'),
+                _Toggle('permissions-accept-roll-down')->name('accept_roll_to_child'),
+                _Toggle('permissions-accept-roll-to-neighbours')->name('accept_roll_to_neighbourg'),
             ),
 
             _Flex(
-                $this->model->id ? _DeleteButton('generic.delete')->outlined()->byKey($this->model)->class('w-full') : null,
-                _SubmitButton('generic.save')->closeModal()->refresh('roles-manager')->class('w-full'),
+                $this->model->id ? _DeleteButton('permissions-delete')->outlined()->byKey($this->model)->class('w-full') : null,
+                _SubmitButton('permissions-save')->closeModal()->refresh('roles-manager')->class('w-full'),
             )->class('gap-4')
             
             // _Input('Role Permissions')->name('role_permissions')->required(),

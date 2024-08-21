@@ -42,7 +42,7 @@ class MenuRolesSwitcherDropdown extends Form
             ]);
         
         return _Rows(
-            !$roles->count() ? _Html('translate.no-roles-in-this-profile')->class('text-center text-gray-500 text-sm p-4 !pt-0') : null,
+            !$roles->count() ? _Html('permissions-no-roles-in-this-profile')->class('text-center text-gray-500 text-sm p-4 !pt-0') : null,
             ...$roles,
         );
     }

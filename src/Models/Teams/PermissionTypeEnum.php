@@ -15,10 +15,10 @@ enum PermissionTypeEnum: int
     public function label()
     {
         return match($this) {
-            self::READ => 'translate.permission-read',
-            self::WRITE => 'translate.permission-write',
-            self::ALL => 'translate.permission-all',
-            self::DENY => 'translate.permission-deny',
+            self::READ => 'permissions-permission-read',
+            self::WRITE => 'permissions-permission-write',
+            self::ALL => 'permissions-permission-all',
+            self::DENY => 'permissions-permission-deny',
         };
     }
 

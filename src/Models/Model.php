@@ -40,11 +40,11 @@ class Model extends ModelBase
         }
 
         if (!$this->restrictByTeam && !auth()->user()->hasPermission(static::getPermissionKey(), PermissionTypeEnum::WRITE)) {
-            throw new PermissionException(__('translate.you-don-not-have-write-permissions'));
+            throw new PermissionException(__('permissions-you-do-not-have-write-permissions'));
         }
 
         if ($this->restrictByTeam && !auth()->user()->hasPermission(static::getPermissionKey(), PermissionTypeEnum::WRITE, $this->team_id)) {
-            throw new PermissionException(__('translate.you-don-not-have-write-permissions'));
+            throw new PermissionException(__('permissions-you-do-not-have-write-permissions'));
         }
     }
 

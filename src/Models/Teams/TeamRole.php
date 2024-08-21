@@ -86,6 +86,11 @@ class TeamRole extends Model
         );
     }
 
+    public function denyingPermission($permissionKey)
+    {
+        return $this->deniedPermissionsQuery()->where('permission_key', $permissionKey)->exists();
+    }
+
     public function hasPermission($permissionKey, PermissionTypeEnum $type = PermissionTypeEnum::ALL)
     {
         // Permission::whereIn('permissions.id', TeamRole::getAllPermissionsKeysForMultipleRolesQuery($this->user->activeTeamRoles)

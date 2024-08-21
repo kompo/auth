@@ -86,6 +86,13 @@ class TeamRole extends Model
         );
     }
 
+    public function hasPermission($permissionKey, PermissionTypeEnum $type = PermissionTypeEnum::ALL)
+    {
+        // Permission::whereIn('permissions.id', TeamRole::getAllPermissionsKeysForMultipleRolesQuery($this->user->activeTeamRoles)
+        //     ->pluck('id'))->where('permission_key', $permissionKey)->first()?->permission_key;
+        return $this->getAllPermissionsKeys()->first(fn($pk) => getPermissionKey($pk) == $permissionKey && PermissionTypeEnum::hasPermission(getPermissionType($pk), $type));
+    }
+
     public static function getAllPermissionsKeysForMultipleRolesQuery($teamRoles)
     {
         if (!$teamRoles->count()) {

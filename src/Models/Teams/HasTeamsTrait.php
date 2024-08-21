@@ -228,10 +228,8 @@ trait HasTeamsTrait
     public function getTeamsIdsWithPermission($permissionKey, PermissionTypeEnum $type = PermissionTypeEnum::ALL)
     {
         return \Cache::remember('teamsWithPermission'.$this->id . '|' . $permissionKey . '|' . $type->value, 120,
-            fn() => $this->activeTeamRoles->filter(function($teamRole) use ($permissionKey, $type) {
-                return $teamRole->getAllPermissionsKeys()->first(fn($pk) => getPermissionKey($pk) == Permission::whereIn('permissions.id', TeamRole::getAllPermissionsKeysForMultipleRolesQuery($this->activeTeamRoles)
-                ->pluck('id'))->where('permission_key', $permissionKey)->first()?->permission_key && PermissionTypeEnum::hasPermission(getPermissionType($pk), $type));
-            })->reduce(fn($carry, $item) => $carry->concat($item->getAllTeamsWithAccess()), collect([]))
+            fn() => $this->activeTeamRoles->filter(fn($teamRole) => $teamRole->hasPermission($permissionKey, $type))
+                ->reduce(fn($carry, $item) => $carry->concat($item->getAllTeamsWithAccess()), collect([]))
         );
     }
 

@@ -28,7 +28,7 @@ class Model extends ModelBase
 
                 $builder->when(static::$restrictByTeam, function ($q) {
                     $teamIds = auth()->user()->getTeamsIdsWithPermission(static::getPermissionKey(), PermissionTypeEnum::READ);
-
+dd($teamIds);
                     if (method_exists(static::class, 'scopeForTeams')) {
                         $q->forTeams($teamIds);
                     } else {

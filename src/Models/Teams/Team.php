@@ -155,6 +155,11 @@ class Team extends Model
         $query->where('team_name', 'LIKE', wildcardSpace($search));
     }
 
+    public function scopeActive($query)
+	{
+		$query->where(fn($q) => $q->whereNull('inactive_at')->orWhere('inactive_at', '>', now()));
+	}
+
 	/* ACTIONS */
 	public function detachFromTeam($user)
 	{

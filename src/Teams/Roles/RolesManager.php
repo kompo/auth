@@ -73,6 +73,24 @@ class RolesManager extends Table
                 next.removeClass("hidden").addClass("perm-selected")
             }
 
+            function checkMultipleLinkGroupColor(parentCheckbox, role, permissionsIds, separator = ",")
+            {
+                let lastIndex;
+
+                for (permissionId of permissionsIds.split(separator)) {
+                    let selected = $("." + role + '-' + permissionId + ".perm-selected").eq(0)
+                    let index = $("." + role + '-' + permissionId).index(selected)
+   
+                    if (lastIndex !== undefined && lastIndex !== index) {
+                        return changeLinkGroupColorToIndex(parentCheckbox, 0)
+                    }
+
+                    lastIndex = index
+                }
+
+                changeLinkGroupColorToIndex(parentCheckbox, lastIndex)
+            }
+
             function changeMultipleLinkGroupColor(parentCheckbox, role, permissionsIds, separator = ",")
             {
                 let selected = $("." + parentCheckbox + ".perm-selected").eq(0)

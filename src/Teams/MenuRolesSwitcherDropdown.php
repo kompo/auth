@@ -20,7 +20,7 @@ class MenuRolesSwitcherDropdown extends Form
             ->submenu(
                 [
                     _Rows(
-                        _Select()->class('bg-level4 !mb-0')->options(config('kompo-auth.profile-enum')::optionsWithLabels())->default(currentTeamRole()?->role?->profile ?? 1)->name('profile')
+                        _Select()->class('bg-level4 !mb-0 max-w-2xl min-w-[260px]')->options(config('kompo-auth.profile-enum')::optionsWithLabels())->default(currentTeamRole()?->role?->profile ?? 1)->name('profile')
                             ->selfGet('roleOptions')->inPanel('role-switcher'),
                     )->p4()->class('!pb-0'),
                     _Panel(

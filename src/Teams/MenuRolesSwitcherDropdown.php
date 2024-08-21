@@ -20,7 +20,7 @@ class MenuRolesSwitcherDropdown extends Form
             ->submenu(
                 [
                     _Rows(
-                        _Select()->class('bg-level4 !mb-0 max-w-2xl min-w-[260px]')->options(config('kompo-auth.profile-enum')::optionsWithLabels())->default(currentTeamRole()?->role?->profile ?? 1)->name('profile')
+                        _Select()->class('bg-level4 max-w-2xl min-w-[260px]')->options(config('kompo-auth.profile-enum')::optionsWithLabels())->default(currentTeamRole()?->role?->profile ?? 1)->name('profile')
                             ->selfGet('roleOptions')->inPanel('role-switcher'),
                     )->p4()->class('!pb-0'),
                     _Panel(
@@ -42,7 +42,7 @@ class MenuRolesSwitcherDropdown extends Form
             ]);
         
         return _Rows(
-            !$roles->count() ? _Html('translate.no-roles-in-this-profile')->class('text-center text-gray-500 text-sm p-4') : null,
+            !$roles->count() ? _Html('translate.no-roles-in-this-profile')->class('text-center text-gray-500 text-sm p-4 !pt-0') : null,
             ...$roles,
         );
     }

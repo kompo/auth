@@ -56,15 +56,17 @@ class PermissionSectionRolesTable extends Table
         return _Flex(
             _Html($permission->permission_name),
             ...Role::all()->map(function ($role) use ($permission) {
+                $checkboxName = 'permissionSection' . $role->id . '-' . $this->permissionSection->id;
+                
                 return _CheckboxMultipleStates($role->id . '-' . $permission->id, 
                         PermissionTypeEnum::values(),
                         PermissionTypeEnum::colors(),
                         $role->permissions->first(fn($p) => $p->id == $permission->id)?->pivot?->permission_type
                     )->class('!mb-0')
                     ->onChange(fn($e) => $e
-                        ->selfPost('changeRolePermission', ['role' => $role->id, 'permission' => $permission->id]) && 
-                        $e->selfGet('sectionCheckbox', ['role' => $role->id])->inPanel($this->getPermissionSectionPanelKey($role, $this->permissionSection))
-                    ) ;
+                        ->selfPost('changeRolePermission', ['role' => $role->id, 'permission' => $permission->id]) &&
+                        $e->run('() => {checkMultipleLinkGroupColor("'. $checkboxName .'", "'. $role->id .'", "'. $this->permissionsIds->implode(',') .'")}')
+                    );
             }),
         )->class('roles-manager-rows');
     }

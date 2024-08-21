@@ -1,5 +1,17 @@
 <?php
 
+use Kompo\Auth\Models\Teams\Permission;
+use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+
+\Kompo\Elements\BaseElement::macro('checkAuth', function ($id, $specificTeamId = null) {
+    if(!Permission::findByKey($id) || auth()->user()->hasPermission($id, PermissionTypeEnum::READ, $specificTeamId)) {
+        return $this;
+    }
+
+    // TODO: It might be that we'll need to return a null element here, to avoid rendering the element.
+    return (new ($this::class))->class('hidden');
+});
+
 if (!function_exists('_LinkAlreadyHaveAccount')) {
     function _LinkAlreadyHaveAccount()
     {

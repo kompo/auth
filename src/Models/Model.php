@@ -2,6 +2,7 @@
 
 namespace Kompo\Auth\Models;
 
+use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\Roles\PermissionException;
 
@@ -19,7 +20,7 @@ class Model extends ModelBase
     
     public static function booted()
     {
-        if(static::$readSecurityRestrictions) {
+        if(static::$readSecurityRestrictions && Permission::findByKey(static::getPermissionKey())) {
             static::addGlobalScope('authUserHasPermissions', function ($builder) {
                 if (!static::$restrictByTeam && !auth()->user()->hasPermission(static::getPermissionKey(), PermissionTypeEnum::READ)) {
                     return $builder->whereRaw('1 = 0');
@@ -34,6 +35,10 @@ class Model extends ModelBase
 
     protected function checkWritePermissions()
     {
+        if (!Permission::findByKey(static::getPermissionKey())) {
+            return true;
+        }
+
         if (!$this->restrictByTeam && !auth()->user()->hasPermission(static::getPermissionKey(), PermissionTypeEnum::WRITE)) {
             throw new PermissionException(__('translate.you-don-not-have-write-permissions'));
         }

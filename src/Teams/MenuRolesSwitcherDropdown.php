@@ -16,17 +16,35 @@ class MenuRolesSwitcherDropdown extends Form
         if (!auth()->user()) {
             return;
         }
-
         return _Dropdown(currentTeamRole()->getRoleName())
             ->submenu(
-                auth()->user()->teamRoles()->where('id', '<>', currentTeamRoleId())->with('team')->get()
-                ->sortBy(auth()->user()->getRolesSortBy())
-                ->unique(
-                    fn($tr) => $tr->team_id . $tr->role_id
-                )->mapWithKeys(fn($teamRole) => [
-                    $teamRole->id => $this->getTeamRoleLabel($teamRole, $teamRole->team->rolePill())->selfPost('switchToTeamRole', ['id' => $teamRole->id])->redirect('dashboard')
-                ])
+                [
+                    _Rows(
+                        _Select()->class('bg-level4 max-w-2xl min-w-[260px]')->options(config('kompo-auth.profile-enum')::optionsWithLabels())->default(currentTeamRole()?->role?->profile ?? 1)->name('profile')
+                            ->selfGet('roleOptions')->inPanel('role-switcher'),
+                    )->p4()->class('!pb-0'),
+                    _Panel(
+                        $this->roleOptions()
+                    )->id('role-switcher'),
+                ]
             )->alignRight()->class('scrollableDropdown');
+    }
+
+    public function roleOptions($profile = 1) 
+    {
+        $roles = auth()->user()->teamRoles()->where('id', '<>', currentTeamRoleId())
+            ->whereHas('roleRelation', fn($q) => $q->where('profile', $profile))->with('team')->get()
+            ->sortBy(auth()->user()->getRolesSortBy())
+            ->unique(
+                fn($tr) => $tr->team_id . $tr->role_id
+            )->mapWithKeys(fn($teamRole) => [
+                $teamRole->id => $this->getTeamRoleLabel($teamRole, $teamRole->team->rolePill())->selfPost('switchToTeamRole', ['id' => $teamRole->id])->redirect('dashboard')
+            ]);
+        
+        return _Rows(
+            !$roles->count() ? _Html('translate.no-roles-in-this-profile')->class('text-center text-gray-500 text-sm p-4 !pt-0') : null,
+            ...$roles,
+        );
     }
 
     protected function getTeamRoleLabel($teamRole, $pill = null)

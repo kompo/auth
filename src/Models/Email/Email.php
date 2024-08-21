@@ -44,4 +44,37 @@ class Email extends Model
     {
         return $this->address_em;
     }
+
+    public function isSameAddress($address)
+    {
+        return $this->getEmailLabel() == $address;
+    }
+
+    /* ACTIONS */
+    public function setEmailable($model)
+    {
+        $this->emailable_type = $model->getRelationType();
+        $this->emailableid = $model->id;
+    }
+
+    public function setEmailAddress($address)
+    {
+        $this->address_em = $address;
+    }
+    
+    public static function createMainFor($emailable, $address)
+    {
+        if ($emailable->emails()->where('address', $address)->exists()) {
+            return;
+        }
+
+        $email = new Email();
+        $email->type = Email::TYPE_EM_PERSONAL;
+        $email->address = $address;
+        $email->emailable_id = $emailable->id;
+        $email->emailable_type = $emailable->getMorphClass();
+        $email->save();
+
+        $emailable->setPrimaryEmail($email->id);
+    }
 }

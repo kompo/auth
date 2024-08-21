@@ -2,8 +2,6 @@
 
 namespace Kompo\Auth\Common;
 
-use Kompo\Form;
-
 abstract class ImgFormLayout extends Form
 {
     public $containerClass = '';

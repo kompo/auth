@@ -71,6 +71,27 @@ trait MorphManyEmails
         }
     }
 
+    public function createOrDeleteMainEmailFromAddress($address)
+    {
+        $existingEmail = $this->email;
+
+        if (!$address){
+            $existingEmail?->delete();
+        } else {
+            if (!$existingEmail || !$existingEmail->isSameAddress($address)) {
+                $this->createEmailFromAddress($address);
+            }
+        }
+    }
+
+    public function createEmailFromAddress($address)
+    {
+        $existingEmail = new Email();
+        $existingEmail->setEmailable($this);
+        $existingEmail->setEmailAddress($address);
+        $existingEmail->save();        
+    }
+
     /* ELEMENTS */
     public function getPrimaryEmailButton()
     {

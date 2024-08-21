@@ -33,7 +33,7 @@ class Role extends Model
     // CALCULATED FIELDS 
     public function getFirstPermissionTypeOfSection($sectionId)
     {
-        return $this->permissions()->forSection($sectionId)->first()->pivot->permission_type;
+        return $this->permissions()->forSection($sectionId)->first()?->pivot?->permission_type;
     }
 
     // SCOPES

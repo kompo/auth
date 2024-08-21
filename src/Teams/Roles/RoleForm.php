@@ -20,11 +20,6 @@ class RoleForm extends Modal
         $this->model->id = $this->model->id ?? \Str::snake(request('name'));
     }
 
-    public function afterSave()
-    {
-        $this->model->assignTeamLevels(request('team_levels'));
-    }
-
     public function body()
     {
         return _Rows(
@@ -35,7 +30,7 @@ class RoleForm extends Modal
             _Rows($this->extraFields()),
 
             _Select('translate.profile')->name('profile')->options(
-                ProfileEnum::optionsWithLabels(),
+                $this->profileOptions(),
             )->overModal('profile'),
 
             _Rows(
@@ -50,6 +45,11 @@ class RoleForm extends Modal
             
             // _Input('Role Permissions')->name('role_permissions')->required(),
         );
+    }
+
+    protected function profileOptions()
+    {
+        return config('kompo-auth.profile-enum')::optionsWithLabels();
     }
 
     protected function extraFields()

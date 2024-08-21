@@ -6,6 +6,8 @@ use Kompo\Modal as KompoModal;
 
 class Modal extends KompoModal
 {
+    use HasAuthorizationUtils;
+    
     /* TO OVERRIDE METHODS */
     protected $_Title;
     protected $_Icon;

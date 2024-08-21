@@ -2,10 +2,12 @@
 
 namespace Kompo\Auth\Models\Teams\Roles;
 
-class PermissionException extends \Exception
+use Symfony\Component\HttpKernel\Exception\HttpException;
+
+class PermissionException extends HttpException
 {
-    public function __construct($message = 'You do not have permission to perform this action.', $code = 403, Throwable $previous = null)
+    public function __construct($message = 'You do not have permission to perform this action.')
     {
-        parent::__construct($message, $code, $previous);
+        parent::__construct(403, $message);
     }
 }

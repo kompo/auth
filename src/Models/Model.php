@@ -27,7 +27,13 @@ class Model extends ModelBase
                 }
 
                 $builder->when(static::$restrictByTeam, function ($q) {
-                    $q->whereIn(static::TEAM_ID_COLUMN, auth()->user()->getTeamsIdsWithPermission(static::getPermissionKey(), PermissionTypeEnum::READ));
+                    $teamIds = auth()->user()->getTeamsIdsWithPermission(static::getPermissionKey(), PermissionTypeEnum::READ);
+                    
+                    if (method_exists(static::class, 'scopeForTeams')) {
+                        $q->forTeams($teamIds);
+                    } else {
+                        $q->whereIn(static::TEAM_ID_COLUMN, $teamIds);
+                    }
                 });
             });
         }

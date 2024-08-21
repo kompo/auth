@@ -22,6 +22,14 @@ enum PermissionTypeEnum: int
         };
     }
 
+    public function visibleInSelects()
+    {
+        return match ($this) {
+            self::WRITE => false, //We don't want to show the WRITE permission in the select. We already show the ALL permission.
+            default => true,
+        };
+    }
+
     public function code()
     {
         return match($this) {
@@ -35,21 +43,21 @@ enum PermissionTypeEnum: int
     public function color()
     {
         return match($this) {
-            self::READ => 'bg-green-500',
-            self::WRITE => 'bg-blue-500',
-            self::ALL => 'bg-yellow-500',
+            self::READ => 'bg-blue-500',
+            self::WRITE => 'bg-yellow-500',
+            self::ALL => 'bg-green-500',
             self::DENY => 'bg-red-500',
         };
     }
 
     public static function values()
     {
-        return collect(self::cases())->pluck('value');
+        return collect(self::cases())->filter(fn($case) => $case->visibleInSelects())->pluck('value');
     }
 
     public static function colors()
     {
-        return collect(self::cases())->map(fn($case) => $case->color());
+        return collect(self::cases())->filter(fn($case) => $case->visibleInSelects())->map(fn($case) => $case->color());
     }
 
     public static function hasPermission(self $given, self $expected)

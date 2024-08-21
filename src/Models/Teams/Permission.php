@@ -6,6 +6,10 @@ use Kompo\Auth\Models\Model;
 
 class Permission extends Model
 {
+    protected $casts = [
+        'object_type' => PermissionObjectTypeEnum::class,
+    ];
+    
     /* RELATIONS */
 
     /* CALCULATED FIELDS */

@@ -2,8 +2,6 @@
 
 namespace Kompo\Auth\Teams;
 
-use App\Models\Teams\TeamLevelEnum;
-use Condoedge\Crm\Models\GenderEnum;
 use Kompo\Auth\Common\Modal;
 use Kompo\Auth\Facades\TeamModel;
 
@@ -85,8 +83,8 @@ class TeamForm extends Modal
     {
         return [
             'team_name' => 'required',
-            'active_at' => 'required|datetime',
-            'inactive_at' => 'nullable|datetime|after:active_at',
+            'active_at' => 'required|date|date_format:Y-m-d H:i',
+            'inactive_at' => 'nullable|date|after:active_at|date_format:Y-m-d H:i',
         ];
     }
 }

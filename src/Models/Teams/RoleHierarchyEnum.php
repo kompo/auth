@@ -21,7 +21,7 @@ enum RoleHierarchyEnum: string
             static::DIRECT_AND_NEIGHBOURS => 'permissions-roll-direct-and-neighbours',
             static::DIRECT_AND_BELOW_AND_NEIGHBOURS => 'permissions-roll-direct-and-down-and-neighbours',
             static::DISABLED_BELOW => 'permissions-disabled-for-this-team-and-down',
-            default => 'translate.unknown-hierarchy',
+            default => 'permissions.unknown-hierarchy',
         };
     }
 

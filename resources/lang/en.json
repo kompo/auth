@@ -135,6 +135,7 @@
 	"permissions-terminate": "Terminate",
 	"permissions-user": "User",
 	"permissions-you-do-not-have-write-permissions": "You don't have WRITE access for this object",
+	"permissions.unknown-hierarchy": "Unknown hierarchy",
 	"phone-manage-phone": "Manage phone",
 	"profile-accounting": "Accounting",
 	"profile-child": "Child",

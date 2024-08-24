@@ -13,6 +13,13 @@ class Role extends Model
         'id' => 'string',
     ];
 
+    public function save(array $options = [])
+    {
+        parent::save($options);
+
+        \Cache::forget('roles');
+    }
+
     public $incrementing = false;
 
     public function permissions()

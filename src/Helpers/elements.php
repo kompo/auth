@@ -22,10 +22,14 @@ function _Aud($src)
     return _Audio($src);
 }
 
+$checkboxCache = [];
+
+// function 
+
 function _CheckboxMultipleStates($name, $values = [], $colors = [], $default = null)
 {
-    $values = collect([null])->merge($values);
-    $colors = collect([null])->merge($colors);
+    $values = collect($values)->prepend(null);
+    $colors = collect($colors)->prepend(null);
 
     $parsedOptions = collect([]);
 

@@ -9,10 +9,14 @@ use Kompo\Table;
 
 class PermissionSectionRolesTable extends Table
 {
+    public $paginationType = 'Scroll';
+    public $perPage = 200;
+
     protected $permissionSectionId;
     protected $permissionSection;
 
     protected $permissionsIds;
+    protected $roles;
 
     public function created()
     {
@@ -20,12 +24,17 @@ class PermissionSectionRolesTable extends Table
 
         $this->permissionSection = PermissionSection::findOrFail($this->permissionSectionId);
 
-        $this->permissionsIds = $this->permissionSection->permissions()->pluck('id');
+        $this->permissionsIds = $this->permissionSection->getPermissions()->pluck('id');
+
+        $this->roles = getRoles();
+        $this->roles->load(['permissions' => 
+            fn($q) => $q->where('permission_section_id', $this->permissionSectionId)
+        ]);
     }
 
     public function createdDisplay()
     {
-        $this->itemsWrapperClass = 'subgroup-block'.$this->permissionSectionId;
+        $this->itemsWrapperClass = '!overflow-y-visible mini-scroll subgroup-block'.$this->permissionSectionId;
 
         $this->itemsWrapperStyle = 'display:none;';
     }
@@ -33,11 +42,11 @@ class PermissionSectionRolesTable extends Table
     public function top()
     {
         return _Flex(
-            _Flex(
+            _FlexCenter(
                 _Html()->icon('icon-up')->id('subgroup-toggle'.$this->permissionSectionId),
                 _Html($this->permissionSection?->name)->class('text-gray-600'),
-            )->class('gap-1'),
-            ...getRoles()->map(function ($role) {
+            )->class('gap-1 bg-level4 border-r border-level1/30'),
+            ...$this->roles->map(function ($role) {
                 return _Panel(
                     $this->sectionCheckbox($role),
                 )->id($this->getPermissionSectionPanelKey($role, $this->permissionSection));
@@ -48,16 +57,16 @@ class PermissionSectionRolesTable extends Table
 
     public function query()
     {
-        return $this->permissionSection->permissions();
+        return $this->permissionSection->getPermissions();
     }
 
     public function render($permission)
     {
         return _Flex(
-            _Html($permission->permission_name),
-            ...Role::all()->map(function ($role) use ($permission) {
+            _Html($permission->permission_name)->class('bg-white border-r border-gray-300'),
+            ...$this->roles->map(function ($role) use ($permission) {
                 $checkboxName = 'permissionSection' . $role->id . '-' . $this->permissionSection->id;
-                
+
                 return _CheckboxMultipleStates($role->id . '-' . $permission->id, 
                         PermissionTypeEnum::values(),
                         PermissionTypeEnum::colors(),
@@ -68,7 +77,7 @@ class PermissionSectionRolesTable extends Table
                         $e->run('() => {checkMultipleLinkGroupColor("'. $checkboxName .'", "'. $role->id .'", "'. $this->permissionsIds->implode(',') .'")}')
                     );
             }),
-        )->class('roles-manager-rows');
+        )->class('roles-manager-rows w-max')->class($permission->object_type?->classes() ?? '');
     }
 
     public function sectionCheckbox($role)

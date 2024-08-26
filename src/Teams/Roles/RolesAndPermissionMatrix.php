@@ -28,7 +28,7 @@ class RolesAndPermissionMatrix extends Query
             _MultiSelect()->name('roles', false)->placeholder('translate.roles')->options(
                 getRoles()->pluck('name', 'id')->toArray()
             )->default($this->defaultRoles->pluck('id') ?? [])
-            ->onChange(fn($e) => $e->browse() && $e->selfPost('headerRoles')->inPanel('roles-header')),
+            ->onChange(fn($e) => $e->browse(null, 1) && $e->selfPost('headerRoles')->inPanel('roles-header')),
             _Panel(
                 $this->headerRoles($this->defaultRoles->pluck('id')),
             )->id('roles-header'),

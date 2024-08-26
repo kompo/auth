@@ -10,7 +10,7 @@ use Kompo\Query;
 class PermissionSectionRolesTable extends Query
 {
     public $paginationType = 'Scroll';
-    public $perPage = 15;
+    public $perPage = 10;
 
     protected $permissionSectionId;
     protected $permissionSection;
@@ -26,7 +26,9 @@ class PermissionSectionRolesTable extends Query
 
         $this->permissionsIds = $this->permissionSection->getPermissions()->pluck('id');
 
-        $this->roles = getRoles();
+        $rolesIds = $this->prop('roles_ids') ? explode(',', $this->prop('roles_ids')) : null;
+
+        $this->roles = getRoles()->when($rolesIds, fn($q) => $q->whereIn('id', $rolesIds))->values();
         $this->roles->load(['permissions' => 
             fn($q) => $q->where('permission_section_id', $this->permissionSectionId)
         ]);

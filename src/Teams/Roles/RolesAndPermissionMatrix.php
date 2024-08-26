@@ -8,7 +8,7 @@ use Kompo\Table;
 class RolesAndPermissionMatrix extends Table
 {
     public $id = 'roles-manager-matrix';
-    public $perPage = 10;
+    public $perPage = 4;
 
     public $class = 'overflow-x-auto max-w-full mini-scroll pt-5';
     public $itemsWrapperClass = 'w-max !overflow-y-visible';

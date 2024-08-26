@@ -9,8 +9,8 @@ use Kompo\Table;
 
 class PermissionSectionRolesTable extends Table
 {
-    public $paginationType = 'Scroll';
-    public $perPage = 10;
+    // public $paginationType = 'Scroll';
+    public $perPage = 50;
 
     protected $permissionSectionId;
     protected $permissionSection;

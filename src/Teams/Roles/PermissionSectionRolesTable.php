@@ -36,7 +36,7 @@ class PermissionSectionRolesTable extends Table
     {
         $this->itemsWrapperClass = 'mini-scroll subgroup-block'.$this->permissionSectionId;
 
-        $this->itemsWrapperStyle = 'display:none; max-height: 50vh;';
+        $this->itemsWrapperStyle = 'display:none;';
     }
 
     public function top()

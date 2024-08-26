@@ -10,7 +10,7 @@ use Kompo\Query;
 class PermissionSectionRolesTable extends Query
 {
     public $paginationType = 'Scroll';
-    public $perPage = 20;
+    public $perPage = 15;
 
     protected $permissionSectionId;
     protected $permissionSection;
@@ -38,14 +38,12 @@ class PermissionSectionRolesTable extends Query
     {
         $this->itemsWrapperClass = 'PermissionSectionRoleWrapper mini-scroll subgroup-block'.$this->permissionSectionId;
 
-        $this->itemsWrapperStyle = 'max-height:300px';
+        $this->itemsWrapperStyle = 'max-height:50vh;';
     }
 
     public function top()
     {
         return _Flex(
-            // _Input()->class('hidden')
-            //     ->onLoad(fn($e) => $e->run('() => { setTimeout(() => checkStatusToggledSubGroup("'. $this->permissionSectionId .'"), 500) }')),
             _FlexCenter(
                 _Html()->icon('icon-up')->id('subgroup-toggle'.$this->permissionSectionId),
                 _Html($this->permissionSection?->name)->class('text-gray-600'),

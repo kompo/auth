@@ -5,12 +5,12 @@ namespace Kompo\Auth\Teams\Roles;
 use Kompo\Auth\Models\Teams\PermissionSection;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\Roles\Role;
-use Kompo\Table;
+use Kompo\Query;
 
-class PermissionSectionRolesTable extends Table
+class PermissionSectionRolesTable extends Query
 {
-    // public $paginationType = 'Scroll';
-    public $perPage = 50;
+    public $paginationType = 'Scroll';
+    public $perPage = 20;
 
     protected $permissionSectionId;
     protected $permissionSection;
@@ -30,13 +30,15 @@ class PermissionSectionRolesTable extends Table
         $this->roles->load(['permissions' => 
             fn($q) => $q->where('permission_section_id', $this->permissionSectionId)
         ]);
+
+        $this->onLoad(fn($e) => $e->run('() => { $(".PermissionSectionRoleWrapper").css("display", "none") }'));
     }
 
     public function createdDisplay()
     {
-        $this->itemsWrapperClass = 'mini-scroll subgroup-block'.$this->permissionSectionId;
+        $this->itemsWrapperClass = 'PermissionSectionRoleWrapper mini-scroll subgroup-block'.$this->permissionSectionId;
 
-        $this->itemsWrapperStyle = 'display:none;';
+        $this->itemsWrapperStyle = 'max-height:300px';
     }
 
     public function top()

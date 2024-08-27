@@ -64,13 +64,13 @@ class Email extends Model
     
     public static function createMainFor($emailable, $address)
     {
-        if ($emailable->emails()->where('address', $address)->exists()) {
+        if ($emailable->emails()->where('address_em', $address)->exists()) {
             return;
         }
 
         $email = new Email();
         $email->type = Email::TYPE_EM_PERSONAL;
-        $email->address = $address;
+        $email->address_em = $address;
         $email->emailable_id = $emailable->id;
         $email->emailable_type = $emailable->getMorphClass();
         $email->save();

@@ -69,7 +69,7 @@ class Email extends Model
         }
 
         $email = new Email();
-        $email->type = Email::TYPE_EM_PERSONAL;
+        $email->type_em = Email::TYPE_EM_PERSONAL;
         $email->address_em = $address;
         $email->emailable_id = $emailable->id;
         $email->emailable_type = $emailable->getMorphClass();

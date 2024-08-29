@@ -26,7 +26,7 @@ trait HasAuthorizationUtils
     {
         $this->checkIfUserHasPermission = config('kompo-auth.check-if-user-has-permission') && $this->checkIfUserHasPermission;
         
-        if($this->checkIfUserHasPermission && Permission::findByKey(static::getPermissionKey()) && !auth()->user()->hasPermission(static::getPermissionKey(), $type, $this->specificPermissionTeamId)) {
+        if($this->checkIfUserHasPermission && Permission::findByKey(static::getPermissionKey()) && !auth()->user()?->hasPermission(static::getPermissionKey(), $type, $this->specificPermissionTeamId)) {
             return false;
         }
 

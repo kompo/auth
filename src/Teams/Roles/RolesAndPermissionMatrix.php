@@ -25,7 +25,7 @@ class RolesAndPermissionMatrix extends Query
     public function top()
     {
         return _Rows(
-            _MultiSelect()->name('roles', false)->placeholder('translate.roles')->options(
+            _MultiSelect()->name('roles', false)->placeholder('auth-roles')->options(
                 getRoles()->pluck('name', 'id')->toArray()
             )->default($this->defaultRoles->pluck('id') ?? [])
             ->onChange(fn($e) => $e->browse(null, 1) && $e->selfPost('headerRoles')->inPanel('roles-header')),

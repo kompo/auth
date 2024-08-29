@@ -22,6 +22,7 @@
 	"auth-remember-me": "Remember me",
 	"auth-resend-invitation-link": "Resend invitation link",
 	"auth-reset-password": "Reset password",
+	"auth-roles": "Roles",
 	"auth-send-password-reset-link": "Send password reset link",
 	"auth-there-is-already-an-account-for-this-email": "There is already an account for this email. Please log in.",
 	"auth-your-email-has-been-verified!": "Your email has been verified!",

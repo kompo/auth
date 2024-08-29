@@ -22,6 +22,7 @@
 	"auth-remember-me": "Souviens-toi de moi",
 	"auth-resend-invitation-link": "Renvoyer le lien d'invitation",
 	"auth-reset-password": "Réinitialiser le mot de passe",
+	"auth-roles": "Rôles",
 	"auth-send-password-reset-link": "Envoyer le lien de réinitialisation du mot de passe",
 	"auth-there-is-already-an-account-for-this-email": "Il existe déjà un compte pour ce courriel. Veuillez vous connecter.",
 	"auth-your-email-has-been-verified!": "Votre courriel a été vérifié!",

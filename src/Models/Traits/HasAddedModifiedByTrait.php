@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace Kompo\Auth\Models\Traits;
 
@@ -8,12 +8,7 @@ trait HasAddedModifiedByTrait
 {
     public function save(array $options = [])
     {
-        if (auth()->check()) {
-            if (!$this->getKey()) {
-                $this->added_by = $this->added_by ?: auth()->id();
-            }
-            $this->modified_by = auth()->id();
-        }
+        $this->manageAddedModifiedBy();
 
         parent::save($options);
     }
@@ -33,5 +28,16 @@ trait HasAddedModifiedByTrait
     public function scopeForAuthUser($query, $userId = null)
     {
         $query->where('added_by', $userId ?: auth()->id());
+    }
+
+    // ACTIONS
+    public function manageAddedModifiedBy()
+    {
+        if (auth()->check()) {
+            if (!$this->getKey()) {
+                $this->added_by = $this->added_by ?: auth()->id();
+            }
+            $this->modified_by = auth()->id();
+        }
     }
 }

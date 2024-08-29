@@ -17,7 +17,7 @@ class Model extends ModelBase
     protected static $restrictByTeam = false;
 
     const TEAM_ID_COLUMN = 'team_id';
-    
+
     public static function booted()
     {
         if(static::$readSecurityRestrictions && Permission::findByKey(static::getPermissionKey())) {
@@ -62,6 +62,8 @@ class Model extends ModelBase
     public function save(array $options = [])
     {
         $this->saveSecurityRestrictions && $this->checkWritePermissions();
+
+        $this->manageAddedModifiedBy();
 
         return parent::save($options);
     }

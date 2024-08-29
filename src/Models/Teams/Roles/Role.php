@@ -13,6 +13,13 @@ class Role extends Model
         'id' => 'string',
     ];
 
+    public function save(array $options = [])
+    {
+        parent::save($options);
+
+        \Cache::forget('roles');
+    }
+
     public $incrementing = false;
 
     public function permissions()
@@ -45,9 +52,9 @@ class Role extends Model
         $permission = $this->permissions()->where('permissions.id', $permissionId)->first();
 
         if (!$permission) {
-            $this->permissions()->attach($permissionId, ['permission_type' => $value]);
+            $this->permissions()->attach($permissionId, ['permission_type' => $value, 'added_by' => auth()->id(), 'modified_by' => auth()->id()]);
         } else {
-            $this->permissions()->updateExistingPivot($permissionId, ['permission_type' => $value]);
+            $this->permissions()->updateExistingPivot($permissionId, ['permission_type' => $value, 'modified_by' => auth()->id()]);
         }
     }
 }

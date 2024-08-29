@@ -101,7 +101,7 @@ class TeamRole extends Model
     public static function getAllPermissionsKeysForMultipleRolesQuery($teamRoles)
     {
         if (!$teamRoles->count()) {
-            return Permission::whereRaw('1=0');
+            return Permission::whereRaw('1=0')->selectRaw('0 as complex_permission_key');
         }
 
         return $teamRoles->reduce(fn($acc, $teamRole) => $acc->union($teamRole->validPermissionsQuery()), $teamRoles[0]->validPermissionsQuery())

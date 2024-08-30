@@ -41,7 +41,7 @@ class EmailsTable extends Table
 	{
 		return [
 			_Th('email-email-type'),
-			_Th('ka::email'),
+			_Th('email-email'),
 			_Th('email-is-main'),
 			_Th(),
 		];

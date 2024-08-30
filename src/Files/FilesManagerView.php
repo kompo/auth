@@ -62,10 +62,10 @@ class FilesManagerView extends Table
 	{
 		return [
 			_Th()->class('w-20'),
-			_Th('ka::general.name')->sort('name')->class('w-60'),
-            _Th('ka::general.type')->sort('type')->class('w-20'),
-			_Th('ka::general.date')->sort('created_at')->class('w-20'),
-            _Th('ka::general.actions')->sort('updated_at')->class('w-10'),
+			_Th('general-name')->sort('name')->class('w-60'),
+            _Th('general-type')->sort('type')->class('w-20'),
+			_Th('general-date')->sort('created_at')->class('w-20'),
+            _Th('general-actions')->sort('updated_at')->class('w-10'),
 		];
 	}
 

@@ -37,7 +37,7 @@ class SingleAddressCard extends Form
                     _Html($this->model->getAddressHtml()),
                     _TextSmGray($this->model->description_ad),
                 ) :
-                _Html('ka::crm.contact.click-here-to-add-an-address')->class('text-gray-600'),
+                _Html('crm-contact-click-here-to-add-an-address')->class('text-gray-600'),
         )->selfUpdate('getAddressForm', [
             'id' => $this->model->id,
         ])->inModal();

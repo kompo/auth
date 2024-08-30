@@ -27,7 +27,7 @@ class ActivityList extends Query
 
     public function top()
     {
-        return _TitleCard('ka::dashboard.team-daily-activity');
+        return _TitleCard('dashboard-team-daily-activity');
     }
 
     public function render($activity)

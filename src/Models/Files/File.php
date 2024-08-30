@@ -228,7 +228,7 @@ class File extends Model implements Searchable
                 _Rows(
                 )->class('mb-4'),
                 _Rows(
-                    _Input()->icon('icon-search')->placeholder('ka::general.search')
+                    _Input()->icon('icon-search')->placeholder('general-search')
                         ->name('name', false)
                         ->class('mb-0')
                         ->type('search')
@@ -246,7 +246,7 @@ class File extends Model implements Searchable
     {
         if ($year = request('year')) {
             return _Flex4(
-                _Link(__('ka::general.year').' '.$year)->class('text-greenmain font-bold')->icon('arrow-left')
+                _Link(__('general-year').' '.$year)->class('text-greenmain font-bold')->icon('arrow-left')
                     ->getElements('getYearsMonthsFilter')->inPanel('file-manager-year-month-filter'),
                 _LinkGroup()->name('month', false)->class('mb-0')
                     ->options(
@@ -259,7 +259,7 @@ class File extends Model implements Searchable
         }
 
         return _Flex4(
-            _Html('ka::general.filter-by-year')->class('text-greenmain font-medium'),
+            _Html('general-filter-by-year')->class('text-greenmain font-medium'),
             _LinkGroup()->name('year', false)->class('mb-0')
                 ->options(
                     static::getFilesCountFor()->mapWithKeys(fn($stat) => [

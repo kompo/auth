@@ -60,11 +60,11 @@ class ResetPasswordForm extends Form
 	{
 		return [
 			_Hidden('token')->value($this->token),
-            _Input('ka::auth.email')->name('email')->value(request('email')),
-            _Password('ka::auth.password')->name('password'),
-            _Password('ka::auth.password-confirmation')->name('password_confirmation'),
+            _Input('auth-email')->name('email')->value(request('email')),
+            _Password('auth-password')->name('password'),
+            _Password('auth-password-confirmation')->name('password_confirmation'),
 			_FlexEnd(
-                _SubmitButton('ka::auth.reset-password')
+                _SubmitButton('auth-reset-password')
             )
 		];
 	}

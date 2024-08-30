@@ -102,7 +102,7 @@ class NotificationsList extends Query
                 $message = new Message();
                 $message->sender_id = auth()->user()->getSenderAccountId();
                 $message->subject = __('email-message-from').' '.$contact->units()->first()->union->display;
-                $message->html = '<p>'.__('ka::general.hi').' '.$contact->first_name.'</p>'.
+                $message->html = '<p>'.__('general-hi').' '.$contact->first_name.'</p>'.
                     '<p>'.__('email-missing-informations').'</p>';
 
                 Mail::to($contact->mainEmail())->queue(

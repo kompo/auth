@@ -32,7 +32,7 @@ class PhonesTable extends Table
 	public function top()
 	{
 		return _FlexBetween(
-            _TitleCard('ka::crm.phones'),
+            _TitleCard('crm-phones'),
             _CreateCard()->selfCreate('getPhoneForm')->inModal(),
         );
 	}
@@ -40,9 +40,9 @@ class PhonesTable extends Table
 	public function headers()
 	{
 		return [
-			_Th('ka::crm.phone.type'),
-			_Th('ka::crm.phone.phone'),
-			_Th('ka::crm.phone.is-main'),
+			_Th('crm-phone-type'),
+			_Th('crm-phone-phone'),
+			_Th('crm-phone-is-main'),
 			_Th(),
 		];
 	}

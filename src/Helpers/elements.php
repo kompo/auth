@@ -59,15 +59,23 @@ function _CheckboxMultipleStates($name, $values = [], $colors = [], $default = n
 
 
 if (!function_exists('_ResponsiveTabs')) {
-    function _ResponsiveTabs($tabs, $tabsClass = null, $tabsCommonClass = null, $tabsSelectedClass = null, $callback = null)
+    function _ResponsiveTabs($tabs, $tabsClass = null, $tabsCommonClass = null, $tabsSelectedClass = null, $callback = null, $breakpoint = 'md')
     {
         $tabLabels = collect($tabs)->map(fn($tab) => $tab?->label)->filter();
         $uniqueId = uniqid();
-    
+
+        $breakpoints = [
+            'sm' => 'sm:block sm:hidden',
+            'md' => 'md:block md:hidden',
+            'lg' => 'lg:block lg:hidden',
+            'xl' => 'xl:block xl:hidden',
+            '2xl' => '2xl:block 2xl:hidden',
+        ];
+
         $tabElement = _Tabs(...$tabs)
-            ->commonClass('hidden md:block mr-8')
+            ->commonClass("hidden {$breakpoint}:block mr-8")
             ->when($tabsClass, fn($el) => $el->class($tabsClass))
-            ->when($tabsCommonClass, fn($el) => $el->commonClass($tabsCommonClass . ' hidden md:block'))
+            ->when($tabsCommonClass, fn($el) => $el->commonClass($tabsCommonClass . " hidden {$breakpoint}:block"))
             ->when($tabsSelectedClass, fn($el) => $el->selectedClass($tabsSelectedClass))
             ->id('responsive-tabs-' . $uniqueId);
     
@@ -80,7 +88,7 @@ if (!function_exists('_ResponsiveTabs')) {
                 ->placeholder($tabLabels[0])
                 ->id('tabs-select-' . $uniqueId)
                 ->name('tabs_select', false)
-                ->class('block md:hidden without-x-icon whiteField')
+                ->class("block {$breakpoint}:hidden  2xl:hidden without-x-icon whiteField")
                 ->attr([
                     'readonly' => 'readonly',
                 ])
@@ -88,6 +96,23 @@ if (!function_exists('_ResponsiveTabs')) {
                 ->value(request('tab_number') ?: 0)
                 ->onChange(fn($e) => $e
                         ->run('() => {
+                        function activateTabFromSelect(id)
+                        {
+                            let tabOptions = $(`#tabs-select-${id}`).closest(".vlInputWrapper")[0].querySelectorAll(".vlOption");
+                            let tabIndex = [...tabOptions].findIndex(option => option.classList.contains("vlSelected"));
+
+                            if (tabIndex == -1) {
+                                tabOptions[0].click();
+                                return 0;
+                            }
+
+                            let tabs = document.querySelectorAll(`#responsive-tabs-${id} a[role=tab]`);
+
+                            [...tabs][tabIndex >= 0 ? tabIndex : 0].click();
+
+                            return tabIndex;
+                        }
+
                             let tabIndex = activateTabFromSelect("' . $uniqueId . '");
     
                             (

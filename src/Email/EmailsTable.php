@@ -3,9 +3,9 @@
 namespace Kompo\Auth\Email;
 
 use Kompo\Auth\Models\Email\Email;
-use Kompo\Table;
+use Kompo\Auth\Common\ResponsiveTable;
 
-class EmailsTable extends Table
+class EmailsTable extends ResponsiveTable
 {
     protected $teamId;
     protected $emailableId;
@@ -49,12 +49,12 @@ class EmailsTable extends Table
 
 	public function render($email)
 	{
-		return _TableRow(
+		return $this->decorateRow(_TableRow(
 			_Html($email->type_em_label),
 			_Html($email->address_em),
 			_HtmlYesNo($this->emailable->primary_email_id === $email->id),
         	_Delete($email),
-       )->selfUpdate('getEmailForm', ['id' => $email->id])->inModal();
+       )->selfUpdate('getEmailForm', ['id' => $email->id])->inModal());
 	}
 
     public function getEmailForm($id = null)

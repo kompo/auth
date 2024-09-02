@@ -155,7 +155,7 @@ if (!function_exists('_BackLink')) {
 
 /* LAYOUTS */
 if (!function_exists('_TwoColumnsButtons')) {
-	function _TwoColumnsButtons($el1 = null, $el2 = null, $defaultClass = 'gap-2')
+	function _TwoColumnsButtons($el1 = null, $el2 = null, $defaultClass = '[&>*]:mt-2 -mt-2')
 	{
 		return _Columns(
 			$el1?->class('w-full'),

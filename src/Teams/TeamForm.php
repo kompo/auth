@@ -47,12 +47,13 @@ class TeamForm extends Modal
     protected function firstFormPart()
     {
         return [
-            _Image()->name('file'),
-            _Input('team-code')->name('importcode'),
+            _Image()->name('file')->class('mb-2'),
+            _Input('team-code')->name('importcode')->class('mb-2'),
             _Input('team-name')->name('team_name'),
-
-            _DateTime('team-date-from')->name('active_at')->default(now()),
-            _DateTime('team-date-to')->name('inactive_at'),
+            _CardLevel5(
+                _DateTime('team-date-from')->name('active_at')->default(now())->class('mb-2'),
+                _DateTime('team-date-to')->name('inactive_at')->class('mb-2'),
+            ),
         ];
     }
 
@@ -60,10 +61,10 @@ class TeamForm extends Modal
     {
         return [
             $this->addressInput(),
-            _InputEmail('team-email')->name('email', false),
-            _Input('team-phone')->name('phone', false)->default($this->model->getFirstValidPhoneLabel()),
-            _Input('team-facebook-url')->name('facebook_url'),
-            _Input('team-instagram')->name('instagram'),
+            _InputEmail('team-email')->name('email', false)->class('mb-2'),
+            _Input('team-phone')->name('phone', false)->default($this->model->getFirstValidPhoneLabel())->class('mb-2'),
+            _Input('team-facebook-url')->name('facebook_url')->class('mb-2'),
+            _Input('team-instagram')->name('instagram')->class('mb-2'),
         ];
     }
 

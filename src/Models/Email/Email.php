@@ -54,7 +54,7 @@ class Email extends Model
     public function setEmailable($model)
     {
         $this->emailable_type = $model->getRelationType();
-        $this->emailableid = $model->id;
+        $this->emailable_id = $model->id;
     }
 
     public function setEmailAddress($address)

@@ -76,6 +76,6 @@ if (!function_exists('_SideSection')) {
 if (!function_exists('_SideTitle')) {
     function _SideTitle($label = '')
     {
-        return _Html($label)->class('text-lg lg:text-xs font-semibold uppercase mb-2 pl-4 text-white opacity-40');
+        return _Html($label)->class('text-lg lg:text-base font-semibold uppercase mb-2 pl-4 text-white opacity-40');
     }
 }

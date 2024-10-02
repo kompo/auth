@@ -113,7 +113,7 @@ class TeamRole extends Model
      */
     private function getAllPermissionsKeys()
     {
-        return Cache::remember('teamRolePermissions' . $this->id, 180, 
+        return \Cache::remember('teamRolePermissions' . $this->id, 180, 
             fn() => $this->getAllPermissionsKeysQuery()->pluck('complex_permission_key')
         );
     }

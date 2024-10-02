@@ -218,37 +218,85 @@ trait HasTeamsTrait
     }
 
     /* PERMISSIONS */
+    /**
+     * Check if the user has a specific permission.
+     *
+     * @param string $permissionKey The permission key to check.
+     * @param PermissionTypeEnum $type The type of the permission (default is PermissionTypeEnum::ALL).
+     * @param int|null $teamId The ID of the team to check the permission in (optional).
+     * @return bool True if the user has the permission, false otherwise.
+     */
     public function hasPermission($permissionKey, PermissionTypeEnum $type = PermissionTypeEnum::ALL, $teamId = null)
     {
+        // Get the list of current permissions based on the team ID
         $permissionsList = $teamId ? $this->getCurrentPermissionKeysInTeam($teamId) : $this->getCurrentPermissionsInAllTeams();
 
+        // Check if the permission key exists in the list with the specified type
         return $permissionsList->first(fn($key) => $permissionKey == getPermissionKey($key) && PermissionTypeEnum::hasPermission(getPermissionType($key), $type));
     }
 
+    /**
+     * Get the IDs of teams where the user has a specific permission.
+     *
+     * @param string $permissionKey The permission key to check.
+     * @param PermissionTypeEnum $type The type of the permission (default is PermissionTypeEnum::ALL).
+     * @return Collection A collection of team IDs where the user has the permission.
+     */
     public function getTeamsIdsWithPermission($permissionKey, PermissionTypeEnum $type = PermissionTypeEnum::ALL)
     {
-        return \Cache::remember('teamsWithPermission'.$this->id . '|' . $permissionKey . '|' . $type->value, 120,
-            fn() => $this->activeTeamRoles->some(fn($teamRole) => $teamRole->denyingPermission($permissionKey)) ? collect([]) 
-                :  $this->activeTeamRoles->filter(fn($teamRole) => $teamRole->hasPermission($permissionKey, $type))
-                        ->reduce(fn($carry, $item) => $carry->concat($item->getAllTeamsWithAccess()), collect([]))
-        );
+        $cacheKey = 'teamsWithPermission' . $this->id . '|' . $permissionKey . '|' . $type->value;
+
+        return Cache::remember($cacheKey, 120, function () use ($permissionKey, $type) {
+            // Check if any active team role denies the permission
+            $hasDenyingPermission = $this->activeTeamRoles->some(function ($teamRole) use ($permissionKey) {
+                return $teamRole->denyingPermission($permissionKey);
+            });
+
+            if ($hasDenyingPermission) {
+                return collect([]);
+            }
+
+            // Filter roles that have the permission
+            $rolesWithPermission = $this->activeTeamRoles->filter(function ($teamRole) use ($permissionKey, $type) {
+                return $teamRole->hasPermission($permissionKey, $type);
+            });
+
+            // Reduce to get all teams with access
+            $teamsWithAccess = $rolesWithPermission->reduce(function ($carry, $teamRole) {
+                return $carry->concat($teamRole->getAllTeamsWithAccess());
+            }, collect([]));
+
+            return $teamsWithAccess;
+        });
     }
 
+    /**
+     * Get the current permissions in all teams for the user.
+     *
+     * @return Collection A collection of current permission keys in all teams.
+     */
     public function getCurrentPermissionsInAllTeams()
     {
-        return \Cache::remember('currentPermissionsInAllTeams'.$this->id, 120,
+        return Cache::remember('currentPermissionsInAllTeams' . $this->id, 120,
             fn() => TeamRole::getAllPermissionsKeysForMultipleRoles($this->activeTeamRoles),
         );
     }
 
+    /**
+     * Get the current permission keys in a specific team for the user.
+     *
+     * @param int $teamId The ID of the team.
+     * @return Collection A collection of current permission keys in the specified team.
+     */
     public function getCurrentPermissionKeysInTeam($teamId)
     {
-        return \Cache::remember('currentPermissionKeys'.$this->id . '|' . $teamId, 120,
+        return Cache::remember('currentPermissionKeys' . $this->id . '|' . $teamId, 120,
             fn() => TeamRole::getAllPermissionsKeysForMultipleRoles($this->activeTeamRoles->filter(fn($tr) => $tr->hasAccessToTeam($teamId))),
         );
     }
 
-    public function getCurrentPermissionKeys()
+    // ! DISABLED FOR NOW.
+    private function getCurrentPermissionKeys()
     {
         return $this->currentTeamRole->getAllPermissionsKeys();
     }

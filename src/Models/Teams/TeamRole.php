@@ -57,21 +57,46 @@ class TeamRole extends Model
         $query->when($teamId, fn($q) => $q->where('team_id', $teamId));
     }
 
+    /**
+     * Get the query for valid permissions for the team role.
+     * This includes permissions defined directly on the team role and those inherited from the role relation.
+     *
+     * @return \Illuminate\Database\Query\Builder
+     */
     public function validPermissionsQuery()
     {
-        return $this->validPermissions()->selectRaw(constructComplexPermissionKeySql('permission_team_role'). ', permission_key, permissions.id')
-            ->union($this->roleRelation->validPermissions()->selectRaw(constructComplexPermissionKeySql('permission_role'). ', permission_key, permissions.id')
-        );
+        return $this->validPermissions()
+            ->selectRaw(constructComplexPermissionKeySql('permission_team_role') . ', permission_key, permissions.id')
+            ->union(
+                $this->roleRelation->validPermissions()
+                    ->selectRaw(constructComplexPermissionKeySql('permission_role') . ', permission_key, permissions.id')
+            );
     }
 
+    /**
+     * Get the query for denied permissions for the team role.
+     * This includes permissions denied directly on the team role and those inherited from the role relation.
+     *
+     * @return \Illuminate\Database\Query\Builder
+     */
     public function deniedPermissionsQuery()
     {
-        return $this->deniedPermissions()->select('permissions.id')
-            ->union($this->roleRelation->deniedPermissions()->select('permissions.id')
-        );
+        return $this->deniedPermissions()
+            ->select('permissions.id')
+            ->union(
+                $this->roleRelation->deniedPermissions()
+                    ->select('permissions.id')
+            );
     }
 
-    public function getAllPermissionsKeysQuery()
+    /**
+     * Get the query for all permission keys excluding the denied ones.
+     * If the user has many team roles we should merge it, so we can get all denied permissions.
+     * ! DISABLED FOR NOW. BECAUSE WE COULD'T KNOW IF WE GET A PERMISSIONS DENIED BY ONE ROLE.
+     *
+     * @return \Illuminate\Database\Query\Builder
+     */
+    private function getAllPermissionsKeysQuery()
     {
         return $this->validPermissionsQuery()
             ->whereNotIn('permissions.id', 
@@ -79,40 +104,81 @@ class TeamRole extends Model
             )->distinct();
     }
 
-    public function getAllPermissionsKeys()
+    /**
+     * Get all permission keys excluding the denied ones, cached for 180 minutes.
+     * If the user has many team roles we should merge it, so we can get all denied permissions.
+     * ! DISABLED FOR NOW. BECAUSE WE COULD'T KNOW IF WE GET A PERMISSIONS DENIED BY ONE ROLE.
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    private function getAllPermissionsKeys()
     {
-        return \Cache::remember('teamRolePermissions'.$this->id, 180, 
+        return Cache::remember('teamRolePermissions' . $this->id, 180, 
             fn() => $this->getAllPermissionsKeysQuery()->pluck('complex_permission_key')
         );
     }
 
+    /**
+     * Check if the team role denies a specific permission.
+     *
+     * @param string $permissionKey
+     * @return bool
+     */
     public function denyingPermission($permissionKey)
     {
-        return $this->deniedPermissionsQuery()->where('permission_key', $permissionKey)->exists();
+        return $this->deniedPermissionsQuery()
+            ->where('permission_key', $permissionKey)
+            ->exists();
     }
 
+    /**
+     * Check if the team role has a specific permission.
+     *
+     * @param string $permissionKey
+     * @param PermissionTypeEnum $type
+     * @return bool
+     */
     public function hasPermission($permissionKey, PermissionTypeEnum $type = PermissionTypeEnum::ALL)
     {
-        // Permission::whereIn('permissions.id', TeamRole::getAllPermissionsKeysForMultipleRolesQuery($this->user->activeTeamRoles)
-        //     ->pluck('id'))->where('permission_key', $permissionKey)->first()?->permission_key;
-        return $this->getAllPermissionsKeys()->first(fn($pk) => getPermissionKey($pk) == $permissionKey && PermissionTypeEnum::hasPermission(getPermissionType($pk), $type));
+        return $this->getAllPermissionsKeys()
+            ->first(fn($pk) => getPermissionKey($pk) == $permissionKey && PermissionTypeEnum::hasPermission(getPermissionType($pk), $type));
     }
 
+    /**
+     * Get the query for all permission keys for multiple team roles, excluding the denied ones.
+     *
+     * @param \Illuminate\Support\Collection $teamRoles
+     * @return \Illuminate\Database\Query\Builder
+     */
     public static function getAllPermissionsKeysForMultipleRolesQuery($teamRoles)
     {
         if (!$teamRoles->count()) {
             return Permission::whereRaw('1=0')->selectRaw('0 as complex_permission_key');
         }
 
-        return $teamRoles->reduce(fn($acc, $teamRole) => $acc->union($teamRole->validPermissionsQuery()), $teamRoles[0]->validPermissionsQuery())
-                ->whereNotIn('permissions.id', 
-                    $teamRoles->reduce(fn($acc, $teamRole) => $acc->union($teamRole->deniedPermissionsQuery()), $teamRoles[0]->deniedPermissionsQuery())->select('permissions.id')
-                )->distinct('complex_permission_key');
+        $validPermissionsQuery = $teamRoles->reduce(function ($acc, $teamRole) {
+            return $acc->union($teamRole->validPermissionsQuery());
+        }, $teamRoles->get(0)->validPermissionsQuery());
+        
+        $deniedPermissionsQuery = $teamRoles->reduce(function ($acc, $teamRole) {
+            return $acc->union($teamRole->deniedPermissionsQuery());
+        }, $teamRoles->get(0)->deniedPermissionsQuery());
+        
+        return $validPermissionsQuery
+            ->whereNotIn('permissions.id', $deniedPermissionsQuery->select('permissions.id'))
+            ->distinct('complex_permission_key');
     }
 
+    /**
+     * Get all permission keys for multiple team roles, excluding the denied ones.
+     *
+     * @param \Illuminate\Support\Collection $teamRoles
+     * @return \Illuminate\Support\Collection
+     */
     public static function getAllPermissionsKeysForMultipleRoles($teamRoles)
     {
-        return static::getAllPermissionsKeysForMultipleRolesQuery($teamRoles)->pluck('complex_permission_key');
+        return static::getAllPermissionsKeysForMultipleRolesQuery($teamRoles)
+            ->pluck('complex_permission_key');
     }
 
     /* CALCULATED FIELDS */
@@ -197,6 +263,10 @@ class TeamRole extends Model
         return TeamRoleStatusEnum::getFromTeamRole($this);
     }
 
+    /**
+     * Getting all teams that the team role has access to.
+     * The team role could have hierarchy access to multiple teams (neighbors, children, etc).
+     */
     public function getAllTeamsWithAccess()
     {
         $teams = collect([$this->team->id]);

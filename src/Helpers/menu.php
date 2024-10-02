@@ -61,7 +61,7 @@ if (!function_exists('_SideLink')) {
     {
         return _Flex(
             _Sax($icon)->class('text-white opacity-50 pl-4'),
-            _Link($label)->class('text-white opacity-90 pl-3 text-sm lg:text-base font-light py-1 px-3 hover:text-level5')->href($link),
+            _Link($label)->class('text-white opacity-90 pl-3 text-lg lg:text-base font-light py-1 px-3 hover:text-level5')->href($link),
         )->class('mb-3');
     }
 }
@@ -76,6 +76,6 @@ if (!function_exists('_SideSection')) {
 if (!function_exists('_SideTitle')) {
     function _SideTitle($label = '')
     {
-        return _Html($label)->class('text-xs font-semibold uppercase mb-2 pl-4 text-white opacity-40');
+        return _Html($label)->class('text-lg lg:text-xs font-semibold uppercase mb-2 pl-4 text-white opacity-40');
     }
 }

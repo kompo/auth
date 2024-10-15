@@ -17,12 +17,30 @@ enum NotificationTypeEnum: int
 
     public function getContent($notification)
     {
+
+
         return match ($this) {
             self::CUSTOM => $notification->genericNotificationCard(
                     $notification->custom_message, 
-                    !$notification->custom_button_text ? null : _Link($notification->custom_button_text)->button()->href($notification->custom_button_href),
+                    $this->getButton($notification),
                     $notification->has_reminder_button,
             ),
         };
+    }
+
+    protected function getButton($notification)
+    {
+        $handlerClass = $notification->custom_button_handler;
+        $handler = $handlerClass ? new $handlerClass($notification) : null;
+
+        $button = null;
+
+        if ($handler) {
+            $button = $handler->getButton();
+        } else if ($notification->custom_button_text) {
+            $button = _Link2Button($notification->custom_button_text)->button()->href($notification->custom_button_href);
+        }
+
+        return $button;
     }
 }

@@ -1,10 +1,12 @@
 <?php
 
 use \Kompo\Elements\Element;
+use Kompo\Interactions\Action;
+use Kompo\Interactions\Interaction;
 
-Kompo\Elements\Layout::macro('applyToAllElements', function($callback, $exlude = []) {
-	$this->elements = collect($this->elements)->map(function($el, $i) use ($callback, $exlude) {
-		if(!in_array($i, $exlude)) {
+Kompo\Elements\Layout::macro('applyToAllElements', function ($callback, $exlude = []) {
+	$this->elements = collect($this->elements)->map(function ($el, $i) use ($callback, $exlude) {
+		if (!in_array($i, $exlude)) {
 			return $callback($el);
 		}
 
@@ -14,35 +16,48 @@ Kompo\Elements\Layout::macro('applyToAllElements', function($callback, $exlude =
 	return $this;
 });
 
-Kompo\Elements\Layout::macro('stopPropagation', function() {
+Kompo\Elements\Layout::macro('stopPropagation', function () {
 	return $this->attr([
 		'onclick' => 'event.stopPropagation()',
 	]);
 });
 
+Kompo\Elements\Trigger::macro('panelLoading', function ($id) {
+	Interaction::appendToWithAction($this, new Action($this, 'run', ['() => {
+		const panel = document.getElementById("' . $id . '");
+
+		if(panel) {
+			panel.innerHTML = "<div></div>" + panel.innerHTML;
+			panel.classList.add("vlPanelLoading");
+		}
+	}']));
+
+	return $this;
+});
+
 /* Transformers */
-if(!function_exists('tinyintToBool')) {
+if (!function_exists('tinyintToBool')) {
 	function tinyintToBool($value): string
 	{
 		return $value == 1 ? 'Yes' : 'No';
 	}
 }
 
-if(!function_exists('toRounded')) {
+if (!function_exists('toRounded')) {
 	function toRounded($value, $decimals = 2): string
 	{
 		return round($value, $decimals);
 	}
 }
 
-if(!function_exists('getFullName')) {
+if (!function_exists('getFullName')) {
 	function getFullName($firstName, $lastName): string
 	{
 		return collect([$firstName, $lastName])->filter()->implode(' ');
 	}
 }
 
-if(!function_exists('guessFirstName')) {
+if (!function_exists('guessFirstName')) {
 	function guessFirstName($fullName)
 	{
 		$names = explodeName($fullName);
@@ -50,7 +65,7 @@ if(!function_exists('guessFirstName')) {
 	}
 }
 
-if(!function_exists('guessLastName')) {
+if (!function_exists('guessLastName')) {
 	function guessLastName($fullName)
 	{
 		$names = explodeName($fullName);
@@ -58,31 +73,31 @@ if(!function_exists('guessLastName')) {
 	}
 }
 
-if(!function_exists('explodeName')) {
+if (!function_exists('explodeName')) {
 	function explodeName($fullName)
 	{
 		return explode(' ', $fullName, 2);
 	}
 }
 
-if(!function_exists('getAgeFromDob')) {
+if (!function_exists('getAgeFromDob')) {
 	function getAgeFromDob($dateOfBirth): string
 	{
 		if (!$dateOfBirth) {
 			return '';
 		}
 
-		return carbonNow()->diffInYears(carbon($dateOfBirth)).' '.__('general-years');
+		return carbonNow()->diffInYears(carbon($dateOfBirth)) . ' ' . __('general-years');
 	}
 }
 
 function sizeAsKb($size)
 {
-	return round($size / 1024, 2).' KB';
+	return round($size / 1024, 2) . ' KB';
 }
 
 /* GENERAL KOMPO */
-if(!function_exists('isKompoEl')) {
+if (!function_exists('isKompoEl')) {
 	function isKompoEl($el)
 	{
 		return $el instanceof Element;
@@ -103,7 +118,7 @@ if (!function_exists('getAppClass')) {
 /* URIS */
 if (!function_exists('getPushParameterFn')) {
 	function getPushParameterFn($parameter, $value, $valueInJs = false)
-	{		
+	{
 		$getActualTabFn = <<<javascript
 			function getActualTab(id = null)
 			{
@@ -112,14 +127,14 @@ if (!function_exists('getPushParameterFn')) {
 		javascript;
 
 		$regexParam = "/(&|\?)$parameter=[^&]*/";
-	
+
 		if ($valueInJs) {
 			$value = '${' . $value . '}';
 		}
-	
-		$fn = '() => {'. $getActualTabFn . ' const hrefWithoutActualParam = location.href.replace('. $regexParam.', ""); const charToAppend = hrefWithoutActualParam.indexOf("?") == -1 ? "?" : "&"; window.history.pushState(null, null, `${hrefWithoutActualParam}${charToAppend}'
-		. $parameter . '=' . $value . '`);}';
-	
+
+		$fn = '() => {' . $getActualTabFn . ' const hrefWithoutActualParam = location.href.replace(' . $regexParam . ', ""); const charToAppend = hrefWithoutActualParam.indexOf("?") == -1 ? "?" : "&"; window.history.pushState(null, null, `${hrefWithoutActualParam}${charToAppend}'
+			. $parameter . '=' . $value . '`);}';
+
 		return $fn;
 	}
 }

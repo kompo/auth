@@ -18,7 +18,8 @@
         "spatie/laravel-mail-preview": "^6.0",
         "laravel/socialite": "^5.12",
         "socialiteproviders/microsoft-azure": "^5.2",
-        "maatwebsite/excel": "^3.1"
+        "maatwebsite/excel": "^3.1",
+        "laravel/vonage-notification-channel": "^3.3"
     },
     "extra": {
         "laravel": {

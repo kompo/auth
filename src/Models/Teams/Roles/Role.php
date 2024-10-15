@@ -57,4 +57,17 @@ class Role extends Model
             $this->permissions()->updateExistingPivot($permissionId, ['permission_type' => $value, 'modified_by' => auth()->id()]);
         }
     }
+
+    public static function getOrCreate($name) {
+        $role = self::where('id', $name)->first();
+
+        if (!$role) {
+            $role = new static;
+            $role->id = $name;
+            $role->name = ucfirst($name);
+            $role->save();
+        }
+
+        return $role;
+    }
 }

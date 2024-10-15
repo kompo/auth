@@ -45,11 +45,7 @@ return new class extends Migration
             $table->tinyInteger('status')->nullable();
             $table->foreignId('communication_template_id')->nullable()->constrained('communication_templates');
         });
-
-        Schema::table('notifications', function (Blueprint $table) {
-            $table->foreignId('notification_template_id')->nullable()->constrained('notification_templates');
-        });
-
+        
         Schema::table('notifications', function (Blueprint $table) {
             $table->foreignId('notification_template_id')->nullable()->constrained('notification_templates');
             $table->string('trigger')->nullable();

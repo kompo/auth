@@ -6,11 +6,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
-use Kompo\Auth\Events\CommunicableEvent;
 use Kompo\Auth\Facades\FileModel;
-use Kompo\Auth\Listeners\CommunicationTriggeredListener;
-use Kompo\Auth\Models\Monitoring\CommunicationTemplateGroup;
-use Symfony\Contracts\EventDispatcher\Event as EventDispatcherEvent;
 
 class KompoAuthServiceProvider extends ServiceProvider
 {
@@ -161,23 +157,6 @@ class KompoAuthServiceProvider extends ServiceProvider
         Event::listen(function (\SocialiteProviders\Manager\SocialiteWasCalled $event) {
             $event->extendSocialite('azure', \SocialiteProviders\Azure\Provider::class);
         });
-
-        Event::listen(CommunicationTemplateGroup::getTriggers(), CommunicationTriggeredListener::class);
-    }
-
-    protected function verifyCommunicationTriggers()
-    {
-        $triggers = CommunicationTemplateGroup::getTriggers();
-
-        foreach ($triggers as $trigger) {
-            if (!class_exists($trigger)) {
-                throw new \Exception("The trigger class $trigger does not exist.");
-            }
-
-            if (!in_array(CommunicableEvent::class, class_implements($trigger))) {
-                throw new \Exception("The trigger class $trigger must implement ".CommunicableEvent::class);
-            }
-        }
     }
 
     protected function loadMiddlewares()

@@ -184,44 +184,12 @@ class TeamRole extends Model
     /* CALCULATED FIELDS */
     public function getRoleName()
     {
-        $roleClass = $this->getRelatedRoleClass();
-
-        return $roleClass::ROLE_NAME;
-    }
-
-    public function getRelatedRoleClass()
-    {
-        return static::getAllRoleClasses()->first(fn($class) => $this->role == $class::ROLE_KEY);
+        return $this->roleRelation?->name ?: $this->role;
     }
 
     public function getTeamAndRoleLabel()
     {
         return $this->team->team_name.' - '.$this->getRoleName();
-    }
-
-    public static function getUsableRoleClasses()
-    {
-        $appRolesDir = app_path('Models/Roles');
-
-        $allRoles = collect([
-            isSuperAdmin() ? SuperAdminRole::class : null,
-            //TeamOwnerRole::class, //there can be only one team owner
-        ])->filter();
-
-        if (is_dir($appRolesDir)) {
-
-            $appRoles = collect(\File::allFiles($appRolesDir))
-                ->map(fn($file) => 'App\\Models\\Roles\\'.$file->getFilenameWithoutExtension());
-
-            $allRoles = $allRoles->concat($appRoles);
-        }
-
-        return $allRoles;
-    }
-
-    public static function getAllRoleClasses()
-    {
-        return static::getUsableRoleClasses()->push(TeamOwnerRole::class);
     }
 
     public static function baseRoles()
@@ -320,28 +288,6 @@ class TeamRole extends Model
     }
 
     /* ELEMENTS */
-    public static function buttonGroupField($label = 'Role')
-    {
-        $selectEl = config('kompo-auth.multiple_roles_per_team') ? _MultiSelect($label) : _Select($label);
-
-        return $selectEl->name('role')
-            ->options(
-                static::buttonOptions()
-            );
-    }
-
-    public static function buttonOptions()
-    {
-        return static::getUsableRoleClasses()->mapWithKeys(function ($roleClass) {
-            return [
-                $roleClass::ROLE_KEY => _Rows(
-                    _Html($roleClass::ROLE_NAME)->class('text-sm text-gray-600'),
-                    _Html($roleClass::ROLE_DESCRIPTION)->class('mt-2 text-xs text-gray-600'),
-                )->class('p-4')
-            ];
-        });
-    }
-
     public static function roleHierarchySelect()
     {
         return _Select('Role hierarchy')->name('role_hierarchy')

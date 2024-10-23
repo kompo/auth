@@ -3,7 +3,6 @@
 namespace Kompo\Auth\Models\Teams;
 
 use Kompo\Auth\Models\Teams\BaseRoles\SuperAdminRole;
-use Kompo\Auth\Models\Teams\BaseRoles\TeamOwnerRole;
 use Kompo\Auth\Models\Teams\PermissionTeamRole;
 use Kompo\Auth\Models\Teams\TeamRole;
 
@@ -97,18 +96,6 @@ trait HasTeamsTrait
         return $teamRole;
     }
 
-    public function createSuperAdminRole($team)
-    {
-        $this->createTeamRole($team, SuperAdminRole::ROLE_KEY);
-        $this->switchToFirstTeamRole();
-    }
-
-    public function createTeamOwnerRole($team)
-    {
-        $this->createTeamRole($team, TeamOwnerRole::ROLE_KEY);
-        $this->switchToFirstTeamRole();
-    }
-
     public function createRolesFromInvitation($invitation)
     {
         $team = $invitation->team;
@@ -186,35 +173,7 @@ trait HasTeamsTrait
 
     public function isSuperAdmin()
     {
-        return $this->hasCurrentRole(SuperAdminRole::class);
-    }
-
-    public function hasCurrentRole($roleClass)
-    {
-        if ($this->currentTeamRole->role === $roleClass::ROLE_KEY) {
-            if (config('kompo-auth.team_hierarchy_roles')) {
-                return $this->currentTeamRole->getRoleHierarchyAccessDirect();
-            }
-
-            return true;
-        }
-
-        if (config('kompo-auth.team_hierarchy_roles')) {
-            $currentTeam = $this->currentTeamRole->team;
-            $parentTeam = $currentTeam->parentTeam;
-
-            while ($parentTeam) {
-                $teamRole = $parentTeam->teamRoles()->forUser($this->id)->where('role', $roleClass::ROLE_KEY)->first();
-
-                if ($teamRole) {
-                    return $teamRole->getRoleHierarchyAccessBelow();
-                }
-
-                $parentTeam = $parentTeam->parentTeam;
-            }
-        }
-
-        return false;
+        return $this->currentTeamRole->role === SuperAdminRole::ROLE_KEY;
     }
 
     /* PERMISSIONS */

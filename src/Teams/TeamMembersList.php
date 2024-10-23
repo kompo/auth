@@ -16,7 +16,7 @@ class TeamMembersList extends Query
     public function query()
     {
         return $this->team->teamRoles()->with('user')
-            ->selectRaw('user_id, GROUP_CONCAT(role) as role')->groupBy('user_id');
+            ->selectRaw('user_id, GROUP_CONCAT(distinct role) as role')->groupBy('user_id');
     }
 
     public function render($teamRole)
@@ -48,7 +48,8 @@ class TeamMembersList extends Query
 
     public function getRoleManagementModal($userId)
     {
-        return new RoleManagementModal($userId);
+        // TODO: We need to refactor a lot because we're not using this anymore
+        // return new RoleManagementModal($userId);
     }
 
     public function getLeaveTeamModal()

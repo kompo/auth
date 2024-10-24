@@ -25,7 +25,11 @@ class TeamManagementPage extends Form
                 null, 
 
             new TeamMembersView(),
+
+            new AuditChangeReportTable(),
+
+            new LoginAttemptsTable(),
             
-    	)->class('space-y-4');
+    	)->class('space-y-4 pb-8');
     }
 }

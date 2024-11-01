@@ -34,7 +34,7 @@ class ChangeNotificationTeamMail extends Mailable
     public function build()
     {
         return $this->markdown('kompo-auth::mail.team-change')
-            ->subject(__('translate.team-change'))
+            ->subject(__('auth-team-change'))
             ->with([
                 'teamName' => $this->team->name,
                 'userName' => $this->user->name,

@@ -25,10 +25,10 @@ class CommunicationsList extends Table
     public function headers()
     {
         return [
-            _Th('translate.date'),
-            _Th('translate.title'),
-            _Th('translate.trigger'),
-            _Th('translate.number-of-ways'),
+            _Th('auth-date'),
+            _Th('auth-title'),
+            _Th('auth-trigger'),
+            _Th('auth-number-of-ways'),
         ];
     }
 

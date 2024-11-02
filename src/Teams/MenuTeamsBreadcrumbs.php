@@ -39,7 +39,7 @@ class MenuTeamsBreadcrumbs extends Form
     public function switchToTeamRole($teamId)
     {
         if (!auth()->user()->switchToFirstTeamRole($teamId)) {
-			abort(403, __('translate.you-dont-have-access-to-this-team'));
+			abort(403, __('auth-you-dont-have-access-to-this-team'));
 		}
 
         return redirect()->route('dashboard');

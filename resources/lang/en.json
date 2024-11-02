@@ -47,6 +47,8 @@
 	"auth-user": "User",
 	"auth-with-values-the-following-changes-were-made-to-your-organization": "The following changes were made to your organization<br>:fields",
 	"auth-with-values.this-team-do-the-following-changes": "These are the changes done to this team<br>:teamName<br>:changes",
+	"auth-you-dont-have-access-to-any-team": "You don't have access to any team",
+	"auth-you-dont-have-access-to-this-team": "You don't have access to this team",
 	"auth-your-email-has-been-verified!": "Your email has been verified!",
 	"auth-your-first-name": "Your first name",
 	"auth-your-first-name1": "Your first name",

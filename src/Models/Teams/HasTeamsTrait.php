@@ -15,7 +15,7 @@ trait HasTeamsTrait
             if(!$this->switchToFirstTeamRole()) {
                 auth()->logout();
             
-                abort(403, __('translate.you-dont-have-access-to-any-team'));
+                abort(403, __('auth-you-dont-have-access-to-any-team'));
             }
         }
 

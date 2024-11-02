@@ -11,7 +11,7 @@ trait HasTeamsTrait
 	/* RELATIONS */
     public function currentTeamRole()
 	{
-        if (!$this->current_team_role_id) {
+        if ($this->exists && !$this->current_team_role_id) {
             if(!$this->switchToFirstTeamRole()) {
                 auth()->logout();
             

@@ -15,12 +15,12 @@ class TeamInfoForm extends TeamBaseForm
 
         if(count($changes)) {
             $changesLabel = [
-                'nane' => 'translate.name',
+                'name' => 'auth-name',
             ];
 
             $changesMessage = collect($changes)->map(fn($val, $name) => __($changesLabel[$name]))->implode('<br>');
 
-            TeamChange::addWithMessage(__('translate.with-values.the-following-changes-were-made-to-your-organization', [
+            TeamChange::addWithMessage(__('auth-with-values-the-following-changes-were-made-to-your-organization', [
                 'fields' => $changesMessage,
             ]));
         }

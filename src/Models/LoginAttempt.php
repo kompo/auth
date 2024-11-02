@@ -15,14 +15,14 @@ class LoginAttempt extends Model
     public static function loginTypes()
     {
         return [
-            static::TYPE_LOCAL => __('translate.local'),
-            static::TYPE_SSO => __('translate.sso'),
+            static::TYPE_LOCAL => __('auth-local'),
+            static::TYPE_SSO => __('auth-sso'),
         ];
     }
 
     public function getStatusPill()
     {
-        $label = $this->success ? __('translate.success') : __('translate.failed');
+        $label = $this->success ? __('auth-success') : __('auth-failed');
         $class = $this->success ? 'bg-positive' : 'bg-danger';
 
         return _Pill($label)->class($class)

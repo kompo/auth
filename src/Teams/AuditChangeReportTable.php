@@ -15,16 +15,16 @@ class AuditChangeReportTable extends Table
     public function top()
     {
         return _FlexBetween(
-            _Html('translate.audit-change-report')->class('mb-4 text-xl'),
+            _Html('auth-audit-change-report')->class('mb-4 text-xl'),
         );
     }
 
     public function headers()
     {
         return [
-            _Th('translate.date'),
-            _Th('translate.user'),
-            _Th('translate.change'),
+            _Th('auth-date'),
+            _Th('auth-user'),
+            _Th('auth-change'),
         ];
     }
 
@@ -34,7 +34,7 @@ class AuditChangeReportTable extends Table
 
             _Html($change->created_at->translatedFormat('d M Y H:i')),
 
-            _Html($change->user?->name ?: __('translate.deleted')),
+            _Html($change->user?->name ?: __('auth-deleted')),
 
             _Html($change->message),
 

@@ -12,7 +12,11 @@ trait HasTeamsTrait
     public function currentTeamRole()
 	{
         if (!$this->current_team_role_id) {
-            $this->switchToFirstTeamRole();
+            if(!$this->switchToFirstTeamRole()) {
+                auth()->logout();
+            
+                abort(403, __('translate.you-dont-have-access-to-any-team'));
+            }
         }
 
 		return $this->belongsTo(TeamRole::class, 'current_team_role_id');
@@ -113,6 +117,10 @@ trait HasTeamsTrait
     public function switchToFirstTeamRole($teamId = null)
     {
         $teamRole = $this->getFirstTeamRole($teamId);
+
+        if (!$teamRole) {
+            return false;
+        }
 
         return $this->switchToTeamRole($teamRole);
     }

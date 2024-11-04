@@ -35,9 +35,15 @@ class RolesAndPermissionMatrix extends Query
         );
     }
 
-    public function headerRoles($rolesIds)
+    public function headerRoles($rolesIds = [])
     {
         $rolesIds = !$rolesIds ? [] : $rolesIds;
+
+        if (count($rolesIds) == 0) {
+            return _Rows(
+                _Html('translate.you-must-select-at-least-one-role')->class('text-center text-lg'), 
+            )->class('min-h-[55vh]');
+        }
         
         return _Flex(
             collect([null])->merge(getRoles()->whereIn('id', $rolesIds))->map(function ($role, $i) {
@@ -58,6 +64,10 @@ class RolesAndPermissionMatrix extends Query
     
     public function render($permissionSection)
     {
+        if(is_array(request('roles')) && !count(request('roles'))) {
+            return null;
+        }
+
         return new PermissionSectionRolesTable([
            'permission_section_id' => $permissionSection->id,
            'roles_ids' => request('roles') ? implode(',', request('roles')) : $this->defaultRoles->implode('id', ',')

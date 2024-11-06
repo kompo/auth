@@ -32,13 +32,14 @@ class TeamInfoForm extends TeamBaseForm
 
         return [
             _Html('crm.team-owner')->class('vlFormLabel'),
-            _Flex4(
-                $teamOwner->getProfilePhotoPill(),
-                _Rows(
-                    _Html($teamOwner->name),
-                    _Html($teamOwner->email)->class('text-gray-700 text-sm'),
-                )
-            ),
+            $teamOwner ? _Flex4(
+                    $teamOwner->getProfilePhotoPill(),
+                    _Rows(
+                        _Html($teamOwner->name),
+                        _Html($teamOwner->email)->class('text-gray-700 text-sm'),
+                    )
+                ) : 
+                    _Html('translate.auth-no-owner')->class('vlFormLabel'),
             _Input('crm.team-name')->name('team_name')->class('mt-4'),
             _FlexEnd(
                 _SubmitButton('general.save')

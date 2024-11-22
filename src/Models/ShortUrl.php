@@ -66,11 +66,11 @@ class ShortUrl extends Model
 
     public function getQr($size = 200)
     {
-        $qrCode = QrCode::format('png')->size($size)->generate($this->getLinkUrl());
-
         $path = 'qr-codes/short-link-'.$this->id.'.png';
 
         if (!Storage::disk('public')->exists($path)) {
+            $qrCode = QrCode::format('png')->size($size)->generate($this->getLinkUrl());
+
             Storage::disk('public')->put('qr-codes/short-link-'.$this->id.'.png', $qrCode);
         }
 

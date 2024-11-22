@@ -28,7 +28,8 @@ class RolesAndPermissionMatrix extends Query
             _MultiSelect()->name('roles', false)->placeholder('auth-roles')->options(
                 getRoles()->pluck('name', 'id')->toArray()
             )->default($this->defaultRoles->pluck('id') ?? [])
-            ->onChange(fn($e) => $e->browse(null, 1) && $e->selfPost('headerRoles')->inPanel('roles-header')),
+            // We're using sort because i got errors using browse althought i used 1 as page number
+            ->onChange(fn($e) => $e->sort() && $e->selfPost('headerRoles')->inPanel('roles-header')),
             _Panel(
                 $this->headerRoles($this->defaultRoles->pluck('id')),
             )->id('roles-header'),
@@ -59,6 +60,8 @@ class RolesAndPermissionMatrix extends Query
 
     public function query()
     {
+        if(!$this->_kompo('currentPage')) $this->currentPage(1);
+
         return PermissionSection::all();
     }
     

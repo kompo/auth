@@ -1,5 +1,14 @@
 <?php
-use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+
+\Kompo\Link::macro('copyToClipboard', function ($text, $alertMessage = 'translate.auth.copied-to-clipboard') {
+    return $this->onClick(fn($e) => $e->run('() => {navigator.clipboard?.writeText("' . $text . '")}') &&
+        $e->alert($alertMessage));
+});
+
+\Kompo\Rows::macro('copyToClipboard', function ($text, $alertMessage = 'translate.auth.copied-to-clipboard') {
+    return $this->onClick(fn($e) => $e->run('() => {navigator.clipboard?.writeText("' . $text . '")}') &&
+        $e->alert($alertMessage));
+});
 
 function _Video($src)
 {

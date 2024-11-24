@@ -53,7 +53,8 @@ trait HasTeamsTrait
 
     public function getFirstTeamRole($teamId = null)
     {
-        return $this->teamRoles()->relatedToTeam($teamId)->first();        
+        return $this->teamRoles()->relatedToTeam($teamId)->first() ?? 
+            TeamRole::getParentHierarchyRole($teamId, $this->id)?->createChildForHierarchy($teamId);
     }
 
     public function getLatestTeamRole($teamId = null)
@@ -73,6 +74,30 @@ trait HasTeamsTrait
         }
 
         return $this->id == $team->user_id;
+    }
+
+    public function hasAccessToTeam($teamId)
+    {
+        return \Cache::remember('hasAccessToTeam' . $this->id . '|' . $teamId, 120, fn() =>
+            $this->activeTeamRoles->some(fn($tr) => $tr->hasAccessToTeam($teamId))    
+        );
+    }
+
+    public function getAllTeamIdsWithRolesCached($profile = 1, $search = '')
+    {
+        if($search) {
+            return $this->getAllTeamIdsWithRoles($profile, $search);
+        }
+
+        $cacheKey = 'allTeamIdsWithRoles' . $this->id . '|' . $profile;
+
+        return \Cache::remember($cacheKey, 180, fn() => $this->getAllTeamIdsWithRoles($profile, $search));
+    }
+
+    public function getAllTeamIdsWithRoles($profile = 1, $search = '')
+    {
+        return $this->activeTeamRoles()->whereHas('roleRelation', fn($q) => $q->where('profile', $profile))->get()
+            ->mapWithKeys(fn($tr) => $tr->getAllHierarchyTeamsIds($search));
     }
 
 	/* ACTIONS */

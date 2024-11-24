@@ -7,6 +7,8 @@ use Kompo\Auth\Models\Model;
 use Kompo\Auth\Models\Teams\BaseRoles\SuperAdminRole;
 use Kompo\Auth\Models\Teams\BaseRoles\TeamOwnerRole;
 use Kompo\Auth\Models\Teams\Permission;
+use Kompo\Auth\Models\Teams\Roles\Role;
+use Kompo\Auth\Models\User;
 
 class TeamRole extends Model
 {
@@ -68,8 +70,7 @@ class TeamRole extends Model
         return $this->validPermissions()
             ->selectRaw(constructComplexPermissionKeySql('permission_team_role') . ', permission_key, permissions.id')
             ->union(
-                $this->roleRelation->validPermissions()
-                    ->selectRaw(constructComplexPermissionKeySql('permission_role') . ', permission_key, permissions.id')
+                $this->roleRelation->validPermissionsQuery()
             );
     }
 
@@ -84,8 +85,7 @@ class TeamRole extends Model
         return $this->deniedPermissions()
             ->select('permissions.id')
             ->union(
-                $this->roleRelation->deniedPermissions()
-                    ->select('permissions.id')
+                $this->roleRelation->deniedPermissionsQuery(),
             );
     }
 
@@ -133,6 +133,7 @@ class TeamRole extends Model
 
     /**
      * Check if the team role has a specific permission.
+     * ! DISABLED FOR NOW. BECAUSE WE COULD'T KNOW IF WE GET A PERMISSIONS DENIED BY ONE ROLE.
      *
      * @param string $permissionKey
      * @param PermissionTypeEnum $type
@@ -156,14 +157,31 @@ class TeamRole extends Model
             return Permission::whereRaw('1=0')->selectRaw('0 as complex_permission_key');
         }
 
-        $validPermissionsQuery = $teamRoles->reduce(function ($acc, $teamRole) {
-            return $acc->union($teamRole->validPermissionsQuery());
-        }, $teamRoles->get(0)->validPermissionsQuery());
+        $roles = Role::whereIn('id', $teamRoles->unique('role')->pluck('role'))->get();
+
+        // First we filter by role. We was using validPermissionsQuery of this class. But we was querying many times the same role.
+        $validPermissionsQuery = $roles->reduce(function ($acc, $role) {
+            return $acc->union($role->validPermissionsQuery());
+        }, $roles->get(0)->validPermissionsQuery());
+
+        // Then we filter by team role. We was using validPermissionsQuery of this class but we separated it to avoid querying the same role many times.
+        $validPermissionsQuery->union(
+            PermissionTeamRole::whereIn('team_role_id', $teamRoles->pluck('id'))
+                ->join('permissions', 'permissions.id', '=', 'permission_team_role.permission_id')
+                ->selectRaw(constructComplexPermissionKeySql('permission_team_role') . ', permission_key, permissions.id'),
+        );
         
-        $deniedPermissionsQuery = $teamRoles->reduce(function ($acc, $teamRole) {
-            return $acc->union($teamRole->deniedPermissionsQuery());
-        }, $teamRoles->get(0)->deniedPermissionsQuery());
-        
+        // First we filter by role. We was using deniedPermissionsQuery of this class. But we was querying many times the same role.
+        $deniedPermissionsQuery = $roles->reduce(function ($acc, $role) {
+            return $acc->union($role->deniedPermissionsQuery());
+        }, $roles->get(0)->deniedPermissionsQuery());
+
+        // Then we filter by team role. We was using deniedPermissionsQuery of this class but we separated it to avoid querying the same role many times.
+        $deniedPermissionsQuery->union(
+            PermissionTeamRole::whereIn('team_role_id', $teamRoles->pluck('id'))
+                ->select('permission_id'),
+        );
+
         return $validPermissionsQuery
             ->whereNotIn('permissions.id', $deniedPermissionsQuery->select('permissions.id'))
             ->distinct('complex_permission_key');
@@ -250,6 +268,27 @@ class TeamRole extends Model
         return $teams;
     }
 
+    public function getAllHierarchyTeamsIds($search = '')
+    {
+        $teams = collect([$this->team->id => $this->role]);
+
+        if ($search && !$this->team()->search($search)->exists()) {
+            $teams = collect();
+        }
+
+        if ($this->getRoleHierarchyAccessBelow()) {
+            $teams = $teams->union($this->team->getAllChildrenRawSolution(staticExtraSelect: [$this->role, 'role'], search: $search));
+        }
+
+        if ($this->getRoleHierarchyAccessNeighbors()) {
+            $teams = $teams->union($this->team->parentTeam?->teams()?->selectRaw('id, ? as role', [$this->role])
+                ->when($search, fn($q) => $q->search($search))
+                ->pluck('role', 'id') ?: []);
+        }
+
+        return $teams;
+    }
+
     public function hasAccessToTeam($teamId)
     {
         if ($this->getRoleHierarchyAccessBelow() && $this->team->hasChildrenIdRawSolution($teamId)) {
@@ -285,6 +324,46 @@ class TeamRole extends Model
     public function deleteAsignation()
     {
         $this->delete();
+    }
+
+    public static function getParentHierarchyRole($teamId, $userId, $role = null)
+    {
+        return static::when($role, fn($q) => $q->where('role', $role))->where('user_id', $userId)->get()->first(
+            fn($teamRole) => $teamRole->hasAccessToTeam($teamId)
+        );
+    }
+
+    public static function getOrCreateForUser($teamId, $userId, $role)
+    {
+        $teamRole = static::where('team_id', $teamId)
+            ->where('user_id', $userId)
+            ->where('role', $role)
+            ->first();
+
+        if (!$teamRole) {
+            $parentHierarchyRole = static::getParentHierarchyRole($teamId, $userId, $role);
+            
+            $teamRole = $parentHierarchyRole?->createChildForHierarchy($teamId, $userId);
+        }
+
+        return $teamRole;
+    }
+
+    public function createChildForHierarchy($teamId)
+    {
+        if (!$this->hasAccessToTeam($teamId)) {
+            abort(403);
+        }
+
+        $teamRole = new static;
+        $teamRole->team_id = $teamId;
+        $teamRole->user_id = $this->user_id;
+        $teamRole->role = $this->role;
+        $teamRole->parent_team_role_id = $this->id;
+        $teamRole->role_hierarchy = RoleHierarchyEnum::DIRECT;
+        $teamRole->save();
+
+        return $teamRole;
     }
 
     /* ELEMENTS */

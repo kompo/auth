@@ -62,7 +62,7 @@ class RolesAndPermissionMatrix extends Query
     {
         if(!$this->_kompo('currentPage')) $this->currentPage(1);
 
-        return PermissionSection::all();
+        return PermissionSection::whereHas('permissions')->orderBy('name');
     }
     
     public function render($permissionSection)

@@ -42,7 +42,7 @@ class RolesAndPermissionMatrix extends Query
 
         if (count($rolesIds) == 0) {
             return _Rows(
-                _Html('translate.you-must-select-at-least-one-role')->class('text-center text-lg'), 
+                _Html('auth.you-must-select-at-least-one-role')->class('text-center text-lg'), 
             )->class('min-h-[55vh]');
         }
         

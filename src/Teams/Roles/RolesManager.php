@@ -80,4 +80,9 @@ class RolesManager extends Form
             }
         javascript;
     }
+
+    public function getRoleForm($id = null)
+    {
+        return new (config('kompo-auth.role-form-namespace'));
+    }
 }

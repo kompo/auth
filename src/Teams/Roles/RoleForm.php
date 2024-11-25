@@ -4,7 +4,6 @@ namespace Kompo\Auth\Teams\Roles;
 
 use Kompo\Auth\Common\Modal;
 use Kompo\Auth\Facades\RoleModel;
-use Kompo\Auth\Models\Teams\ProfileEnum;
 
 class RoleForm extends Modal
 {

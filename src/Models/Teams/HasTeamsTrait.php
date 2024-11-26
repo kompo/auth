@@ -78,7 +78,7 @@ trait HasTeamsTrait
 
     public function hasAccessToTeam($teamId)
     {
-        return \Cache::tags(['permissions'])->remember('hasAccessToTeam' . $this->id . '|' . $teamId, 120, fn() =>
+        return \Cache::rememberWithTags(['permissions'], 'hasAccessToTeam' . $this->id . '|' . $teamId, 120, fn() =>
             $this->activeTeamRoles->some(fn($tr) => $tr->hasAccessToTeam($teamId))    
         );
     }
@@ -91,7 +91,7 @@ trait HasTeamsTrait
 
         $cacheKey = 'allTeamIdsWithRoles' . $this->id . '|' . $profile;
 
-        return \Cache::tags(['permissions'])->remember($cacheKey, 180, fn() => $this->getAllTeamIdsWithRoles($profile, $search));
+        return \Cache::rememberWithTags(['permissions'], $cacheKey, 180, fn() => $this->getAllTeamIdsWithRoles($profile, $search));
     }
 
     public function getAllTeamIdsWithRoles($profile = 1, $search = '')
@@ -238,7 +238,7 @@ trait HasTeamsTrait
     {
         $cacheKey = 'teamsWithPermission' . $this->id . '|' . $permissionKey . '|' . $type->value;
 
-        return \Cache::tags(['permissions'])->remember($cacheKey, 120, function () use ($permissionKey, $type) {
+        return \Cache::rememberWithTags(['permissions'], $cacheKey, 120, function () use ($permissionKey, $type) {
             // Check if any active team role denies the permission
             $hasDenyingPermission = $this->activeTeamRoles->some(function ($teamRole) use ($permissionKey) {
                 return $teamRole->denyingPermission($permissionKey);
@@ -269,7 +269,7 @@ trait HasTeamsTrait
      */
     public function getCurrentPermissionsInAllTeams()
     {
-        return \Cache::tags(['permissions'])->remember('currentPermissionsInAllTeams' . $this->id, 120,
+        return \Cache::rememberWithTags(['permissions'], 'currentPermissionsInAllTeams' . $this->id, 120,
             fn() => TeamRole::getAllPermissionsKeysForMultipleRoles($this->activeTeamRoles),
         );
     }
@@ -282,7 +282,7 @@ trait HasTeamsTrait
      */
     public function getCurrentPermissionKeysInTeam($teamId)
     {
-        return \Cache::tags(['permissions'])->remember('currentPermissionKeys' . $this->id . '|' . $teamId, 120,
+        return \Cache::rememberWithTags(['permissions'], 'currentPermissionKeys' . $this->id . '|' . $teamId, 120,
             fn() => TeamRole::getAllPermissionsKeysForMultipleRoles($this->activeTeamRoles->filter(fn($tr) => $tr->hasAccessToTeam($teamId))),
         );
     }

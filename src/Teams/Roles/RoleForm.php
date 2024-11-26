@@ -23,7 +23,8 @@ class RoleForm extends Modal
     {
         \Cache::forget('roles');
 
-        \Cache::tags(['permissions'])->flush();
+        // \Cache::tags(['permissions'])->flush();
+        \Cache::flush();
     }
 
     public function body()

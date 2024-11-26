@@ -168,7 +168,7 @@ if(!function_exists('currentPermissions')) {
             auth()->user()->switchToFirstTeamRole();
         }
 
-        return \Cache::tags(['permissions'])->remember('currentPermissions'.auth()->id(), 120,
+        return \Cache::rememberWithTags(['permissions'], 'currentPermissions'.auth()->id(), 120,
             fn() => auth()->user()->currentTeamRole->permissions()->pluck('complex_permission_key')
         );
     }

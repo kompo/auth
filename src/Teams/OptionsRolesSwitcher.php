@@ -64,7 +64,7 @@ class OptionsRolesSwitcher extends Form
 
     public function switchToTeamRole($teamId, $roleId)
     {
-        if (!auth()->user()->hasAccessToTeam($teamId)) {
+        if (!auth()->user()->hasAccessToTeam($teamId, $roleId)) {
             abort(403);
         }
 

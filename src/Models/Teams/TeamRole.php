@@ -291,6 +291,10 @@ class TeamRole extends Model
 
     public function hasAccessToTeam($teamId)
     {
+        if ($this->team_id == $teamId) {
+            return true;
+        }
+
         if ($this->getRoleHierarchyAccessBelow() && $this->team->hasChildrenIdRawSolution($teamId)) {
             return true;
         }

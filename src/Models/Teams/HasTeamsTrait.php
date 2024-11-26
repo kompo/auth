@@ -76,10 +76,13 @@ trait HasTeamsTrait
         return $this->id == $team->user_id;
     }
 
-    public function hasAccessToTeam($teamId)
+    public function hasAccessToTeam($teamId, $roleId = null)
     {
         return \Cache::rememberWithTags(['permissions'], 'hasAccessToTeam' . $this->id . '|' . $teamId, 120, fn() =>
-            $this->activeTeamRoles->some(fn($tr) => $tr->hasAccessToTeam($teamId))    
+            $this->activeTeamRoles()
+                ->when($roleId, fn($q) => $q->where('role', $roleId))
+                ->get()
+                ->some(fn($tr) => $tr->hasAccessToTeam($teamId))    
         );
     }
 

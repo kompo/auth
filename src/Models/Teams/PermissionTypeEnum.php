@@ -57,7 +57,7 @@ enum PermissionTypeEnum: int
 
     public static function colors()
     {
-        return collect(self::cases())->filter(fn($case) => $case->visibleInSelects())->map(fn($case) => $case->color());
+        return collect(self::cases())->filter(fn($case) => $case->visibleInSelects())->map(fn($case) => $case->color())->values();
     }
 
     public static function hasPermission(self $given, self $expected)

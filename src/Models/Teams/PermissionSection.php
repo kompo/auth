@@ -27,4 +27,25 @@ class PermissionSection extends Model
             ->wherePivot('permission_type', $permissionType)
             ->where('permission_section_id', $this->id)->count() == $this->permissions()->count();
     }
+
+    public function allPermissionsTypes($role)
+    {
+        $fullFilled = $this->hasAllPermissions($role);
+        
+        $types = $role->permissions()->forSection($this->id)
+            ->pluck('permission_type')
+            ->unique()
+            ->values();
+
+        if (!$fullFilled) {
+            $types->push(0);
+        }
+
+        return $types;
+    }
+
+    public function hasAllPermissions($role)
+    {
+        return $role->permissions()->forSection($this->id)->count() == $this->permissions()->count();
+    }
 }

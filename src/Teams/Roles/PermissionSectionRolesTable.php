@@ -89,10 +89,10 @@ class PermissionSectionRolesTable extends Query
         $role = is_string($role) ? Role::findOrFail($role) : $role;
         $checkboxName = 'permissionSection' . $role->id . '-' . $this->permissionSection->id;
 
-        return _CheckboxMultipleStates($checkboxName, 
+        return _CheckboxSectionMultipleStates($checkboxName, 
                 PermissionTypeEnum::values(),
                 PermissionTypeEnum::colors(),
-                $this->permissionSection->hasAllPermissionsSameType($role) ? $role->getFirstPermissionTypeOfSection($this->permissionSectionId) : null
+                $this->permissionSection->hasAllPermissionsSameType($role) ? $role->getFirstPermissionTypeOfSection($this->permissionSectionId) : $this->permissionSection->allPermissionsTypes($role)->toArray()
             )->class('!mb-0')
             ->onChange(fn($e) => $e
                 ->selfPost('changeRolePermissionSection', ['role' => $role->id, 'permissionSection' => $this->permissionSectionId]) &&

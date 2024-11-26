@@ -28,7 +28,7 @@ class OptionsRolesSwitcher extends Form
     {
         // We want to show all virtual teams roles that the user has access to. also using hierarchy
         $teamsIdsWithRoles = auth()->user()->getAllTeamIdsWithRolesCached(request('profile') ?? 1, request('search'))->take(10)
-            ->filter(fn($roleId, $teamId) => $roleId !== currentTeamRole()?->role_id || $teamId !== currentTeamRole()?->team_id);
+            ->filter(fn($roleId, $teamId) => $roleId !== currentTeamRole()?->role || $teamId !== currentTeamRole()?->team_id);
 
         // Using this to avoid querying the database for each team and role
         $teams = TeamModel::whereIn('id', $teamsIdsWithRoles->keys())->get()->mapWithKeys(function ($team) {

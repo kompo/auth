@@ -15,7 +15,7 @@ class OptionsRolesSwitcher extends Form
             _Rows(
                 _Select()->class('max-w-2xl min-w-[260px]')->options(config('kompo-auth.profile-enum')::optionsWithLabels())->default(currentTeamRole()?->role?->profile ?? 1)->name('profile')
                     ->selfPost('roleOptions')->withAllFormValues()->inPanel('role-switcher'),
-                _Input()->placeholder('translate.search-placeholder')->name('search')
+                _Input()->placeholder('auth.search-placeholder')->name('search')
                     ->selfPost('roleOptions')->withAllFormValues()->inPanel('role-switcher'),
             )->p4()->class('!pb-0'),
             _Panel(

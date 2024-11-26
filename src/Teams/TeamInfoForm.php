@@ -39,7 +39,7 @@ class TeamInfoForm extends TeamBaseForm
                         _Html($teamOwner->email)->class('text-gray-700 text-sm'),
                     )
                 ) : 
-                    _Html('translate.auth-no-owner')->class('vlFormLabel'),
+                    _Html('auth.auth-no-owner')->class('vlFormLabel'),
             _Input('crm.team-name')->name('team_name')->class('mt-4'),
             _FlexEnd(
                 _SubmitButton('general.save')

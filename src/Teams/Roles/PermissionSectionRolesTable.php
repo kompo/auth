@@ -114,12 +114,11 @@ class PermissionSectionRolesTable extends Query
     
         if (!$value) {
             $role->permissions()->detach($permissions);
+        } else {
+            foreach($permissions as $permission) {
+                $role->createOrUpdatePermission($permission, $value);
+            }
         }
-
-        foreach($permissions as $permission) {
-            $role->createOrUpdatePermission($permission, $value);
-        }
-
 
         \Cache::flushTags(['permissions'], true)->flush();
     }
@@ -135,10 +134,10 @@ class PermissionSectionRolesTable extends Query
         $role = Role::findOrFail(request('role'));
 
         if (!$value) {
-            return $role->permissions()->detach(request('permission'));
-        } 
-
-        $role->createOrUpdatePermission(request('permission'), $value);
+            $role->permissions()->detach(request('permission'));
+        } else{
+            $role->createOrUpdatePermission(request('permission'), $value);
+        }
 
         \Cache::flushTags(['permissions'], true)->flush();
     }

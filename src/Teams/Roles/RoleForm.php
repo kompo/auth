@@ -19,6 +19,13 @@ class RoleForm extends Modal
         $this->model->id = $this->model->id ?? \Str::snake(request('name'));
     }
 
+    public function afterSave()
+    {
+        \Cache::forget('roles');
+
+        \Cache::tags(['permissions'])->flush();
+    }
+
     public function body()
     {
         return _Rows(

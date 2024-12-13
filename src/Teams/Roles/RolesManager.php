@@ -49,22 +49,32 @@ class RolesManager extends Form
                 next.removeClass("hidden").addClass("perm-selected")
             }
 
+            function changeNullOptionColorToIndex(parentCheckbox, indexes) 
+            {
+                $("." + parentCheckbox + " .subsection-item").addClass("hidden");
+
+                indexes.forEach(index => {
+                    $("." + parentCheckbox + " .subsection-item").eq(index).removeClass("hidden")
+                })
+            }
+
             function checkMultipleLinkGroupColor(parentCheckbox, role, permissionsIds, separator = ",")
             {
-                let lastIndex;
+                let indexes = new Set();
 
                 for (permissionId of permissionsIds.split(separator)) {
                     let selected = $("." + role + '-' + permissionId + ".perm-selected").eq(0)
                     let index = $("." + role + '-' + permissionId).index(selected)
-   
-                    if (lastIndex !== undefined && lastIndex !== index) {
-                        return changeLinkGroupColorToIndex(parentCheckbox, 0)
-                    }
 
-                    lastIndex = index
+                    indexes.add(index)
                 }
 
-                changeLinkGroupColorToIndex(parentCheckbox, lastIndex)
+                if (indexes.size > 1) {
+                    changeNullOptionColorToIndex(parentCheckbox, indexes)
+                    return changeLinkGroupColorToIndex(parentCheckbox, 0)
+                }
+
+                changeLinkGroupColorToIndex(parentCheckbox, [...indexes][0])
             }
 
             function changeMultipleLinkGroupColor(parentCheckbox, role, permissionsIds, separator = ",")
@@ -78,6 +88,17 @@ class RolesManager extends Form
                     changeLinkGroupColorToIndex(role + "-" + permissionId, index)
                 })
             }
+
+            function cleanLinkGroupNullOption(name)
+            {
+                $("." + name + " .subsection-item").addClass("hidden");
+                $("." + name + " .subsection-item").eq(0).addClass("hidden");
+            }
         javascript;
+    }
+
+    public function getRoleForm($id = null)
+    {
+        return new (config('kompo-auth.role-form-namespace'));
     }
 }

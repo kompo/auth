@@ -14,7 +14,7 @@ class PermissionSection extends Model
     // CALCULATED FIELDS
     public function getPermissions()
     {
-        return \Cache::remember('permissions_of_section_' . $this->id, 3600, function () {
+        return \Cache::rememberWithTags(['permissions'], 'permissions_of_section_' . $this->id, 3600, function () {
             return $this->permissions()->get();
         });
     }
@@ -26,5 +26,26 @@ class PermissionSection extends Model
         return $role->permissions()->forSection($this->id)
             ->wherePivot('permission_type', $permissionType)
             ->where('permission_section_id', $this->id)->count() == $this->permissions()->count();
+    }
+
+    public function allPermissionsTypes($role)
+    {
+        $fullFilled = $this->hasAllPermissions($role);
+        
+        $types = $role->permissions()->forSection($this->id)
+            ->pluck('permission_type')
+            ->unique()
+            ->values();
+
+        if (!$fullFilled) {
+            $types->push(0);
+        }
+
+        return $types;
+    }
+
+    public function hasAllPermissions($role)
+    {
+        return $role->permissions()->forSection($this->id)->count() == $this->permissions()->count();
     }
 }

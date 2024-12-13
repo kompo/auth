@@ -15,12 +15,12 @@ class TeamInfoForm extends TeamBaseForm
 
         if(count($changes)) {
             $changesLabel = [
-                'nane' => 'translate.name',
+                'name' => 'auth-name',
             ];
 
             $changesMessage = collect($changes)->map(fn($val, $name) => __($changesLabel[$name]))->implode('<br>');
 
-            TeamChange::addWithMessage(__('translate.with-values.the-following-changes-were-made-to-your-organization', [
+            TeamChange::addWithMessage(__('auth-with-values-the-following-changes-were-made-to-your-organization', [
                 'fields' => $changesMessage,
             ]));
         }
@@ -32,13 +32,14 @@ class TeamInfoForm extends TeamBaseForm
 
         return [
             _Html('crm.team-owner')->class('vlFormLabel'),
-            _Flex4(
-                $teamOwner->getProfilePhotoPill(),
-                _Rows(
-                    _Html($teamOwner->name),
-                    _Html($teamOwner->email)->class('text-gray-700 text-sm'),
-                )
-            ),
+            $teamOwner ? _Flex4(
+                    $teamOwner->getProfilePhotoPill(),
+                    _Rows(
+                        _Html($teamOwner->name),
+                        _Html($teamOwner->email)->class('text-gray-700 text-sm'),
+                    )
+                ) : 
+                    _Html('auth.auth-no-owner')->class('vlFormLabel'),
             _Input('crm.team-name')->name('team_name')->class('mt-4'),
             _FlexEnd(
                 _SubmitButton('general.save')

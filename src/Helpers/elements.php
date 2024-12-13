@@ -1,5 +1,15 @@
 <?php
 
+\Kompo\Link::macro('copyToClipboard', function ($text, $alertMessage = 'auth.copied-to-clipboard') {
+    return $this->onClick(fn($e) => $e->run('() => {navigator.clipboard?.writeText("' . $text . '")}') &&
+        $e->alert($alertMessage));
+});
+
+\Kompo\Rows::macro('copyToClipboard', function ($text, $alertMessage = 'auth.copied-to-clipboard') {
+    return $this->onClick(fn($e) => $e->run('() => {navigator.clipboard?.writeText("' . $text . '")}') &&
+        $e->alert($alertMessage));
+});
+
 use Kompo\Auth\Elements\Collapsible;
 use Kompo\Auth\Elements\ResponsiveTabs;
 
@@ -50,7 +60,46 @@ function _CheckboxMultipleStates($name, $values = [], $colors = [], $default = n
         ->containerClass('')->selectedClass('x', '')
         ->when($default, fn($el) => $el->default($default))
         ->onChange(fn($e) => $e->run('() => {changeLinkGroupColor("'. $name .'")}'));
+}
 
+function _CheckboxSectionMultipleStates($name, $values = [], $colors = [], $default = null)
+{
+    $values = collect($values);
+    $colors = collect($colors);
+
+    $parsedOptions = collect([
+        _Rows(
+            _Html()->when($default && is_array($default) && !in_array(0, $default), fn($e) => $e->class('hidden') )
+                ->class('flex-1 subsection-item value-0'),
+            ...$values->map(fn($value, $i) => _Html()->class(
+                $colors->get($i) ?? ''
+            )->class($default && is_array($default) && in_array($value, $default) ? '' : 'hidden')->class('flex-1 subsection-item'))
+        )->class($name)->class('flex flex-row-reverse w-4 h-4')
+        ->when(is_array($default) || !$default, fn($el) => $el->class('perm-selected'))
+        ->when($default && !is_array($default), fn($el) => $el->class('hidden'))
+    ]);
+
+    for ($i = 0; $i < count($values); $i++) {
+        $nextIndex = $i + 1 == $values->count() ? 0 : $i + 1;
+        $nextValue = $values->get($nextIndex);
+
+        $value = $values->get($i);
+
+        $option = _Html()->class($name)->class('w-4 h-4')
+            ->class($colors->get($i) ?: '')
+            ->when($default == $value && !is_array($default) , fn($el) => $el->class('perm-selected'))
+            ->when($default != $value || is_array($default), fn($el) => $el->class('hidden'));
+
+        $parsedOptions->put($nextValue ?: 0, $option);
+    }
+
+    return _LinkGroup()->name($name, false)->options($parsedOptions->toArray())
+        ->containerClass('border border-black rounded w-4 h-4 overflow-hidden')->selectedClass('x', '')
+        ->when($default && !is_array($default), fn($el) => $el->default($default))
+        ->onChange(fn($e) => $e->run('() => {
+            changeLinkGroupColor("'. $name .'");
+            cleanLinkGroupNullOption("'. $name .'");
+        }'));
 }
 
 \Kompo\Tabs::macro('holdActualTab', function() {

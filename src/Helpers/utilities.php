@@ -138,3 +138,34 @@ if (!function_exists('getPushParameterFn')) {
 		return $fn;
 	}
 }
+
+if (!function_exists('createRandomNumber')) {
+	function createRandomNumber($max)
+	{
+		return random_int(0, $max - 1);
+	}
+}
+
+if (!function_exists('getRandStringForModel')) {
+
+	function getRandStringForModel($model, $colName, $length = 9)
+	{
+		if(!$model->$colName) {
+			$code = '';
+			do {
+				$code = \Str::random($length);
+			} while($model::class::where($colName, $code)->first());
+	
+			return $code;
+		}
+	
+		return $model->$colName;
+	}
+}
+
+if (!function_exists('objectToArray')) {
+	function objectToArray($object)
+	{
+		return json_decode(json_encode($object), true);
+	}
+}

@@ -4,6 +4,7 @@ namespace Kompo\Auth;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Kompo\Auth\Facades\FileModel;
@@ -63,6 +64,22 @@ class KompoAuthServiceProvider extends ServiceProvider
 
         $this->loadCommands();
         $this->loadCrons();
+
+        Cache::macro('rememberWithTags', function ($tags, $key, $minutes, $callback) {
+            if (Cache::supportsTags()) {
+                return Cache::tags($tags)->remember($key, $minutes, $callback);
+            }
+
+            return Cache::remember($key, $minutes, $callback);
+        });
+
+        Cache::macro('flushTags', function ($tags, $forceAll = false) {
+            if (Cache::supportsTags()) {
+                return Cache::tags($tags)->flush();
+            }
+
+            return $forceAll ? Cache::flush() : null;
+        });
     }
 
     /**

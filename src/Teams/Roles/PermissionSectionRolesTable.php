@@ -89,10 +89,10 @@ class PermissionSectionRolesTable extends Query
         $role = is_string($role) ? Role::findOrFail($role) : $role;
         $checkboxName = 'permissionSection' . $role->id . '-' . $this->permissionSection->id;
 
-        return _CheckboxMultipleStates($checkboxName, 
+        return _CheckboxSectionMultipleStates($checkboxName, 
                 PermissionTypeEnum::values(),
                 PermissionTypeEnum::colors(),
-                $this->permissionSection->hasAllPermissionsSameType($role) ? $role->getFirstPermissionTypeOfSection($this->permissionSectionId) : null
+                $this->permissionSection->hasAllPermissionsSameType($role) ? $role->getFirstPermissionTypeOfSection($this->permissionSectionId) : $this->permissionSection->allPermissionsTypes($role)->toArray()
             )->class('!mb-0')
             ->onChange(fn($e) => $e
                 ->selfPost('changeRolePermissionSection', ['role' => $role->id, 'permissionSection' => $this->permissionSectionId]) &&
@@ -114,11 +114,13 @@ class PermissionSectionRolesTable extends Query
     
         if (!$value) {
             $role->permissions()->detach($permissions);
+        } else {
+            foreach($permissions as $permission) {
+                $role->createOrUpdatePermission($permission, $value);
+            }
         }
 
-        foreach($permissions as $permission) {
-            $role->createOrUpdatePermission($permission, $value);
-        }
+        \Cache::flushTags(['permissions'], true)->flush();
     }
 
     public function changeRolePermission()
@@ -132,10 +134,12 @@ class PermissionSectionRolesTable extends Query
         $role = Role::findOrFail(request('role'));
 
         if (!$value) {
-            return $role->permissions()->detach(request('permission'));
-        } 
+            $role->permissions()->detach(request('permission'));
+        } else{
+            $role->createOrUpdatePermission(request('permission'), $value);
+        }
 
-        $role->createOrUpdatePermission(request('permission'), $value);
+        \Cache::flushTags(['permissions'], true)->flush();
     }
 
     protected function getPermissionSectionPanelKey($role, $permissionSection)

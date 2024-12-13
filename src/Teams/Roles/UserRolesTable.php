@@ -32,7 +32,7 @@ class UserRolesTable extends WhiteTable
 
     public function query()
     {
-        return $this->user->teamRoles();
+        return $this->user->teamRoles()->whereNull('parent_team_role_id')->with(['team', 'roleRelation']);
     }
 
     public function headers()

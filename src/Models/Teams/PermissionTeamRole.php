@@ -21,6 +21,16 @@ class PermissionTeamRole extends Model
         $query->where('permission_id', $permissionId);
     }
 
+    public static function scopeValid($query)
+    {
+        return $query->where('permission_type', '!=', PermissionTypeEnum::DENY);
+    }
+
+    public static function scopeDenied($query)
+    {
+        return $query->where('permission_type', PermissionTypeEnum::DENY);
+    }
+
     /* CALCULATED FIELDS */
 
     /* ACTIONS */

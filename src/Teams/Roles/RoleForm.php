@@ -4,7 +4,6 @@ namespace Kompo\Auth\Teams\Roles;
 
 use Kompo\Auth\Common\Modal;
 use Kompo\Auth\Facades\RoleModel;
-use Kompo\Auth\Models\Teams\ProfileEnum;
 
 class RoleForm extends Modal
 {
@@ -18,6 +17,14 @@ class RoleForm extends Modal
     public function beforeSave()
     {
         $this->model->id = $this->model->id ?? \Str::snake(request('name'));
+    }
+
+    public function afterSave()
+    {
+        \Cache::forget('roles');
+
+        // \Cache::tags(['permissions'])->flush();
+        \Cache::flush();
     }
 
     public function body()

@@ -78,24 +78,40 @@ class Team extends Model
         return collect();
     }
 
-    public function getAllChildrenRawSolution()
+    /**
+     * Get all the children teams ids with a raw sql query (A lot faster than Eloquent)
+     * @param mixed $depth If you want to limit the depth of the search
+     * @param array|null  $staticExtraSelect Used to assign a key-value pair to the result
+     * @param mixed $staticExtraSelect.0 The value of the extra select
+     * @param mixed $staticExtraSelect.1 The key of the extra select
+     * @param string $search A search string to filter the results
+     * @return \Illuminate\Support\Collection
+     */
+    public function getAllChildrenRawSolution($depth = null, $staticExtraSelect = null, $search = '')
     {
-		if (!$this->childTeams()->count()) {
-			return collect([$this->id]);
+		if (!$this->teams()->count()) { 
+			return collect($staticExtraSelect ? [$this->id => $staticExtraSelect[0]] : [$this->id]);
 		}
 
 		$currentLevel = 1;
 		$query = \DB::table("teams as t$currentLevel")->where("t$currentLevel.id", $this->id);
 
-        $allIds = collect([$this->id]);
+        $allIds = $search && !str_contains($this->team_name, $search) ? collect() : collect($staticExtraSelect ? [$this->id => $staticExtraSelect[0]] : [$this->id]);
 
-		while ((clone $query)->selectRaw("COUNT(t$currentLevel.id) as count")->first()->count) {
-            $levelIds = (clone $query)->select("t$currentLevel.id")->pluck("id");
-            $allIds = $allIds->merge($levelIds);
-
+		while ((!$depth || $currentLevel < $depth)  &&(clone $query)->selectRaw("COUNT(t$currentLevel.id) as count")->first()->count) {
 			$lastestCurrentLevel = $currentLevel;
 			$currentLevel++;
 			$query->leftJoin("teams as t$currentLevel", "t$currentLevel.parent_team_id", '=', "t$lastestCurrentLevel.id");
+        
+            $selectRaw = "t$currentLevel.id" . ($staticExtraSelect ? ', "' . ($staticExtraSelect[0] . '" as ' . $staticExtraSelect[1]) : "");
+
+            $pluckArgs = $staticExtraSelect ? [$staticExtraSelect[1], "id"] : ["id"];
+
+            $levelIds = (clone $query)->selectRaw($selectRaw)
+                ->when($search, fn($q) => $q->where("t$currentLevel.team_name", 'LIKE', wildcardSpace($search)))
+                ->pluck(...$pluckArgs);
+
+            $allIds = $allIds->union($levelIds);
         }
 
 		return $allIds;

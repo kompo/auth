@@ -43,6 +43,18 @@ class Role extends Model
         return $this->permissions()->forSection($sectionId)->first()?->pivot?->permission_type;
     }
 
+    public function validPermissionsQuery()
+    {
+        return $this->validPermissions()
+            ->selectRaw(constructComplexPermissionKeySql('permission_role') . ', permission_key, permissions.id');
+    }
+
+    public function deniedPermissionsQuery()
+    {
+        return $this->deniedPermissions()
+            ->select('permissions.id');
+    }
+
     // SCOPES
 
     // ACTIONS

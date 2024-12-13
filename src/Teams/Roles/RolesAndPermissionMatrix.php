@@ -28,16 +28,23 @@ class RolesAndPermissionMatrix extends Query
             _MultiSelect()->name('roles', false)->placeholder('auth-roles')->options(
                 getRoles()->pluck('name', 'id')->toArray()
             )->default($this->defaultRoles->pluck('id') ?? [])
-            ->onChange(fn($e) => $e->browse(null, 1) && $e->selfPost('headerRoles')->inPanel('roles-header')),
+            // We're using sort because i got errors using browse althought i used 1 as page number
+            ->onChange(fn($e) => $e->sort() && $e->selfPost('headerRoles')->inPanel('roles-header')),
             _Panel(
                 $this->headerRoles($this->defaultRoles->pluck('id')),
             )->id('roles-header'),
         );
     }
 
-    public function headerRoles($rolesIds)
+    public function headerRoles($rolesIds = [])
     {
         $rolesIds = !$rolesIds ? [] : $rolesIds;
+
+        if (count($rolesIds) == 0) {
+            return _Rows(
+                _Html('auth.you-must-select-at-least-one-role')->class('text-center text-lg'), 
+            )->class('min-h-[55vh]');
+        }
         
         return _Flex(
             collect([null])->merge(getRoles()->whereIn('id', $rolesIds))->map(function ($role, $i) {
@@ -53,11 +60,17 @@ class RolesAndPermissionMatrix extends Query
 
     public function query()
     {
-        return PermissionSection::all();
+        if(!$this->_kompo('currentPage')) $this->currentPage(1);
+
+        return PermissionSection::whereHas('permissions')->orderBy('name');
     }
     
     public function render($permissionSection)
     {
+        if(is_array(request('roles')) && !count(request('roles'))) {
+            return null;
+        }
+
         return new PermissionSectionRolesTable([
            'permission_section_id' => $permissionSection->id,
            'roles_ids' => request('roles') ? implode(',', request('roles')) : $this->defaultRoles->implode('id', ',')

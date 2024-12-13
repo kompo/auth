@@ -42,6 +42,7 @@ Route::middleware(['signed'])->group(function(){
     Route::get('report-download/{filename}', Kompo\Auth\Http\Controllers\ReportDownloadController::class)->name('report.download');
 });
 
+Route::get('surl/{short_url_code}', Kompo\Auth\Http\Controllers\ShortUrlController::class)->name('short-url');
 
 //TEAMS
 Route::middleware(['signed', 'throttle:10,1'])->group(function(){

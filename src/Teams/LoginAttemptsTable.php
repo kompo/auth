@@ -27,22 +27,22 @@ class LoginAttemptsTable extends Table {
     public function top()
     {
         return _FlexBetween(
-            _Html('translate.login-attempts')->class('mb-4 text-xl'),
+            _Html('auth-login-attempts')->class('mb-4 text-xl'),
             _Select()->options([
-                1 => __('translate.success'),
-                0 => __('translate.failed'),
-            ])->name('success', false)->placeholder('translate.login-attempt-filter')->filter()->class('w-60 whiteField')
+                1 => __('auth-success'),
+                0 => __('auth-failed'),
+            ])->name('success', false)->placeholder('auth-login-attempt-filter')->filter()->class('w-60 whiteField')
         );
     }
 
     public function headers()
     {
         return [
-            _Th('translate.date')->sort('created_at'),
-            _Th('translate.email')->sort('email'),
-            _Th('translate.ip-address'),
-            _Th('translate.status'),
-            _Th('translate.type'),
+            _Th('auth-date')->sort('created_at'),
+            _Th('auth-email')->sort('email'),
+            _Th('auth-ip-address'),
+            _Th('auth-status'),
+            _Th('auth-type'),
         ];
     }
 

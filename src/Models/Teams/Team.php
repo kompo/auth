@@ -80,7 +80,7 @@ class Team extends Model
 
     public function getAllChildrenRawSolution()
     {
-		if (!$this->teams()->count()) { 
+		if (!$this->childTeams()->count()) {
 			return collect([$this->id]);
 		}
 
@@ -90,12 +90,12 @@ class Team extends Model
         $allIds = collect([$this->id]);
 
 		while ((clone $query)->selectRaw("COUNT(t$currentLevel.id) as count")->first()->count) {
+            $levelIds = (clone $query)->select("t$currentLevel.id")->pluck("id");
+            $allIds = $allIds->merge($levelIds);
+
 			$lastestCurrentLevel = $currentLevel;
 			$currentLevel++;
 			$query->leftJoin("teams as t$currentLevel", "t$currentLevel.parent_team_id", '=', "t$lastestCurrentLevel.id");
-        
-            $levelIds = (clone $query)->select("t$currentLevel.id")->pluck("id");
-            $allIds = $allIds->merge($levelIds);
         }
 
 		return $allIds;
@@ -115,13 +115,13 @@ class Team extends Model
 		$query = \DB::table("teams as t$currentLevel")->where("t$currentLevel.id", $this->id);
 
 		while ((clone $query)->selectRaw("COUNT(t$currentLevel.id) as count")->first()->count) {
-			$lastestCurrentLevel = $currentLevel;
-			$currentLevel++;
-			$query->leftJoin("teams as t$currentLevel", "t$currentLevel.parent_team_id", '=', "t$lastestCurrentLevel.id");
-        
             if ((clone $query)->where("t$currentLevel.id", $childrenId)->count()) {
                 return true;
             }
+            
+			$lastestCurrentLevel = $currentLevel;
+			$currentLevel++;
+			$query->leftJoin("teams as t$currentLevel", "t$currentLevel.parent_team_id", '=', "t$lastestCurrentLevel.id");
         }
 
 		return false;

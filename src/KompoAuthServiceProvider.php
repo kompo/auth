@@ -38,6 +38,7 @@ class KompoAuthServiceProvider extends ServiceProvider
         //Usage: php artisan vendor:publish --provider="Kompo\KompoServiceProvider"
         $this->publishes([
             __DIR__.'/../../config/kompo.php' => config_path('kompo.php'),
+            __DIR__ . '/../resources/js' => resource_path('js/vendor/kompo'),
         ]);
 
         //Usage: php artisan vendor:publish --tag="files-icons"

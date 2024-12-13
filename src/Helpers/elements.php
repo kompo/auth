@@ -1,5 +1,7 @@
 <?php
-use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+
+use Kompo\Auth\Elements\Collapsible;
+use Kompo\Auth\Elements\ResponsiveTabs;
 
 function _Video($src)
 {
@@ -9,8 +11,7 @@ function _Video($src)
 function _Vid($src)
 {
     return _Video($src);
-
-} 
+}
 
 function _Audio($src)
 {
@@ -24,7 +25,7 @@ function _Aud($src)
 
 $checkboxCache = [];
 
-// function 
+// function
 
 function _CheckboxMultipleStates($name, $values = [], $colors = [], $default = null)
 {
@@ -57,70 +58,29 @@ function _CheckboxMultipleStates($name, $values = [], $colors = [], $default = n
             ->activeTab(request('tab_number') ?: 0);
 });
 
+if (!function_exists('_Collapsible')) {
+    function _Collapsible() {
+        return Collapsible::form(...func_get_args());
+    }
+}
 
 if (!function_exists('_ResponsiveTabs')) {
+    /**
+     * Tabs element with a select dropdown for mobile.
+     * @param array  $tabs
+     * @param deprecated $tabsClass Use the ->tabsClass() method instead
+     * @param deprecated $tabsCommonClass Use the ->tabsCommonClass() method instead
+     * @param deprecated $tabsSelectedClass Use the ->tabsSelectedClass() method instead
+     * @param deprecated $callback Use the methods in chain instead
+     * @param deprecated string $breakpoint Use the ->breakpoint() method instead
+     */
     function _ResponsiveTabs($tabs, $tabsClass = null, $tabsCommonClass = null, $tabsSelectedClass = null, $callback = null, $breakpoint = 'md')
     {
-        $tabLabels = collect($tabs)->map(fn($tab) => $tab?->label)->filter();
-        $uniqueId = uniqid();
-
-        $breakpoints = [
-            'sm' => 'sm:block sm:hidden',
-            'md' => 'md:block md:hidden',
-            'lg' => 'lg:block lg:hidden',
-            'xl' => 'xl:block xl:hidden',
-            '2xl' => '2xl:block 2xl:hidden',
-        ];
-
-        $tabElement = _Tabs(...$tabs)
-            ->commonClass("hidden {$breakpoint}:block mr-8")
-            ->when($tabsClass, fn($el) => $el->class($tabsClass))
-            ->when($tabsCommonClass, fn($el) => $el->commonClass($tabsCommonClass . " hidden {$breakpoint}:block"))
-            ->when($tabsSelectedClass, fn($el) => $el->selectedClass($tabsSelectedClass))
-            ->id('responsive-tabs-' . $uniqueId);
-    
-        if ($callback) {
-            $tabElement = $callback($tabElement);
-        }
-    
-        return _Rows(
-            _Select()
-                ->placeholder($tabLabels[0])
-                ->id('tabs-select-' . $uniqueId)
-                ->name('tabs_select', false)
-                ->class("block {$breakpoint}:hidden  2xl:hidden without-x-icon whiteField")
-                ->attr([
-                    'readonly' => 'readonly',
-                ])
-                ->options($tabLabels)
-                ->value(request('tab_number') ?: 0)
-                ->onChange(fn($e) => $e
-                        ->run('() => {
-                        function activateTabFromSelect(id)
-                        {
-                            let tabOptions = $(`#tabs-select-${id}`).closest(".vlInputWrapper")[0].querySelectorAll(".vlOption");
-                            let tabIndex = [...tabOptions].findIndex(option => option.classList.contains("vlSelected"));
-
-                            if (tabIndex == -1) {
-                                tabOptions[0].click();
-                                return 0;
-                            }
-
-                            let tabs = document.querySelectorAll(`#responsive-tabs-${id} a[role=tab]`);
-
-                            [...tabs][tabIndex >= 0 ? tabIndex : 0].click();
-
-                            return tabIndex;
-                        }
-
-                            let tabIndex = activateTabFromSelect("' . $uniqueId . '");
-    
-                            (
-                                ' . getPushParameterFn('tab_number', 'tabIndex', true) . '
-                            )()
-                        }')
-                ),
-            $tabElement->holdActualTab(),
-        );
+        return ResponsiveTabs::form(...$tabs)
+            ->tabsClass($tabsClass)
+            ->tabsCommonClass($tabsCommonClass)
+            ->tabsSelectedClass($tabsSelectedClass)
+            ->breakpoint($breakpoint)
+            ->tabsCallbackDecoration($callback);
     }
 }

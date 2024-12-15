@@ -3,6 +3,8 @@
 namespace Kompo\Auth\Models\Traits;
 
 use App\Models\User;
+use Kompo\Auth\Monitoring\ChangeTypeEnum;
+use Kompo\Auth\Monitoring\ModelChangesLog;
 
 trait HasAddedModifiedByTrait
 {
@@ -37,6 +39,15 @@ trait HasAddedModifiedByTrait
             if (!$this->getKey()) {
                 $this->added_by = $this->added_by ?: auth()->id();
             }
+
+            ModelChangesLog::create([
+                'changeable_type' => $this->getMorphClass(),
+                'changeable_id' => $this->getKey(),
+                'action' => $this->getKey() ? ChangeTypeEnum::UPDATE : ChangeTypeEnum::CREATE,
+                'columns_changed' => $this->getDirty(),
+                'changed_by' => auth()->id(),
+            ]);
+
             $this->modified_by = auth()->id();
         }
     }

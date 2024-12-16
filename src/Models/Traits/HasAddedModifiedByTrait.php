@@ -40,13 +40,15 @@ trait HasAddedModifiedByTrait
                 $this->added_by = $this->added_by ?: auth()->id();
             }
 
-            ModelChangesLog::create([
-                'changeable_type' => $this->getMorphClass(),
-                'changeable_id' => $this->getKey(),
-                'action' => $this->getKey() ? ChangeTypeEnum::UPDATE : ChangeTypeEnum::CREATE,
-                'columns_changed' => $this->getDirty(),
-                'changed_by' => auth()->id(),
-            ]);
+            if ($this->getKey() && $this->isDirty()) {
+                ModelChangesLog::create([
+                    'changeable_type' => $this->getMorphClass(),
+                    'changeable_id' => $this->getKey(),
+                    'action' => $this->getKey() ? ChangeTypeEnum::UPDATE : ChangeTypeEnum::CREATE,
+                    'columns_changed' => array_keys($this->getDirty()),
+                    'changed_by' => auth()->id(),
+                ]);
+            }
 
             $this->modified_by = auth()->id();
         }

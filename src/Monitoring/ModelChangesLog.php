@@ -1,6 +1,8 @@
 <?php
+
 namespace Kompo\Auth\Monitoring;
 
+use Kompo\Auth\Models\User;
 use Kompo\Models\ModelBase;
 
 class ModelChangesLog extends ModelBase 
@@ -21,4 +23,17 @@ class ModelChangesLog extends ModelBase
         'action' => ChangeTypeEnum::class,
         'changed_at' => 'datetime',
     ];
+    const CREATED_AT = 'changed_at';
+
+    // RELATIONSHIPS
+    public function changedBy()
+    {
+        return $this->belongsTo(User::class, 'changed_by');
+    }
+
+    // CALCULATED FIELDS
+    public function label()
+    {
+        return $this->changedBy->name . ' - ' . $this->changed_at->format('d/m/Y H:i');
+    }
 }

@@ -44,4 +44,27 @@ class ModelChangesLog extends ModelBase
     {
         return $this->changedBy->name . ' - ' . $this->changed_at->format('d/m/Y H:i');
     }
+
+    public function getDataComparision()
+    {
+        $columns = $this->columns_changed;
+
+        return collect($columns)->mapWithKeys(function ($column) {
+            return [$column => $this->getColumnComparision($column)];
+        });
+    }
+
+    public function getColumnComparision($column)
+    {
+        $nextChangeVersion = $this->changeable->modelChanges()->where('id', '>', $this->id)
+            ->whereJsonContains('columns_changed', $column)
+            ->first();
+
+        $nextValue = $nextChangeVersion?->old_data[$column] ?? $this->changeable->getAttribute($column);
+
+        return [
+            'old' => $this->old_data[$column] ?? null,
+            'new' => $nextValue
+        ];
+    }
 }

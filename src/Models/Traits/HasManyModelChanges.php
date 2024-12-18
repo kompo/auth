@@ -17,7 +17,8 @@ trait HasManyModelChanges
                     'action' => $model->getKey() ? ChangeTypeEnum::UPDATE : ChangeTypeEnum::CREATE,
                     'columns_changed' => array_keys($model->getDirty()),
                     'changed_by' => auth()->id(),
-                    'old_data' => $model->getDirty(collect(array_keys($model->getDirty()))->intersect($model->getColumnsToSaveOldData())),
+                    'old_data' => collect(array_keys($model->getDirty()))->intersect($model->getColumnsToSaveOldData())
+                        ->mapWithKeys(fn($col) => [$col => $model->getOriginal($col)])->toArray(),
                     'changed_at' => now()
                 ]);
             }

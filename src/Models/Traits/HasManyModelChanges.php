@@ -25,4 +25,15 @@ trait HasManyModelChanges
 
         return $initialQuery->latest()->first();
     }
+
+    public function getColumnsToSaveOldData()
+    {
+        if (!property_exists($this, 'logChangesColumns')) return [];
+
+        if (is_string($this->logChangesColumns) && $this->logChangesColumns == '*') {
+            return $this->logChangesColumns;
+        }
+
+        return $this->logChangesColumns || [];
+    }
 }

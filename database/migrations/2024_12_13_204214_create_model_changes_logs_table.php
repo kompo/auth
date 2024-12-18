@@ -19,7 +19,7 @@ return new class extends Migration
             $table->morphs('changeable');
 
             $table->foreignId('changed_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamp('changed_at')->useCurrent();
+            $table->timestamp('changed_at');
         });
     }
 

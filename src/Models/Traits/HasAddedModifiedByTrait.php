@@ -47,6 +47,9 @@ trait HasAddedModifiedByTrait
                     'action' => $this->getKey() ? ChangeTypeEnum::UPDATE : ChangeTypeEnum::CREATE,
                     'columns_changed' => array_keys($this->getDirty()),
                     'changed_by' => auth()->id(),
+                    'old_data' => !method_exists($this, 'getColumnsToSaveOldData') ? []
+                        : collect($this->getDirty())->intersectByKeys($this->getColumnsToSaveOldData()),
+                    'changed_at' => now()
                 ]);
             }
 

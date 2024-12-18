@@ -5,7 +5,7 @@ namespace Kompo\Auth\Monitoring;
 use Kompo\Auth\Models\User;
 use Kompo\Models\ModelBase;
 
-class ModelChangesLog extends ModelBase 
+class ModelChangesLog extends ModelBase
 {
     // TODO Consider putting this to true, but we already have changed_at and this record in only for creating, not updating
     public $timestamps = false;
@@ -32,6 +32,11 @@ class ModelChangesLog extends ModelBase
     public function changedBy()
     {
         return $this->belongsTo(User::class, 'changed_by');
+    }
+
+    public function changeable()
+    {
+        return $this->morphTo();
     }
 
     // CALCULATED FIELDS

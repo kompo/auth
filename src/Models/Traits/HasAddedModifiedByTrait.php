@@ -3,16 +3,14 @@
 namespace Kompo\Auth\Models\Traits;
 
 use App\Models\User;
-use Kompo\Auth\Monitoring\ChangeTypeEnum;
-use Kompo\Auth\Monitoring\ModelChangesLog;
 
 trait HasAddedModifiedByTrait
 {
-    public function save(array $options = [])
+    public static function bootHasAddedModifiedByTrait()
     {
-        $this->manageAddedModifiedBy();
-
-        parent::save($options);
+        static::saving(function ($model) {
+            $model->manageAddedModifiedBy();
+        });
     }
 
     /* RELATIONSHIPS */
@@ -38,19 +36,6 @@ trait HasAddedModifiedByTrait
         if (auth()->check()) {
             if (!$this->getKey()) {
                 $this->added_by = $this->added_by ?: auth()->id();
-            }
-
-            if ($this->getKey() && $this->isDirty()) {
-                ModelChangesLog::create([
-                    'changeable_type' => $this->getMorphClass(),
-                    'changeable_id' => $this->getKey(),
-                    'action' => $this->getKey() ? ChangeTypeEnum::UPDATE : ChangeTypeEnum::CREATE,
-                    'columns_changed' => array_keys($this->getDirty()),
-                    'changed_by' => auth()->id(),
-                    'old_data' => !method_exists($this, 'getColumnsToSaveOldData') ? []
-                        : collect($this->getDirty())->intersectByKeys($this->getColumnsToSaveOldData()),
-                    'changed_at' => now()
-                ]);
             }
 
             $this->modified_by = auth()->id();

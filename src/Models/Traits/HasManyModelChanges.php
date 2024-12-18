@@ -2,10 +2,28 @@
 
 namespace Kompo\Auth\Models\Traits;
 
+use Kompo\Auth\Monitoring\ChangeTypeEnum;
 use Kompo\Auth\Monitoring\ModelChangesLog;
 
 trait HasManyModelChanges 
 {
+    public static function bootHasManyModelChanges()
+    {
+        static::saving(function ($model) {
+            if ($model->getKey() && $model->isDirty()) {
+                ModelChangesLog::create([
+                    'changeable_type' => $model->getMorphClass(),
+                    'changeable_id' => $model->getKey(),
+                    'action' => $model->getKey() ? ChangeTypeEnum::UPDATE : ChangeTypeEnum::CREATE,
+                    'columns_changed' => array_keys($model->getDirty()),
+                    'changed_by' => auth()->id(),
+                    'old_data' => $model->getDirty(collect(array_keys($model->getDirty()))->intersect($model->getColumnsToSaveOldData())),
+                    'changed_at' => now()
+                ]);
+            }
+        });
+    }
+
     public function modelChanges()
     {
         return $this->morphMany(ModelChangesLog::class, 'changeable');
@@ -34,6 +52,6 @@ trait HasManyModelChanges
             return $this->logChangesColumns;
         }
 
-        return $this->logChangesColumns || [];
+        return $this->logChangesColumns ?: [];
     }
 }

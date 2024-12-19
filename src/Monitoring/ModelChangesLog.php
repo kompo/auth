@@ -109,6 +109,6 @@ class ModelChangesLog extends ModelBase
             return $value;
         }
 
-        return __('translate.this-kind-of-data-is-not-supported-to-preview');
+        return __('events.this-kind-of-data-is-not-supported-to-preview');
     }
 }

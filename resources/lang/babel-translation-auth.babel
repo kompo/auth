@@ -860,6 +860,21 @@
 						</translations>
 					</concept_node>
 					<concept_node>
+						<name>auth.search-placeholder</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
 						<name>auth.you-must-select-at-least-one-role</name>
 						<description/>
 						<comment/>
@@ -2811,21 +2826,6 @@
 					</concept_node>
 					<concept_node>
 						<name>reports-export-completed</name>
-						<description/>
-						<comment/>
-						<translations>
-							<translation>
-								<language>en-US</language>
-								<approved>false</approved>
-							</translation>
-							<translation>
-								<language>fr-FR</language>
-								<approved>false</approved>
-							</translation>
-						</translations>
-					</concept_node>
-					<concept_node>
-						<name>search-placeholder</name>
 						<description/>
 						<comment/>
 						<translations>

@@ -3,6 +3,7 @@
 namespace Kompo\Auth\Monitoring;
 
 use Kompo\Auth\Models\User;
+use Kompo\Komponents\Komponent;
 use Kompo\Models\ModelBase;
 
 class ModelChangesLog extends ModelBase
@@ -64,7 +65,16 @@ class ModelChangesLog extends ModelBase
         });
     }
 
-    public function getColumnComparision($column, $raw = false)
+    public function getDataComparisionEls()
+    {
+        $columns = $this->columns_changed;
+
+        return collect($columns)->mapWithKeys(function ($column) {
+            return [$column => $this->getColumnComparisionElement($column)];
+        });
+    }
+
+    public function getColumnComparision($column, $raw = false, $komponentAllowed = false)
     {
         $nextChangeVersion = $this->changeable->modelChanges()->where('id', '>', $this->id)
             ->whereJsonContains('columns_changed', $column)
@@ -74,9 +84,31 @@ class ModelChangesLog extends ModelBase
 
         $pastValue = $this->old_data[$column] ?? null;
 
+        $finalPastValue = $raw ? $pastValue : $this->changeable->getCastedLabel($column, $pastValue);
+        $finalNextValue = $raw ? $nextValue : $this->changeable->getCastedLabel($column, $nextValue);
+
         return [
-            'old' => $raw ? $pastValue : $this->changeable->getCastedLabel($column, $pastValue),
-            'new' => $raw ? $nextValue : $this->changeable->getCastedLabel($column, $nextValue),
+            'old' => $this->showableValue($finalPastValue, $komponentAllowed),
+            'new' => $this->showableValue($finalNextValue, $komponentAllowed),
         ];
+    }
+
+    public function getColumnComparisionElement($column)
+    {
+        $comparision = $this->getColumnComparision($column, false, true);
+
+        return [
+            'old' => $comparision['old'] instanceof Komponent ? $comparision['old'] : _Html($comparision['old']),
+            'new' => $comparision['new'] instanceof Komponent ? $comparision['new'] : _Html($comparision['new']),
+        ];
+    }
+
+    protected function showableValue($value, $komponentAllowed = true)
+    {
+        if (!$value || in_array(gettype($value), ['string', 'integer', 'double']) || ($komponentAllowed && $value instanceof Komponent)) {
+            return $value;
+        }
+
+        return __('translate.this-kind-of-data-is-not-supported-to-preview');
     }
 }

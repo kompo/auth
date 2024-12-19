@@ -17,7 +17,6 @@ class LoggedTranslator extends Translator
      */
     protected function handleMissingTranslationKey($key, $replace, $locale, $fallback)
     {
-        dd($key, debug_backtrace());
         if (! $this->handleMissingTranslationKeys ||
             ! isset($this->missingTranslationKeyCallback)) {
             return $key;

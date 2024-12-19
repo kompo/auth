@@ -6,6 +6,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Kompo\Auth\Facades\FileModel;
 
@@ -80,6 +81,17 @@ class KompoAuthServiceProvider extends ServiceProvider
 
             return $forceAll ? Cache::flush() : null;
         });
+
+        // It seems as is not needed because we can use handleMissingKeysUsing instead of overriding the translator
+        // $this->overrideTranslator();
+
+        app('translator')->handleMissingKeysUsing(function ($key) {
+            $hasTranslatableSyntax = preg_match('/^([a-zA-Z]*\.[a-zA-Z]*)+$/', $key);
+
+            if ($hasTranslatableSyntax) {
+                Log::warning("MISSING TRANSLATION KEY: $key");
+            }
+        });
     }
 
     /**
@@ -113,6 +125,25 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->app->bind('role-model', function () {
             return new (config('kompo-auth.role-model-namespace'));
         });
+    }
+
+    protected function overrideTranslator()
+    {
+        // $this->app->extend('translator', function ($translator) {
+        //     $app = $this->app;
+        //     $loader = $app['translation.loader'];
+
+        //     // When registering the translator component, we'll need to set the default
+        //     // locale as well as the fallback locale. So, we'll grab the application
+        //     // configuration so we can easily get both of these values from there.
+        //     $locale = $app->getLocale();
+
+        //     $trans = new \Kompo\Auth\Translator\LoggedTranslator($loader, $locale);
+
+        //     $trans->setFallback($app->getFallbackLocale());
+
+        //     return $trans;
+        // });
     }
 
     protected function loadHelpers()

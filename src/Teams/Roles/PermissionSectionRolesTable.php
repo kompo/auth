@@ -120,7 +120,7 @@ class PermissionSectionRolesTable extends Query
             }
         }
 
-        \Cache::flushTags(['permissions'], true)->flush();
+        \Cache::flushTags(['permissions'], true);
     }
 
     public function changeRolePermission()
@@ -139,7 +139,7 @@ class PermissionSectionRolesTable extends Query
             $role->createOrUpdatePermission(request('permission'), $value);
         }
 
-        \Cache::flushTags(['permissions'], true)->flush();
+        \Cache::flushTags(['permissions'], true);
     }
 
     protected function getPermissionSectionPanelKey($role, $permissionSection)

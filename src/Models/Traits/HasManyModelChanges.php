@@ -32,17 +32,7 @@ trait HasManyModelChanges
 
     public function lastChangeForSomeOfColumns($columns)
     {
-        $initialQuery = $this->modelChanges();
-
-        foreach($columns as $key => $column){
-            if($key == 0){
-                $initialQuery->whereJsonContains('columns_changed', $column);
-            } else {
-                $initialQuery->orWhereJsonContains('columns_changed', $column);
-            }
-        }
-
-        return $initialQuery->latest()->first();
+        return $this->modelChanges()->containOneOfColumns($columns)->latest()->first();
     }
 
     public function getColumnsToSaveOldData()

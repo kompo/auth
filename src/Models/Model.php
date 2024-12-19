@@ -8,6 +8,7 @@ use Kompo\Auth\Models\Teams\Roles\PermissionException;
 
 class Model extends ModelBase
 {
+    use \Kompo\Auth\Models\LabelCasts\HasLabelCasts;
     use \Kompo\Auth\Models\Traits\HasAddedModifiedByTrait;
     use \Illuminate\Database\Eloquent\SoftDeletes;
 

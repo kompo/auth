@@ -39,6 +39,16 @@ class ModelChangesLog extends ModelBase
         return $this->morphTo();
     }
 
+    // SCOPES
+    public function scopeContainOneOfColumns($query, $columns)
+    {
+        $query->where(function ($query) use ($columns) {
+            collect($columns)->each(function ($column) use ($query) {
+                $query->orWhereJsonContains('columns_changed', $column);
+            });
+        });
+    }
+
     // CALCULATED FIELDS
     public function label()
     {
@@ -54,7 +64,7 @@ class ModelChangesLog extends ModelBase
         });
     }
 
-    public function getColumnComparision($column)
+    public function getColumnComparision($column, $raw = false)
     {
         $nextChangeVersion = $this->changeable->modelChanges()->where('id', '>', $this->id)
             ->whereJsonContains('columns_changed', $column)
@@ -62,9 +72,11 @@ class ModelChangesLog extends ModelBase
 
         $nextValue = $nextChangeVersion?->old_data[$column] ?? $this->changeable->getAttribute($column);
 
+        $pastValue = $this->old_data[$column] ?? null;
+
         return [
-            'old' => $this->old_data[$column] ?? null,
-            'new' => $nextValue
+            'old' => $raw ? $pastValue : $this->changeable->getCastedLabel($column, $pastValue),
+            'new' => $raw ? $nextValue : $this->changeable->getCastedLabel($column, $nextValue),
         ];
     }
 }

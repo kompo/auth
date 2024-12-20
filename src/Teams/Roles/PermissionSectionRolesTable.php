@@ -53,7 +53,7 @@ class PermissionSectionRolesTable extends Query
             ...$this->roles->map(function ($role) {
                 return _Panel(
                     $this->sectionCheckbox($role),
-                )->id($this->getPermissionSectionPanelKey($role, $this->permissionSection));
+                )->id($this->getPermissionSectionPanelKey($role, $this->permissionSection))->attr(['data-role-id' => $role->id]);
             }),
         )->class('bg-level4 roles-manager-rows')->class('button-toggle' . $this->permissionSectionId)
             ->run('() => { toggleSubGroup('.$this->permissionSectionId.', "") }')->class('hover:bg-level4 cursor-pointer');

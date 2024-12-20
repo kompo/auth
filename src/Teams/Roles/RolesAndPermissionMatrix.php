@@ -26,10 +26,24 @@ class RolesAndPermissionMatrix extends Query
     {
         return _Rows(
             _MultiSelect()->name('roles', false)->placeholder('auth-roles')->options(
-                getRoles()->pluck('name', 'id')->toArray()
+                getRoles()->mapWithKeys(fn($r) => [$r->id => _Html($r->name)->attr(['data-role-id' => $r->id])])->toArray()
             )->default($this->defaultRoles->pluck('id') ?? [])
             // We're using sort because i got errors using browse althought i used 1 as page number
-            ->onChange(fn($e) => $e->sort() && $e->selfPost('headerRoles')->inPanel('roles-header')),
+            ->onChange(fn($e) => $e->sort() && $e->selfPost('headerRoles')->inPanel('roles-header') && 
+                $e->run('() => {
+                    const multiselect = $("input[name=roles]");
+                    const selectOptions = multiselect.parent().find(".vlTags").find("div[data-role-id]");
+                    const a = [...selectOptions].map((o) => $(o).data("roleId"));
+
+                    $("#roles-manager-matrix .roles-manager-rows").find("div[data-role-id]").each((i, e) => {
+                        if(a.includes($(e).data("roleId"))) {
+                            $(e).show();
+                        } else {
+                            $(e).hide();
+                        }
+                    });
+                }')
+            ),
             _Panel(
                 $this->headerRoles($this->defaultRoles->pluck('id')),
             )->id('roles-header'),
@@ -53,7 +67,7 @@ class RolesAndPermissionMatrix extends Query
                         !$role ? null : _TripleDotsDropdown(
                             _Link('permissions-edit')->class('py-1 px-2')->selfGet('getRoleForm', ['id' => $role?->id])->inModal()
                         )->class('absolute right-1'),
-                )->class('relative bg-white h-full')->when($i == 0, fn($e) => $e->class('border-r border-gray-300'));
+                )->class('relative bg-white h-full')->when($i == 0, fn($e) => $e->class('border-r border-gray-300'))->attr(['data-role-id' => $role?->id]);
             }),
         )->class('roles-manager-rows w-max');
     }

@@ -66,7 +66,7 @@ class PermissionSectionRolesTable extends Query
 
     public function render($permission)
     {
-        return _Flex(
+        $els = [
             _Html($permission->permission_name)->class('bg-white border-r border-gray-300'),
             ...$this->roles->map(function ($role) use ($permission) {
                 $checkboxName = 'permissionSection' . $role->id . '-' . $this->permissionSection->id;
@@ -81,8 +81,19 @@ class PermissionSectionRolesTable extends Query
                         $e->run('() => {checkMultipleLinkGroupColor("'. $checkboxName .'", "'. $role->id .'", "'. $this->permissionsIds->implode(',') .'")}')
                     );
             }),
+        ];
+
+        $els[] = _Panel()->id('news-roles');
+
+        return _Flex(
+            $els,
         )->class('roles-manager-rows w-max')->class($permission->object_type?->classes() ?? '');
     }
+
+    // public static function sectionRoleEl($role, $permission, $permissionSectionId)
+    // {
+        
+    // }
 
     public function sectionCheckbox($role)
     {

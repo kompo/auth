@@ -29,40 +29,14 @@ class RolesAndPermissionMatrix extends Query
                 getRoles()->mapWithKeys(fn($r) => [$r->id => _Html($r->name)->attr(['data-role-id' => $r->id])])->toArray()
             )->default($this->defaultRoles->pluck('id') ?? [])
             // We're using sort because i got errors using browse althought i used 1 as page number
-            ->onChange(fn($e) => $e->run('() => {
+            ->onChange(fn($e) => $e->sort() && $e->selfPost('headerRoles')->inPanel('roles-header') && 
+                $e->run('() => {
                     const multiselect = $("input[name=roles]");
                     const selectOptions = multiselect.parent().find(".vlTags").find("div[data-role-id]");
-                    const rolesIds = [...selectOptions].map((o) => $(o).data("roleId"));
+                    const a = [...selectOptions].map((o) => $(o).data("roleId"));
 
-                    rolesIds.forEach((roleId) => {
-                        const el = $("#roles-manager-matrix .roles-manager-rows").find("div[data-role-id=" + roleId + "]");
-
-                        if (!el.length) {
-                            const el = `'.RoleColEl::boot()->toHtml() . '`' . '
-
-                            const whereMount = $("#roles-header").children("div").first();
-                            console.log(el.replaceAll("&quot;", `"`) );
-                            const vConfig = el.match(/(?<=vkompo=")(.*)(?=">)/)[0];
-console.log(vConfig);
-                            const TempComponent = Vue.extend({
-                                template: `<vl-form :vkompo="config"></vl-form>`,
-                                data() {
-                                    return {
-                                        config: JSON.parse(vConfig.replaceAll("&quot;", `"`).replaceAll("\n\r", ""))
-                                    }
-                                },
-                                name: "temp-component"
-                            });
-
-                            new TempComponent().$mount(whereMount);
-
-                            $(".roles-manager-rows").append(
-                                $("<div>").attr("data-role-id", roleId).text("")
-                            );
-                        }
-                    });
                     $("#roles-manager-matrix .roles-manager-rows").find("div[data-role-id]").each((i, e) => {
-                        if(rolesIds.includes($(e).data("roleId"))) {
+                        if(a.includes($(e).data("roleId"))) {
                             $(e).show();
                         } else {
                             $(e).hide();

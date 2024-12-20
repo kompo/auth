@@ -55,7 +55,7 @@ class PermissionSectionRolesTable extends Query
                     $this->sectionCheckbox($role),
                 )->id($this->getPermissionSectionPanelKey($role, $this->permissionSection))->attr(['data-role-id' => $role->id]);
             }),
-        )->class('bg-level4 roles-manager-rows')->class('button-toggle' . $this->permissionSectionId)
+        )->class('bg-level4 roles-manager-rows w-max')->class('button-toggle' . $this->permissionSectionId)
             ->run('() => { toggleSubGroup('.$this->permissionSectionId.', "") }')->class('hover:bg-level4 cursor-pointer');
     }
 
@@ -66,34 +66,28 @@ class PermissionSectionRolesTable extends Query
 
     public function render($permission)
     {
-        $els = [
+        return _Flex(
             _Html($permission->permission_name)->class('bg-white border-r border-gray-300'),
             ...$this->roles->map(function ($role) use ($permission) {
-                $checkboxName = 'permissionSection' . $role->id . '-' . $this->permissionSection->id;
-
-                return _CheckboxMultipleStates($role->id . '-' . $permission->id, 
-                        PermissionTypeEnum::values(),
-                        PermissionTypeEnum::colors(),
-                        $role->permissions->first(fn($p) => $p->id == $permission->id)?->pivot?->permission_type
-                    )->class('!mb-0')
-                    ->onChange(fn($e) => $e
-                        ->selfPost('changeRolePermission', ['role' => $role->id, 'permission' => $permission->id]) &&
-                        $e->run('() => {checkMultipleLinkGroupColor("'. $checkboxName .'", "'. $role->id .'", "'. $this->permissionsIds->implode(',') .'")}')
-                    );
+                return self::sectionRoleEl($role, $permission, $this->permissionSectionId, $this->permissionsIds)->attr(['data-role-id' => $role->id]);
             }),
-        ];
-
-        $els[] = _Panel()->id('news-roles');
-
-        return _Flex(
-            $els,
-        )->class('roles-manager-rows w-max')->class($permission->object_type?->classes() ?? '');
+        )->class('roles-manager-rows w-max')->class($permission->object_type?->classes() ?? '')->attr(['data-permission-id' => $permission->id]);
     }
 
-    // public static function sectionRoleEl($role, $permission, $permissionSectionId)
-    // {
-        
-    // }
+    public static function sectionRoleEl($role, $permission, $permissionSectionId, $permissionsIds, $default = null)
+    {
+        $checkboxName = 'permissionSection' . $role->id . '-' . $permissionSectionId;
+
+        return _CheckboxMultipleStates($role->id . '-' . $permission->id, 
+                PermissionTypeEnum::values(),
+                PermissionTypeEnum::colors(),
+                $default ?? $role->permissions->first(fn($p) => $p->id == $permission->id)?->pivot?->permission_type
+            )->class('!mb-0')
+            ->onChange(fn($e) => $e
+                ->selfPost('changeRolePermission', ['role' => $role->id, 'permission' => $permission->id]) &&
+                $e->run('() => {checkMultipleLinkGroupColor("'. $checkboxName .'", "'. $role->id .'", "'. $permissionsIds->implode(',') .'")}')
+            );   
+    }
 
     public function sectionCheckbox($role)
     {

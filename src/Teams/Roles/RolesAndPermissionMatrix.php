@@ -25,6 +25,7 @@ class RolesAndPermissionMatrix extends Query
     public function top()
     {
         return _Rows(
+            _Panel()->id('hidden-roles')->class('opacity-0'),
             _MultiSelect()->name('roles', false)->placeholder('auth-roles')->options(
                 getRoles()->mapWithKeys(fn($r) => [$r->id => _Html($r->name)->attr(['data-role-id' => $r->id])])->toArray()
             )->default($this->defaultRoles->pluck('id') ?? [])
@@ -33,34 +34,25 @@ class RolesAndPermissionMatrix extends Query
                     const multiselect = $("input[name=roles]");
                     const selectOptions = multiselect.parent().find(".vlTags").find("div[data-role-id]");
                     const rolesIds = [...selectOptions].map((o) => $(o).data("roleId"));
+                    const roleNames = [...selectOptions].map((o) => $(o).text());
 
                     rolesIds.forEach((roleId) => {
-                        const el = $("#roles-manager-matrix .roles-manager-rows").find("div[data-role-id=" + roleId + "]");
-
-                        if (!el.length) {
-                            const el = `'.RoleColEl::boot()->toHtml() . '`' . '
-
-                            const whereMount = $("#roles-header").children("div").first();
-                            console.log(el.replaceAll("&quot;", `"`) );
-                            const vConfig = el.match(/(?<=vkompo=")(.*)(?=">)/)[0];
-console.log(vConfig);
-                            const TempComponent = Vue.extend({
-                                template: `<vl-form :vkompo="config"></vl-form>`,
-                                data() {
-                                    return {
-                                        config: JSON.parse(vConfig.replaceAll("&quot;", `"`).replaceAll("\n\r", ""))
-                                    }
-                                },
-                                name: "temp-component"
+                        if (!$("#roles-manager-matrix .roles-manager-rows").find(`div[data-role-id=${roleId}]`).length) {
+                            $("#roles-manager-matrix .roles-manager-rows").each((i, e) => {
+                                if ($(e).parent().attr("id") == "roles-header") {
+                                    $(e).append(
+                                        $("<div>").attr("data-role-id", roleId).html(`' . _Spinner()->__toHtml() . '`).addClass("bg-white")
+                                            .attr("data-void", "true").attr("data-role-name", roleNames[rolesIds.indexOf(roleId)])
+                                    );
+                                } else { 
+                                    $(e).append(
+                                        $("<div>").attr("data-role-id", roleId).text("").attr("data-void", "true")
+                                    );
+                                }
                             });
-
-                            new TempComponent().$mount(whereMount);
-
-                            $(".roles-manager-rows").append(
-                                $("<div>").attr("data-role-id", roleId).text("")
-                            );
                         }
                     });
+
                     $("#roles-manager-matrix .roles-manager-rows").find("div[data-role-id]").each((i, e) => {
                         if(rolesIds.includes($(e).data("roleId"))) {
                             $(e).show();
@@ -69,11 +61,45 @@ console.log(vConfig);
                         }
                     });
                 }')
-            ),
+            && $e->selfGet('getRoleUpdate')->inPanel('hidden-roles')->run('() => {
+                setTimeout(() => {
+                    $("#roles-header").find("div[data-void]").each((i, e) => {
+                        const roleId = $(e).attr("data-role-id");
+                        const roleName = $(e).attr("data-role-name");
+
+                        if(!roleId) {
+                            return;
+                        }
+
+                        $(e).text(roleName);
+                        $(e).removeAttr("data-void");
+                    });
+                    $("#roles-manager-matrix .roles-manager-rows div[data-void=\"true\"]").each((i, e) => {
+                        const permissionId = $(e).parent().attr("data-permission-id");
+                        const roleId = $(e).attr("data-role-id");
+
+                        const visual = e;
+                        if(!roleId || !permissionId) {
+                            return;
+                        }
+
+                        $("div[data-role-example=\"" + roleId + "-" + permissionId + "\"]").each((i, e) => {
+                            visual.innerHTML = e.cloneNode(true).innerHTML;
+                        });
+                    });
+                }, 1000);
+            }')),
             _Panel(
                 $this->headerRoles($this->defaultRoles->pluck('id')),
             )->id('roles-header'),
         );
+    }
+
+    public function getRoleUpdate()
+    {
+        return new RoleWrap(null, [
+            'roles_ids' => implode(',', request('roles')),
+        ]);
     }
 
     public function headerRoles($rolesIds = [])

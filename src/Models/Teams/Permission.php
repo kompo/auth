@@ -2,6 +2,7 @@
 
 namespace Kompo\Auth\Models\Teams;
 
+use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Models\Model;
 
 class Permission extends Model
@@ -11,6 +12,10 @@ class Permission extends Model
     ];
     
     /* RELATIONS */
+    public function roles()
+    {
+        return $this->belongsToMany(RoleModel::getClass(), 'permission_role', 'permission_id', 'role')->withPivot('permission_type');
+    }
 
     /* CALCULATED FIELDS */
     public static function findByKey($permissionKey)

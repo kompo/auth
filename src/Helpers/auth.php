@@ -3,9 +3,17 @@
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 
-\Kompo\Elements\BaseElement::macro('checkAuth', function ($id, $specificTeamId = null) {
-    if(!Permission::findByKey($id) || auth()->user()->hasPermission($id, PermissionTypeEnum::READ, $specificTeamId)) {
+function checkAuthPermission($id, $specificTeamId = null) {
+    return !Permission::findByKey($id) || auth()->user()->hasPermission($id, PermissionTypeEnum::READ, $specificTeamId);
+}
+
+\Kompo\Elements\BaseElement::macro('checkAuth', function ($id, $specificTeamId = null, $returnNullInstead = false) {
+    if(checkAuthPermission($id, $specificTeamId)) {
         return $this;
+    }
+
+    if ($returnNullInstead) {
+        return null;
     }
 
     // TODO: It might be that we'll need to return a null element here, to avoid rendering the element.

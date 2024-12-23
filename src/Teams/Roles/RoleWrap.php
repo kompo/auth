@@ -5,7 +5,10 @@ namespace Kompo\Auth\Teams\Roles;
 use Kompo\Auth\Common\Form;
 use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Models\Teams\Permission;
+use Kompo\Auth\Models\Teams\Roles\Role;
 use Kompo\Auth\Models\Teams\PermissionSection;
+use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+use Kompo\Auth\Teams\Roles\PermissionSectionRolesTable;
 
 class RoleWrap extends  Form
 {
@@ -36,6 +39,13 @@ class RoleWrap extends  Form
                 $results[] = PermissionSectionRolesTable::sectionRoleEl($role, $permission, $permissionSectionId, $permissionIds, $permissionType)
                     ->attr(['data-role-example' => $role->id . '-' . $permission->id]);
             }
+
+            foreach (PermissionSection::all() as $permissionSection) {
+                $results[] = PermissionSectionRolesTable::sectionCheckbox($role, $permissionSection->id)
+                    ->attr(['data-permission-section-example' => $role->id . '-' . $permissionSection->id]);
+            }
+
+            $results[] = RolesAndPermissionMatrix::roleHeader($role)->attr(['data-role-header-example' => $role->id]);
         }
 
         return _Rows(
@@ -43,6 +53,10 @@ class RoleWrap extends  Form
         )->class('opacity-0 role-wrap-example-data h-0 absolute top-0 left-0');
     }
 
+    public function getRoleForm($id = null)
+    {
+        return new (config('kompo-auth.role-form-namespace'))($id);
+    }
     
     public function changeRolePermissionSection()
     {

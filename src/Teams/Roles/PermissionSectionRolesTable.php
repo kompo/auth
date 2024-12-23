@@ -10,7 +10,7 @@ use Kompo\Query;
 class PermissionSectionRolesTable extends Query
 {
     public $paginationType = 'Scroll';
-    public $perPage = 10;
+    public $perPage = 25;
 
     protected $permissionSectionId;
     protected $permissionSection;
@@ -33,7 +33,9 @@ class PermissionSectionRolesTable extends Query
             fn($q) => $q->where('permission_section_id', $this->permissionSectionId)
         ]);
 
-        $this->onLoad(fn($e) => $e->run('() => { $(".PermissionSectionRoleWrapper").css("display", "none") }'));
+        $this->onLoad(fn($e) => $e->run('() => { 
+            $(".PermissionSectionRoleWrapper").css("display", "none");
+        }'));
     }
 
     public function createdDisplay()
@@ -52,16 +54,17 @@ class PermissionSectionRolesTable extends Query
             )->class('gap-1 bg-level4 border-r border-level1/30'),
             ...$this->roles->map(function ($role) {
                 return _Panel(
-                    $this->sectionCheckbox($role),
+                    self::sectionCheckbox($role, $this->permissionSectionId),
                 )->id($this->getPermissionSectionPanelKey($role, $this->permissionSection))->attr(['data-role-id' => $role->id]);
             }),
-        )->class('bg-level4 roles-manager-rows w-max')->class('button-toggle' . $this->permissionSectionId)
+        )->attr(['data-permission-section-id' => $this->permissionSectionId])->class('bg-level4 roles-manager-rows w-max')->class('button-toggle' . $this->permissionSectionId)
             ->run('() => { toggleSubGroup('.$this->permissionSectionId.', "") }')->class('hover:bg-level4 cursor-pointer');
     }
 
     public function query()
     {
-        return $this->permissionSection->getPermissions();
+        return $this->permissionSection->getPermissions()
+            ->when(request('permission_name'), fn($q) => $q->filter(fn($p) => str_contains(strtolower($p->permission_name), strtolower(request('permission_name')))));
     }
 
     public function render($permission)
@@ -69,7 +72,7 @@ class PermissionSectionRolesTable extends Query
         return _Flex(
             _Html($permission->permission_name)->class('bg-white border-r border-gray-300'),
             ...$this->roles->map(function ($role) use ($permission) {
-                return self::sectionRoleEl($role, $permission, $this->permissionSectionId, $this->permissionsIds)->attr(['data-role-id' => $role->id]);
+                return self::sectionRoleEl($role, $permission, $this->permissionSectionId, $this->permissionsIds);
             }),
         )->class('roles-manager-rows w-max')->class($permission->object_type?->classes() ?? '')->attr(['data-permission-id' => $permission->id]);
     }
@@ -78,7 +81,7 @@ class PermissionSectionRolesTable extends Query
     {
         $checkboxName = 'permissionSection' . $role->id . '-' . $permissionSectionId;
 
-        return _CheckboxMultipleStates($role->id . '-' . $permission->id, 
+        return _Rows(_CheckboxMultipleStates($role->id . '-' . $permission->id, 
                 PermissionTypeEnum::values(),
                 PermissionTypeEnum::colors(),
                 $default ?? $role->permissions->first(fn($p) => $p->id == $permission->id)?->pivot?->permission_type
@@ -86,23 +89,25 @@ class PermissionSectionRolesTable extends Query
             ->onChange(fn($e) => $e
                 ->selfPost('changeRolePermission', ['role' => $role->id, 'permission' => $permission->id]) &&
                 $e->run('() => {checkMultipleLinkGroupColor("'. $checkboxName .'", "'. $role->id .'", "'. $permissionsIds->implode(',') .'")}')
-            );   
+            ))->attr(['data-role-id' => $role->id]);   
     }
 
-    public function sectionCheckbox($role)
+    public static function sectionCheckbox($role, $permissionSectionId = null)
     {
         $role = is_string($role) ? Role::findOrFail($role) : $role;
-        $checkboxName = 'permissionSection' . $role->id . '-' . $this->permissionSection->id;
+        $checkboxName = 'permissionSection' . $role->id . '-' . $permissionSectionId;
 
-        return _CheckboxSectionMultipleStates($checkboxName, 
+        $permissionSection = PermissionSection::findOrFail($permissionSectionId);
+
+        return _Rows( _CheckboxSectionMultipleStates($checkboxName, 
                 PermissionTypeEnum::values(),
                 PermissionTypeEnum::colors(),
-                $this->permissionSection->hasAllPermissionsSameType($role) ? $role->getFirstPermissionTypeOfSection($this->permissionSectionId) : $this->permissionSection->allPermissionsTypes($role)->toArray()
+                $permissionSection->hasAllPermissionsSameType($role) ? $role->getFirstPermissionTypeOfSection($permissionSectionId) : $permissionSection->allPermissionsTypes($role)->toArray()
             )->class('!mb-0')
             ->onChange(fn($e) => $e
-                ->selfPost('changeRolePermissionSection', ['role' => $role->id, 'permissionSection' => $this->permissionSectionId]) &&
-                $e->run('() => {changeMultipleLinkGroupColor("'. $checkboxName .'", "'. $role->id .'", "'. $this->permissionsIds->implode(',') .'")}')
-            );
+                ->selfPost('changeRolePermissionSection', ['role' => $role->id, 'permissionSection' => $permissionSectionId, 'permission_name' => request('permission_name')]) &&
+                $e->run('() => {changeMultipleLinkGroupColor("'. $checkboxName .'", "'. $role->id .'", "'. $permissionSection->getPermissions()->pluck('id')->implode(',') .'")}')
+            ))->attr(['data-role-id' => $role->id, 'data-permission-section-id' => $permissionSectionId]);
     }
 
     public function changeRolePermissionSection()
@@ -111,7 +116,9 @@ class PermissionSectionRolesTable extends Query
 
         $role = Role::findOrFail(request('role'));
         $permissionSection = PermissionSection::findOrFail(request('permissionSection'));
-        $permissions = $permissionSection->permissions()->pluck('id');
+        $permissions = $permissionSection->permissions()
+            ->when(request('permission_name'), fn($q) => $q->where('permission_name', 'like', wildcardSpace(request('permission_name'))))
+            ->pluck('id');
 
         if($value) {
             $value = PermissionTypeEnum::from($value);

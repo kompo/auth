@@ -12,7 +12,7 @@ class RolesAndPermissionMatrix extends Query
 
     public $id = 'roles-manager-matrix';
     public $paginationType = 'Scroll';
-    public $perPage = 8;
+    public $perPage = 10000;
 
     public $class = 'overflow-x-auto max-w-full mini-scroll pt-5';
     public $itemsWrapperClass = 'w-max overflow-y-auto mini-scroll';

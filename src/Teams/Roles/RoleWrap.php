@@ -48,29 +48,9 @@ class RoleWrap extends Form
 
     protected function getRoles()
     {
-        \DB::statement("set sql_mode=''");
-
         return RoleModel::whereIn('id', collect($this->rolesIds))
         ->with([
-            'permissions' => fn($q) => $q->selectRaw('
-                CONCAT_WS("|", 
-                    GROUP_CONCAT(permission_role.permission_type SEPARATOR "|"), 
-                    CASE 
-                        WHEN (' . \DB::table('permission_sections')
-                            ->selectRaw('COUNT(permissions.id) != COUNT(permissions2.id)')
-                            ->whereColumn('permission_sections.id', 'permissions.permission_section_id')
-                            ->leftJoin('permissions as permissions2', 'permission_sections.id', '=', 'permissions2.permission_section_id')
-                            ->groupBy('permission_sections.id')
-                            ->limit(1)
-                            ->toRawSql() . ') 
-                        THEN "0" 
-                        ELSE NULL
-                    END
-                ) as permission_type, 
-                permission_section_id, 
-                COUNT(permissions.id) as role_permissions_count'
-            )
-            ->groupBy('permission_section_id')
+            'permissionsTypes',
         ])->get();
     }
 
@@ -91,7 +71,7 @@ class RoleWrap extends Form
             $results[] = $this->sectionCheckbox(
                 $role,
                 $permissionSection,
-                explode('|', $role->permissions->where('permission_section_id', $permissionSection->id)->first()?->permission_type ?: '0')
+                explode('|', $role->permissionsTypes->where('permission_section_id', $permissionSection->id)->first()?->permission_type ?: '0')
             )
             ->attr(['data-permission-section-example' => $role->id . '-' . $permissionSection->id]);
         }

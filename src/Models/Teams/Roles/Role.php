@@ -6,9 +6,12 @@ use Kompo\Auth\Models\Model;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\TeamRole;
+use Kompo\Auth\Models\Traits\BelongsToManyPivotlessTrait;
 
 class Role extends Model
 {
+    use BelongsToManyPivotlessTrait;
+
     protected $casts = [
         'icon' => 'array',
         'id' => 'string',
@@ -31,6 +34,11 @@ class Role extends Model
     public function permissions()
     {
         return $this->belongsToMany(Permission::class, 'permission_role', 'role', 'permission_id')->withPivot('permission_type');
+    }
+
+    public function permissionsTypes()
+    {
+        return $this->belongsToManyPivotless(Permission::class, 'permission_role', 'role', 'permission_id')->getAllPermissionsBySections();
     }
 
     public function validPermissions()

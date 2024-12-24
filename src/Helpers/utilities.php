@@ -4,9 +4,9 @@ use \Kompo\Elements\Element;
 use Kompo\Interactions\Action;
 use Kompo\Interactions\Interaction;
 
-Kompo\Elements\Layout::macro('applyToAllElements', function ($callback, $exlude = []) {
-	$this->elements = collect($this->elements)->map(function ($el, $i) use ($callback, $exlude) {
-		if (!in_array($i, $exlude)) {
+Kompo\Elements\Layout::macro('applyToAllElements', function ($callback, $exclude = []) {
+	$this->elements = collect($this->elements)->map(function ($el, $i) use ($callback, $exclude) {
+		if (!in_array($i, $exclude)) {
 			return $callback($el);
 		}
 

@@ -46,7 +46,7 @@ if(!function_exists('isImpersonated')) {
 function getRoles()
 {
 	return \Cache::remember('roles', 180, function () {
-		return Role::all();
+		return Role::withCount('teamRoles')->orderByDesc('team_roles_count')->get();
 	});
 }
 

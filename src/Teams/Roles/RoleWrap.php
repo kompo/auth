@@ -5,15 +5,14 @@ namespace Kompo\Auth\Teams\Roles;
 use Kompo\Auth\Common\Form;
 use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Models\Teams\Permission;
-use Kompo\Auth\Models\Teams\Roles\Role;
 use Kompo\Auth\Models\Teams\PermissionSection;
-use Kompo\Auth\Models\Teams\PermissionTypeEnum;
-use Kompo\Auth\Teams\Roles\PermissionSectionRolesTable;
 
-class RoleWrap extends  Form
+class RoleWrap extends Form
 {
-    public $model = RoleModel::class;
+    use RoleRequestsUtils;
+    use RoleElementsUtils;
 
+    public $model = RoleModel::class;
     protected $rolesIds;
 
     public function created()
@@ -23,85 +22,82 @@ class RoleWrap extends  Form
 
     public function render()
     {
-        $permissions = Permission::query()->with([
-            'roles' => fn($q) => $q->whereIn('roles.id', $this->rolesIds)->selectRaw('roles.id'),
-        ])->get();
-
-        $roles = RoleModel::where('id', collect($this->rolesIds)->last())->get();
+        $permissions = $this->getPermissions();
+        $roles = $this->getRoles();
         $results = [];
 
         foreach ($roles as $role) {
-            foreach ($permissions as $permission) {
-                $permissionSectionId = $permission->permission_section_id;
-                $permissionIds = $permission->where('permission_section_id', $permissionSectionId)->pluck('id');
-                $permissionType = $permission->roles->where('id', $role->id)->first()?->pivot?->permission_type;
-
-                $results[] = PermissionSectionRolesTable::sectionRoleEl($role, $permission, $permissionSectionId, $permissionIds, $permissionType)
-                    ->attr(['data-role-example' => $role->id . '-' . $permission->id]);
-            }
-
-            foreach (PermissionSection::all() as $permissionSection) {
-                $results[] = PermissionSectionRolesTable::sectionCheckbox($role, $permissionSection->id)
-                    ->attr(['data-permission-section-example' => $role->id . '-' . $permissionSection->id]);
-            }
-
-            $results[] = RolesAndPermissionMatrix::roleHeader($role)->attr(['data-role-header-example' => $role->id]);
+            $results = array_merge($results, $this->processRole($role, $permissions));
         }
 
-        return _Rows(
-            $results,
-        )->class('opacity-0 role-wrap-example-data h-0 absolute top-0 left-0');
+        return $this->renderResults($results);
     }
 
-    public function getRoleForm($id = null)
+    protected function getPermissions()
     {
-        return new (config('kompo-auth.role-form-namespace'))($id);
+        return Permission::query()->with([
+            'roles' => fn($q) => $q->whereIn('roles.id', $this->rolesIds)->selectRaw('roles.id'),
+        ])->get();
     }
-    
-    public function changeRolePermissionSection()
+
+    protected function getRoles()
     {
-        $value = (int) request('permissionSection' . request('role') . '-' . request('permissionSection'));
+        \DB::statement("set sql_mode=''");
 
-        $role = Role::findOrFail(request('role'));
-        $permissionSection = PermissionSection::findOrFail(request('permissionSection'));
-        $permissions = $permissionSection->permissions()->pluck('id');
+        return RoleModel::whereIn('id', collect($this->rolesIds))
+        ->with([
+            'permissions' => fn($q) => $q->selectRaw('
+                CONCAT_WS("|", 
+                    GROUP_CONCAT(permission_role.permission_type SEPARATOR "|"), 
+                    CASE 
+                        WHEN (' . \DB::table('permission_sections')
+                            ->selectRaw('COUNT(permissions.id) != COUNT(permissions2.id)')
+                            ->whereColumn('permission_sections.id', 'permissions.permission_section_id')
+                            ->leftJoin('permissions as permissions2', 'permission_sections.id', '=', 'permissions2.permission_section_id')
+                            ->groupBy('permission_sections.id')
+                            ->limit(1)
+                            ->toRawSql() . ') 
+                        THEN "0" 
+                        ELSE NULL
+                    END
+                ) as permission_type, 
+                permission_section_id, 
+                COUNT(permissions.id) as role_permissions_count'
+            )
+            ->groupBy('permission_section_id')
+        ])
+            ->get();
+    }
 
-        if($value) {
-            $value = PermissionTypeEnum::from($value);
+    protected function processRole($role, $permissions)
+    {
+        $results = [];
+
+        foreach ($permissions as $permission) {
+            $permissionSectionId = $permission->permission_section_id;
+            $permissionIds = $permission->where('permission_section_id', $permissionSectionId)->pluck('id');
+            $permissionType = $permission->roles->where('id', $role->id)->first()?->pivot?->permission_type;
+
+            $results[] = $this->sectionRoleEl($role, $permission, $permissionSectionId, $permissionIds, $permissionType)
+                ->attr(['data-role-example' => $role->id . '-' . $permission->id]);
         }
-    
-        if (!$value) {
-            $role->permissions()->detach($permissions);
-        } else {
-            foreach($permissions as $permission) {
-                $role->createOrUpdatePermission($permission, $value);
-            }
+
+        foreach (PermissionSection::select('name', 'id')->get() as $permissionSection) {
+            $results[] = $this->sectionCheckbox(
+                $role,
+                $permissionSection->id,
+                explode('|', $role->permissions->where('permission_section_id', $permissionSection->id)->first()?->permission_type ?: '0')
+            )
+            ->attr(['data-permission-section-example' => $role->id . '-' . $permissionSection->id]);
         }
 
-        \Cache::flushTags(['permissions'], true);
+        $results[] = $this->roleHeader($role)->attr(['data-role-header-example' => $role->id]);
+
+        return $results;
     }
 
-    public function changeRolePermission()
+    protected function renderResults($results)
     {
-        $value = (int) request(request('role') . '-' . request('permission'));
-
-        if($value) {
-            $value = PermissionTypeEnum::from($value);
-        } 
-
-        $role = Role::findOrFail(request('role'));
-
-        if (!$value) {
-            $role->permissions()->detach(request('permission'));
-        } else{
-            $role->createOrUpdatePermission(request('permission'), $value);
-        }
-
-        \Cache::flushTags(['permissions'], true);
-    }
-
-    protected function getPermissionSectionPanelKey($role, $permissionSection)
-    {
-        return 'role-permission-section-'.$role->id.'-'.$permissionSection->id;
+        return _Rows($results)->class('opacity-0 role-wrap-example-data h-0 absolute top-0 left-0');
     }
 }

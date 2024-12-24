@@ -5,6 +5,7 @@ namespace Kompo\Auth\Models\Teams\Roles;
 use Kompo\Auth\Models\Model;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+use Kompo\Auth\Models\Teams\TeamRole;
 
 class Role extends Model
 {
@@ -21,6 +22,11 @@ class Role extends Model
     }
 
     public $incrementing = false;
+
+    public function teamRoles()
+    {
+        return $this->hasMany(TeamRole::class, 'role', 'id');
+    }
 
     public function permissions()
     {

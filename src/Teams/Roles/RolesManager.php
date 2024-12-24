@@ -6,6 +6,8 @@ use Kompo\Auth\Common\Form;
 
 class RolesManager extends Form
 {
+    use RoleRequestsUtils;
+
     public $id = 'roles-manager';
 
     public $class = 'pb-16';
@@ -17,7 +19,7 @@ class RolesManager extends Form
                 _Html('Roles')->class('text-lg font-bold'),
                 _Link('Create Role')->selfGet('getRoleForm')->inModal(),
             ),
-            
+
             new RolesAndPermissionMatrix(),
 
         );
@@ -25,6 +27,8 @@ class RolesManager extends Form
 
     public function js()
     {
+        $spinnerHtml = _Spinner()->__toHtml();
+
         return <<<javascript
             function changeLinkGroupColor(optionClass)
             {
@@ -94,11 +98,85 @@ class RolesManager extends Form
                 $("." + name + " .subsection-item").addClass("hidden");
                 $("." + name + " .subsection-item").eq(0).addClass("hidden");
             }
-        javascript;
-    }
 
-    public function getRoleForm($id = null)
-    {
-        return new (config('kompo-auth.role-form-namespace'));
+            function precreateRoleVisuals() {
+                const multiselect = $("input[name=roles]");
+                const selectOptions = multiselect.parent().find(".vlTags").find("div[data-role-id]");
+                const rolesIds = [...selectOptions].map((o) => $(o).data("roleId"));
+                const roleNames = [...selectOptions].map((o) => $(o).text());
+
+                rolesIds.forEach((roleId) => {
+                    if (!$("#roles-manager-matrix .roles-manager-rows").find(`div[data-role-id=\${roleId}]`).length) {
+                        $("#roles-manager-matrix .roles-manager-rows").each((i, e) => {
+                            if ($(e).parent().attr("id") == "roles-header") {
+                                $(e).append(
+                                    $("<div>").attr("data-role-id", roleId).html(`$spinnerHtml`).addClass("bg-white")
+                                        .attr("data-void", "true").attr("data-role-name", roleNames[rolesIds.indexOf(roleId)])
+                                );
+                            } else { 
+                                $(e).append(
+                                    $("<div>").attr("data-role-id", roleId).text("").attr("data-void", "true")
+                                );
+                            }
+                        });
+                    }
+                });
+
+                $("#roles-manager-matrix .roles-manager-rows").find("div[data-role-id]").each((i, e) => {
+                    if(rolesIds.includes($(e).data("roleId"))) {
+                        $(e).show();
+                    } else {
+                        $(e).hide();
+                    }
+                });
+            }
+
+            function injectRoleContent() {
+                setTimeout(() => {
+                    $("#roles-header").find("div[data-void]").each((i, e) => {
+                        const roleId = $(e).attr("data-role-id");
+                        const roleName = $(e).attr("data-role-name");
+
+                        if(!roleId) {
+                            return;
+                        }
+
+                        $(e).text(roleName);
+                        $(e).removeAttr("data-void");
+
+                        e.parentNode.replaceChild(
+                            $("div[data-role-header-example=\"" + roleId + "\"]").get(0), e
+                        );
+                    });
+
+                    $("#roles-manager-matrix .roles-manager-rows div[data-void=\"true\"]").each((i, e) => {
+                        const permissionId = $(e).parent().data("permission-id");
+                        const roleId = $(e).data("role-id");
+                        const permissionSectionId = $(e).parent().data("permission-section-id");
+
+                        const visual = e;
+                        if(!roleId || (!permissionId && !permissionSectionId)) {
+                            return;
+                        }
+
+                        $("div[data-role-example=\"" + roleId + "-" + permissionId + "\"]").each((i, e) => {
+                            visual.parentNode.replaceChild(e, visual);
+                        });
+
+                        $("div[data-permission-section-example=\"" + roleId + "-" + permissionSectionId + "\"]").each((i, e) => {
+                            visual.parentNode.replaceChild(e, visual);
+                        });
+                    });
+                }, 1000);
+            }
+
+            function searchLoadingOn(id) {
+                $("#" + id).removeClass("hidden");
+            }
+
+            function searchLoadingOff(id) {
+                $("#" + id).addClass("hidden");
+            }
+        javascript;
     }
 }

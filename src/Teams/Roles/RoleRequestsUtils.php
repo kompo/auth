@@ -4,7 +4,6 @@ namespace Kompo\Auth\Teams\Roles;
 
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\Roles\Role;
-use Kompo\Auth\Models\Teams\PermissionSection;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 
 trait RoleRequestsUtils

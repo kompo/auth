@@ -55,7 +55,7 @@ class PermissionSectionRolesTable extends Query
             )->class('gap-1 bg-level4 border-r border-level1/30'),
             ...$this->roles->map(function ($role) {
                 return _Rows(
-                    $this->sectionCheckbox($role, $this->permissionSectionId),
+                    $this->sectionCheckbox($role, $this->permissionSection),
                 )->attr(['data-role-id' => $role->id]);
             }),
         )->attr(['data-permission-section-id' => $this->permissionSectionId])->class('bg-level4 roles-manager-rows w-max')->class('button-toggle' . $this->permissionSectionId)

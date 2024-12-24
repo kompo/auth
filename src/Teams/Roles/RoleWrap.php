@@ -15,9 +15,15 @@ class RoleWrap extends Form
     public $model = RoleModel::class;
     protected $rolesIds;
 
+    protected $permissionSections;
+
     public function created()
     {
         $this->rolesIds = explode(',', $this->prop('roles_ids'));
+
+        $this->permissionSections = PermissionSection::with([
+            'permissions' => fn($q) => $q->select('id'),
+        ])->get();
     }
 
     public function render()
@@ -65,8 +71,7 @@ class RoleWrap extends Form
                 COUNT(permissions.id) as role_permissions_count'
             )
             ->groupBy('permission_section_id')
-        ])
-            ->get();
+        ])->get();
     }
 
     protected function processRole($role, $permissions)
@@ -75,17 +80,17 @@ class RoleWrap extends Form
 
         foreach ($permissions as $permission) {
             $permissionSectionId = $permission->permission_section_id;
-            $permissionIds = $permission->where('permission_section_id', $permissionSectionId)->pluck('id');
-            $permissionType = $permission->roles->where('id', $role->id)->first()?->pivot?->permission_type;
+            $permissionIds = $this->permissionSections->firstWhere('id', $permissionSectionId)?->permissions?->pluck('id') ?: [];
+            $permissionType = $permission->roles->firstWhere('id', $role->id)?->pivot?->permission_type;
 
             $results[] = $this->sectionRoleEl($role, $permission, $permissionSectionId, $permissionIds, $permissionType)
                 ->attr(['data-role-example' => $role->id . '-' . $permission->id]);
         }
 
-        foreach (PermissionSection::select('name', 'id')->get() as $permissionSection) {
+        foreach ($this->permissionSections as $permissionSection) {
             $results[] = $this->sectionCheckbox(
                 $role,
-                $permissionSection->id,
+                $permissionSection,
                 explode('|', $role->permissions->where('permission_section_id', $permissionSection->id)->first()?->permission_type ?: '0')
             )
             ->attr(['data-permission-section-example' => $role->id . '-' . $permissionSection->id]);

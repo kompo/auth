@@ -42,16 +42,14 @@ trait RoleElementsUtils
             ->onChange(
                 fn($e) => $e
                     ->selfPost('changeRolePermission', ['role' => $role->id, 'permission' => $permission->id]) &&
-                    $e->run('() => {checkMultipleLinkGroupColor("' . $checkboxName . '", "' . $role->id . '", "' . $permissionsIds->implode(',') . '")}')
+                    $e->run('() => {checkMultipleLinkGroupColor("' . $checkboxName . '", "' . $role->id . '", "' . collect($permissionsIds)->implode(',') . '")}')
             ))->attr(['data-role-id' => $role->id]);
     }
 
-    public function sectionCheckbox($role, $permissionSectionId = null, $types = [])
+    public function sectionCheckbox($role, $permissionSection = null, $types = [])
     {
         $role = is_string($role) ? Role::findOrFail($role) : $role;
-        $checkboxName = 'permissionSection' . $role->id . '-' . $permissionSectionId;
-
-        $permissionSection = PermissionSection::findOrFail($permissionSectionId);
+        $checkboxName = 'permissionSection' . $role->id . '-' . $permissionSection->id;
 
         return _Rows(_CheckboxSectionMultipleStates(
             $checkboxName,
@@ -61,8 +59,8 @@ trait RoleElementsUtils
         )->class('!mb-0')
             ->onChange(
                 fn($e) => $e
-                    ->selfPost('changeRolePermissionSection', ['role' => $role->id, 'permissionSection' => $permissionSectionId, 'permission_name' => request('permission_name')]) &&
+                    ->selfPost('changeRolePermissionSection', ['role' => $role->id, 'permissionSection' => $permissionSection->id, 'permission_name' => request('permission_name')]) &&
                     $e->run('() => {changeMultipleLinkGroupColor("' . $checkboxName . '", "' . $role->id . '", "' . $permissionSection->getPermissions()->pluck('id')->implode(',') . '")}')
-            ))->attr(['data-role-id' => $role->id, 'data-permission-section-id' => $permissionSectionId]);
+            ))->attr(['data-role-id' => $role->id, 'data-permission-section-id' => $permissionSection->id]);
     }
 }

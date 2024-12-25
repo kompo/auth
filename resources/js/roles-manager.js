@@ -81,12 +81,15 @@ function getSelectedRoles()
 
 function getHeaderTemplate(roleId, roleName)
 {
-    return $("<div>").attr("data-role-header-example", roleId).addClass("roles-manager-role-header").text(roleName);
+    return $("<div>").attr("data-role-id", roleId).html(`$spinnerHtml`).addClass("bg-white")
+        .attr("data-void", "true").attr("data-role-name", roleName);
 }
 
 function getContentTemplate(roleId)
 {
-    return $("<div>").attr("data-role-id", roleId).text("").attr("data-void", "true");
+    return $("<div>").attr("data-role-id", roleId).html(`
+        <div class="checkbox-island"></div>
+    `).attr("data-void", "true");
 }
 
 function precreateRoleVisuals() {
@@ -113,7 +116,7 @@ function precreateRoleVisuals() {
 
     // Iterating over each role to hide the column or show it
     $("#roles-manager-matrix .roles-manager-rows").find("div[data-role-id]").each((i, e) => {
-        if(rolesIds.includes($(e).data("roleId"))) {
+        if(roles.some(({roleId}) => roleId == $(e).data("roleId"))) {
             $(e).show();
         } else {
             $(e).hide();

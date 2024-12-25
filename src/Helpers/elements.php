@@ -94,7 +94,7 @@ function _CheckboxSectionMultipleStates($name, $values = [], $colors = [], $defa
     }
 
     return _LinkGroup()->name($name, false)->options($parsedOptions->toArray())
-        ->containerClass('border border-black rounded w-4 h-4 overflow-hidden')->selectedClass('x', '')
+        ->containerClass('checkbox-style')->selectedClass('x', '')
         ->when($default && !is_array($default), fn($el) => $el->default($default))
         ->onChange(fn($e) => $e->run('() => {
             changeLinkGroupColor("'. $name .'");

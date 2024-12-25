@@ -87,6 +87,31 @@
     }
 }
 
+@keyframes gradient-animation {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 0%;
+    }
+    100% {
+        background-position: 20% 100%;
+    }
+}
+
+.checkbox-style {
+    @apply w-4 h-4 border border-black rounded overflow-hidden;
+}
+
+.checkbox-island {
+    @extend .checkbox-style;
+
+    border: 1px solid #b7b7b7 !important;
+    background: linear-gradient(45deg,#e2e2e2, #e5e5e5, #cecece,#e1e0e0, #dfdfdf, #cecece, #dfdfdf, #dfdfdf);
+    background-size: 1800% 1800%;
+    animation: gradient-animation 3s ease infinite;
+}
+
 // PANEL LOADING
 .vlPanelLoading {
     position: relative;

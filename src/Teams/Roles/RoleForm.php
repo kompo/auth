@@ -47,11 +47,17 @@ class RoleForm extends Modal
 
             _Flex(
                 $this->model->id ? _DeleteButton('permissions-delete')->outlined()->byKey($this->model)->class('w-full') : null,
-                _SubmitButton('permissions-save')->closeModal()->refresh('roles-manager')->class('w-full'),
+                _SubmitButton('permissions-save')->class('w-full')->closeModal()
+                    ->onSuccess(fn($q) =>$q->selfGet('roleMultiSelect')->inPanel('multi-select-roles')),
             )->class('gap-4')
             
             // _Input('Role Permissions')->name('role_permissions')->required(),
         );
+    }
+
+    public function roleMultiSelect()
+    {
+        return RolesAndPermissionMatrix::multiSelect(session('latest-roles') ?: []);
     }
 
     protected function profileOptions()

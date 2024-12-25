@@ -66,12 +66,12 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->loadCommands();
         $this->loadCrons();
 
-        Cache::macro('rememberWithTags', function ($tags, $key, $minutes, $callback) {
+        Cache::macro('rememberWithTags', function ($tags, $key, $ttl, $callback) {
             if (Cache::supportsTags()) {
-                return Cache::tags($tags)->remember($key, $minutes, $callback);
+                return Cache::tags($tags)->remember($key, $ttl, $callback);
             }
 
-            return Cache::remember($key, $minutes, $callback);
+            return Cache::remember($key, $ttl, $callback);
         });
 
         Cache::macro('flushTags', function ($tags, $forceAll = false) {

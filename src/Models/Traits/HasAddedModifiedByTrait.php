@@ -34,7 +34,7 @@ trait HasAddedModifiedByTrait
     public function manageAddedModifiedBy()
     {
         if (auth()->check()) {
-            if (!$this->getKey()) {
+            if (!$this->getKey() || !$this->exists) {
                 $this->added_by = $this->added_by ?: auth()->id();
             }
 

@@ -5,9 +5,13 @@ namespace Kompo\Auth\Models\Teams\Roles;
 use Kompo\Auth\Models\Model;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+use Kompo\Auth\Models\Teams\TeamRole;
+use Kompo\Auth\Models\Traits\BelongsToManyPivotlessTrait;
 
 class Role extends Model
 {
+    use BelongsToManyPivotlessTrait;
+
     protected $casts = [
         'icon' => 'array',
         'id' => 'string',
@@ -22,9 +26,19 @@ class Role extends Model
 
     public $incrementing = false;
 
+    public function teamRoles()
+    {
+        return $this->hasMany(TeamRole::class, 'role', 'id');
+    }
+
     public function permissions()
     {
         return $this->belongsToMany(Permission::class, 'permission_role', 'role', 'permission_id')->withPivot('permission_type');
+    }
+
+    public function permissionsTypes()
+    {
+        return $this->belongsToManyPivotless(Permission::class, 'permission_role', 'role', 'permission_id')->getAllPermissionsBySections();
     }
 
     public function validPermissions()
@@ -38,6 +52,11 @@ class Role extends Model
     }
 
     // CALCULATED FIELDS 
+    public function getPermissionTypeByPermissionId($permissionId)
+    {
+        return $this->permissions->first(fn($p) => $p->id == $permissionId)?->pivot?->permission_type;
+    }
+
     public function getFirstPermissionTypeOfSection($sectionId)
     {
         return $this->permissions()->forSection($sectionId)->first()?->pivot?->permission_type;

@@ -20,12 +20,14 @@ trait RoleElementsUtils
 
     public function roleHeader($role, $i = 1)
     {
-        return _FlexCenter(
-            _Html($role?->name ?? '&nbsp;'),
-            !$role ? null : _TripleDotsDropdown(
-                _Link('permissions-edit')->class('py-1 px-2')->selfGet('getRoleForm', ['id' => $role?->id])->inModal()
-            )->class('absolute right-1'),
-        )->class('relative bg-white h-full')->when($i == 0, fn($e) => $e->class('border-r border-gray-300'))->attr(['data-role-id' => $role?->id]);
+        return _Panel(
+            _FlexCenter(
+                _Html($role?->name ?? '&nbsp;'),
+                !$role ? null : _TripleDotsDropdown(
+                    _Link('permissions-edit')->class('py-1 px-2')->selfGet('getRoleForm', ['id' => $role?->id])->inModal()
+                )->class('absolute right-1'),
+            )->class('h-full gap-2 w-full'),
+        )->class('w-full relative bg-white h-full')->when($i == 0, fn($e) => $e->class('border-r border-gray-300'))->id('role-header-' . $role?->id)->attr(['data-role-id' => $role?->id]);
     }
 
     public function sectionRoleEl($role, $permission, $permissionSectionId, $permissionsIds, $default = null)

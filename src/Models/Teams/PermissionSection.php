@@ -14,7 +14,7 @@ class PermissionSection extends Model
     // CALCULATED FIELDS
     public function getPermissions()
     {
-        return \Cache::rememberWithTags(['permissions'], 'permissions_of_section_' . $this->id, 180, function () {
+        return \Cache::rememberWithTags(['permissions'], 'permissions_of_section_' . $this->id, 3600, function () {
             return $this->permissions()->get();
         });
     }

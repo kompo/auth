@@ -44,7 +44,7 @@ class PermissionSectionRolesTable extends Query
     {
         $this->itemsWrapperClass = 'PermissionSectionRoleWrapper mini-scroll subgroup-block'.$this->permissionSectionId;
 
-        $this->itemsWrapperStyle = 'max-height:50vh;';
+        // $this->itemsWrapperStyle = 'max-height:50vh;';
     }
 
     public function top()
@@ -77,7 +77,7 @@ class PermissionSectionRolesTable extends Query
         return _Flex(
             _Html($permission->permission_name)->class('bg-white border-r border-gray-300'),
             ...$this->roles->map(function ($role) use ($permission) {
-                return $this->sectionRoleEl($role, $permission, $this->permissionSectionId, $this->permissionsIds, $permission->roles->firstWhere('id', $role->id)?->pivot?->permission_type);
+                return $this->sectionRoleEl($role, $permission, $this->permissionSectionId, $this->permissionsIds, $permission->getPermissionTypeByRoleId($role->id));
             }),
         )->class('roles-manager-rows w-max')->class($permission->object_type?->classes() ?? '')->attr(['data-permission-id' => $permission->id]);
     }

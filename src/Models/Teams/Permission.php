@@ -23,6 +23,11 @@ class Permission extends Model
         return Permission::where('permission_key', $permissionKey)->first();
     }
 
+    public function getPermissionTypeByRoleId($roleId)
+    {
+        return $this->roles->firstWhere('id', $roleId)?->pivot?->permission_type;
+    }
+
     // SCOPES 
     public function scopeForSection($query, $sectionId)
     {

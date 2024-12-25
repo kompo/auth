@@ -3,7 +3,6 @@
 namespace Kompo\Auth\Teams\Roles;
 
 use Kompo\Auth\Models\Teams\Roles\Role;
-use Kompo\Auth\Models\Teams\PermissionSection;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 
 trait RoleElementsUtils
@@ -37,7 +36,7 @@ trait RoleElementsUtils
             $role->id . '-' . $permission->id,
             PermissionTypeEnum::values(),
             PermissionTypeEnum::colors(),
-            $default ?? $role->permissions->first(fn($p) => $p->id == $permission->id)?->pivot?->permission_type
+            $default ?? $role->getPermissionTypeByPermissionId($permission->id)
         )->class('!mb-0')
             ->onChange(
                 fn($e) => $e
@@ -46,7 +45,7 @@ trait RoleElementsUtils
             ))->attr(['data-role-id' => $role->id]);
     }
 
-    public function sectionCheckbox($role, $permissionSection = null, $types = [])
+    public function sectionCheckbox($role, $permissionSection, $types = [])
     {
         $role = is_string($role) ? Role::findOrFail($role) : $role;
         $checkboxName = 'permissionSection' . $role->id . '-' . $permissionSection->id;
@@ -61,6 +60,6 @@ trait RoleElementsUtils
                 fn($e) => $e
                     ->selfPost('changeRolePermissionSection', ['role' => $role->id, 'permissionSection' => $permissionSection->id, 'permission_name' => request('permission_name')]) &&
                     $e->run('() => {changeMultipleLinkGroupColor("' . $checkboxName . '", "' . $role->id . '", "' . $permissionSection->getPermissions()->pluck('id')->implode(',') . '")}')
-            ))->attr(['data-role-id' => $role->id, 'data-permission-section-id' => $permissionSection->id]);
+            ))->attr(['data-role-id' => $role->id]);
     }
 }

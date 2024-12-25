@@ -64,7 +64,7 @@ class RoleWrap extends Form
             $permissionType = $permission->roles->firstWhere('id', $role->id)?->pivot?->permission_type;
 
             $results[] = $this->sectionRoleEl($role, $permission, $permissionSectionId, $permissionIds, $permissionType)
-                ->attr(['data-role-example' => $role->id . '-' . $permission->id]);
+                ->attr(['data-role-template' => $role->id . '-' . $permission->id]);
         }
 
         foreach ($this->permissionSections as $permissionSection) {
@@ -73,7 +73,7 @@ class RoleWrap extends Form
                 $permissionSection,
                 explode('|', $role->permissionsTypes->where('permission_section_id', $permissionSection->id)->first()?->permission_type ?: '0')
             )
-            ->attr(['data-permission-section-example' => $role->id . '-' . $permissionSection->id]);
+            ->attr(['data-permission-section-template' => $role->id . '-' . $permissionSection->id]);
         }
 
         $results[] = $this->roleHeader($role)->attr(['data-role-header-example' => $role->id]);

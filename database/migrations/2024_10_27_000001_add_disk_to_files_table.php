@@ -3,9 +3,8 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Kompo\Auth\Models\Files\FileVisibilityEnum;
 
-class CreateFilesTable extends Migration
+class AddDiskToFilesTable extends Migration
 {
     /**
      * Run the migrations.
@@ -30,4 +29,4 @@ class CreateFilesTable extends Migration
             $table->dropColumn('disk');
         });
     }
-}
+};

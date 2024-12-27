@@ -67,11 +67,12 @@ class ShortUrl extends Model
     public function getQr($size = 200)
     {
         $path = 'qr-codes/short-link-'.$this->id.'.png';
+        $disk = config('kompo.default_storage_disk.image');
 
-        if (!Storage::disk('public')->exists($path)) {
+        if (!Storage::disk($disk)->exists($path)) {
             $qrCode = QrCode::format('png')->size($size)->generate($this->getLinkUrl());
 
-            Storage::disk('public')->put('qr-codes/short-link-'.$this->id.'.png', $qrCode);
+            Storage::disk($disk)->put('qr-codes/short-link-'.$this->id.'.png', $qrCode);
         }
 
         return Storage::url($path);

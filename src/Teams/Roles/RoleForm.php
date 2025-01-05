@@ -4,6 +4,7 @@ namespace Kompo\Auth\Teams\Roles;
 
 use Kompo\Auth\Common\Modal;
 use Kompo\Auth\Facades\RoleModel;
+use Kompo\Auth\Models\Teams\TeamRole;
 
 class RoleForm extends Modal
 {
@@ -19,6 +20,16 @@ class RoleForm extends Modal
     public function beforeSave()
     {
         $this->model->id = $this->model->id ?? \Str::snake(request('name'));
+
+        // JUST ONE ROLE
+        if (request('just_one_person_per_team') && TeamRole::thereAreMoreRoleAssignsThan($this->model->id, 1)->exists()) {
+            doubleExecutionCheck('advised_role_in_form_' . $this->model->id)
+                ->onFirstExecutionCheck(function () {
+                    throwValidationError('just_one_person_per_team', 'translate.assigned-to-many-save-again-if-you-want-to-remove-all-the-assignations');
+                })->onCheckedExecutionCheck(function () {
+                    $this->model->deleteAssignationsHaveMoreThan(1);
+                })->execute();
+        }
     }
 
     public function afterSave()
@@ -50,6 +61,8 @@ class RoleForm extends Modal
             _Rows(
                 _Toggle('permissions-accept-roll-down')->name('accept_roll_to_child'),
                 _Toggle('permissions-accept-roll-to-neighbours')->name('accept_roll_to_neighbourg'),
+
+                _Toggle('translate.just-one-person-per-team')->name('just_one_person_per_team'),
             ),
 
             _Flex(

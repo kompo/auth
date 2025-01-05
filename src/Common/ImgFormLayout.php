@@ -16,7 +16,7 @@ abstract class ImgFormLayout extends Form
 
 		return _Columns(
             _Div(
-                _Img($this->imgUrl)->class('h-screen w-full')->bgCover(),
+                _Img($this->imgUrl)->class('h-screen w-full')->disk('public')->bgCover(),
             )->class('relative hidden md:block')->col('col-md-7'),
             _Rows(
                 _LocaleSwitcher()->class('absolute top-0 right-0'),

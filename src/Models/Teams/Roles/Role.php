@@ -74,9 +74,39 @@ class Role extends Model
             ->select('permissions.id');
     }
 
+    public function isAvailableToAssign($teamId, $userId = null)
+    {
+        if (!$this->just_one_person_per_team) {
+            return true;
+        }
+
+        return TeamRole::thereAreMoreRoleAssignsThan($this->id, 0)
+            ->when(fn($q) => $q->where('user_id', '!=', $userId))
+            ->where('team_id', $teamId)->count() == 0 && $this->extraValidationAvailableToAssign($teamId, $userId);
+    }
+
+    protected function extraValidationAvailableToAssign($teamId, $userId = null)
+    {
+        return true;
+    }
+
     // SCOPES
 
     // ACTIONS
+
+    public function deleteAssignationsHaveMoreThan($quantity = 1, $teamId = null)
+    {
+        $teamsIds = $teamId ? [$teamId] : 
+            TeamRole::thereAreMoreRoleAssignsThan($this->id, $quantity)->select('team_id')->pluck('team_id');
+
+        TeamRole::where('role', $this->id)->whereIn('team_id', $teamsIds)->delete();
+        $this->extraDeleteAssignations($quantity, $teamId);
+    }
+
+    protected function extraDeleteAssignations($quantity = 1, $teamId)
+    {
+        return;
+    }
 
     public function createOrUpdatePermission($permissionId, $value)
     {

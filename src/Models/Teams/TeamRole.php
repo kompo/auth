@@ -59,6 +59,11 @@ class TeamRole extends Model
         $query->when($teamId, fn($q) => $q->where('team_id', $teamId));
     }
 
+    public function scopeThereAreMoreRoleAssignsThan($query, $roleId, $quantity = 1)
+    {
+        return $query->where('role', $roleId)->groupByRaw('user_id, team_id')->selectRaw('count(*) as count')->having('count', '>', $quantity);
+    }
+
     /**
      * Get the query for valid permissions for the team role.
      * This includes permissions defined directly on the team role and those inherited from the role relation.

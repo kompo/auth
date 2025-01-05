@@ -60,7 +60,7 @@ if (!function_exists('_InputRegisterNames')) {
         return config('kompo-auth.register_with_first_last_name') ? _Rows(
             _Input('auth-your-first-name1')->name('first_name')->default($defaultName1),
             _Input('auth-your-last-name')->name('last_name')->default($defaultName2),
-        ) : 
+        ) :
         _Input('auth-your-name')->name('name')->default($defaultName1);
     }
 }
@@ -134,7 +134,7 @@ if(!function_exists('fireRegisteredEvent')) {
 
 /** Current Team, Roles, etc */
 if(!function_exists('currentTeamRoleId')) {
-    function currentTeamRoleId() 
+    function currentTeamRoleId()
     {
         if (!auth()->user()) {
             return;
@@ -149,7 +149,7 @@ if(!function_exists('currentTeamRoleId')) {
 }
 
 if(!function_exists('currentTeamRole')) {
-    function currentTeamRole() 
+    function currentTeamRole()
     {
         if (!auth()->user()) {
             return;
@@ -166,7 +166,7 @@ if(!function_exists('currentTeamRole')) {
 }
 
 if(!function_exists('currentPermissions')) {
-    function currentPermissions() 
+    function currentPermissions()
     {
         if (!auth()->user()) {
             return;
@@ -183,7 +183,7 @@ if(!function_exists('currentPermissions')) {
 }
 
 if(!function_exists('currentTeam')) {
-    function currentTeam() 
+    function currentTeam()
     {
         if (!auth()->user()) {
             return;
@@ -196,11 +196,12 @@ if(!function_exists('currentTeam')) {
 }
 
 if(!function_exists('currentTeamId')) {
-    function currentTeamId() 
+    function currentTeamId()
     {
         if (!auth()->user()) {
             return;
         }
+
         return currentTeamRole()->team_id;
     }
 }

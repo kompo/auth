@@ -169,3 +169,41 @@ if (!function_exists('objectToArray')) {
 		return json_decode(json_encode($object), true);
 	}
 }
+
+function doubleExecutionCheck($sessionKey)
+{
+	return new class ($sessionKey) {
+		protected $sessionKey;
+		protected $errorCallback;
+
+		protected $checkedExecutionCallback;
+
+		public function __construct($sessionKey) {
+			$this->sessionKey = $sessionKey;
+		}
+
+		public function onFirstExecutionCheck($callback)
+		{
+			$this->errorCallback = $callback;
+
+			return $this;
+		}
+
+		public function onCheckedExecutionCheck($callback)
+		{
+			$this->checkedExecutionCallback = $callback;
+
+			return $this;
+		}
+
+		public function execute()
+		{
+			if (session()->has($this->sessionKey)) {
+				call_user_func($this->checkedExecutionCallback);
+			} else {
+				session()->put($this->sessionKey, true);
+				call_user_func($this->errorCallback);
+			}
+		}
+	};
+}

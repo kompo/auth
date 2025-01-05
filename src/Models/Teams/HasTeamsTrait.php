@@ -11,7 +11,7 @@ trait HasTeamsTrait
 	/* RELATIONS */
     public function currentTeamRole()
 	{
-        if ($this->exists && !$this->current_team_role_id) {
+        if ($this->exists && (!$this->current_team_role_id || !TeamRole::where('id', $this->current_team_role_id)->exists())) {
             if(!$this->switchToFirstTeamRole()) {
                 auth()->logout();
             
@@ -134,6 +134,15 @@ trait HasTeamsTrait
 
         $roles = explode(TeamRole::ROLES_DELIMITER, $invitation->role);
         $hierarchies = explode(TeamRole::ROLES_DELIMITER, $invitation->role_hierarchy);
+
+        // JUST ONE ROLE
+        $someInvalid = collect($roles)->some(fn($role) => !$role->isAvailableToAssign($team->id, $this->id));
+
+        if ($someInvalid) {
+            \Log::warning('User '.$this->id.' tried to accept an invitation with invalid roles '.$invitation->id);
+            
+            abort(403, __('translate.auth.invalid-role-in-invitation'));
+        }
 
         collect($roles)->each(fn($role, $key) => $this->createTeamRole($team, $role, $hierarchies[$key] ?? null));
         

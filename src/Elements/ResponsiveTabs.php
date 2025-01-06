@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Elements;
 
-use \Kompo\Rows;
+use Kompo\Rows;
 
 class ResponsiveTabs extends Rows
 {
@@ -19,7 +19,7 @@ class ResponsiveTabs extends Rows
 
     protected $tabsCallbackDecoration;
 
-    static $breakpoints = [
+    public static $breakpoints = [
         'sm' => 'sm:block sm:hidden',
         'md' => 'md:block md:hidden',
         'lg' => 'lg:block lg:hidden',
@@ -27,16 +27,16 @@ class ResponsiveTabs extends Rows
         '2xl' => '2xl:block 2xl:hidden',
     ];
 
-    public function initialize($label = '')
+    public function __construct(...$args)
     {
-        parent::initialize($label);
+        parent::__construct(...$args);
 
         $this->breakpoint('md');
 
-        $this->tabLabels = collect($this->elements)->map(fn($tab) => $tab?->label)->filter();
+        $this->tabLabels = collect($this->elements)->map(fn ($tab) => $tab?->label)->filter();
         $this->uniqueId = uniqid();
     }
-    
+
     public function mounted()
     {
         $this->elements = [
@@ -86,12 +86,12 @@ class ResponsiveTabs extends Rows
 
         return _Tabs(...$this->elements)
             ->commonClass("hidden {$this->breakpoint}:block mr-8")
-            ->when($this->tabsClass, fn($el) => $el->class($this->tabsClass))
-            ->when($this->tabsCommonClass, fn($el) => $el->commonClass($this->tabsCommonClass . " hidden {$this->breakpoint}:block"))
-            ->when($this->tabsSelectedClass, fn($el) => $el->selectedClass($this->tabsSelectedClass))
+            ->when($this->tabsClass, fn ($el) => $el->class($this->tabsClass))
+            ->when($this->tabsCommonClass, fn ($el) => $el->commonClass($this->tabsCommonClass . " hidden {$this->breakpoint}:block"))
+            ->when($this->tabsSelectedClass, fn ($el) => $el->selectedClass($this->tabsSelectedClass))
             ->id('responsive-tabs-' . $this->uniqueId)
             ->holdActualTab()
-            ->when($callback && is_callable($callback), fn($el) => $callback($el));
+            ->when($callback && is_callable($callback), fn ($el) => $callback($el));
     }
 
     protected function selectTabs()
@@ -107,7 +107,7 @@ class ResponsiveTabs extends Rows
             ->options($this->tabLabels)
             ->value(request('tab_number') ?: 0)
             ->onChange(
-                fn($e) => $e
+                fn ($e) => $e
                     ->run($this->jsSelect())
             );
     }

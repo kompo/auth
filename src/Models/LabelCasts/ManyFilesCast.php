@@ -11,7 +11,7 @@ class ManyFilesCast extends AbstractLabelCast
         if (!$value) return null;
         
         foreach ($value as $file) {
-            $files[] = '<a download href="' . Storage::disk('local')->url($file['path'] ?? '') . '" />File</a>';
+            $files[] = '<a download href="' . Storage::disk($file['disk'] ?? 'public')->url($file['path'] ?? '') . '" />File</a>';
         }
 
         return implode('<br>', $files);

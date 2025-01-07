@@ -14,16 +14,18 @@ class FilesDisplayController extends Controller
 
     	$model = $model::findOrFail($id);
 
+        $disk = $model->disk ?? 'public';
+
         // if (!auth()->user()->can('view', $model)) {
         //     abort(403, __('error.you-cant-view-this-file'));
         // }
         
-        if (!Storage::disk('public')->exists($model->path)) {
+        if (!Storage::disk($disk)->exists($model->path)) {
             abort(404, __('error.file-not-found'));
         }
 
-        $file = Storage::disk('public')->get($model->path);
-        $type = Storage::disk('public')->mimeType($model->path);
+        $file = Storage::disk($disk)->get($model->path);
+        $type = Storage::disk($disk)->mimeType($model->path);
 
         $response = \Response::make($file, 200);
         $response->header("Content-Type", $type);

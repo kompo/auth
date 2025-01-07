@@ -14,14 +14,16 @@ class FilesDownloadController extends Controller
 
     	$model = $model::findOrFail($id);
 
+        $disk = $model->disk ?? 'local';
+
         if (!auth()->user()->can('view', $model)) {
             abort(403, __('error.you-cant-download-this-file'));
         }
 
-        if (!Storage::disk('local')->exists($model->path)) {
+        if (!Storage::disk($disk)->exists($model->path)) {
             abort(404, __('error.file-not-found'));
         }
 
-    	return Storage::disk('local')->download($model->storagePath(), $model->name);
+    	return Storage::disk($disk)->download($model->storagePath(), $model->name);
     }
 }

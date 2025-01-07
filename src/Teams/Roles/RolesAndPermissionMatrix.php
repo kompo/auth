@@ -35,7 +35,7 @@ class RolesAndPermissionMatrix extends Query
                 $this->multiSelect($this->defaultRolesIds),
             )->id('multi-select-roles'),
             _Flex(
-                _Input()->placeholder('translate.search')->name('permission_name', false)->class('w-full !mb-0')
+                _Input()->placeholder('auth.search')->name('permission_name', false)->class('w-full !mb-0')
                     ->browse()->onSuccess(fn($e) => $e->run('() => { setTimeout(() => searchLoadingOff("permission_loading"), 50) }'))
                     ->onInput(fn($e) => $e->run('() => { searchLoadingOn("permission_loading") }')),
                 _Spinner()->id('permission_loading')->class('absolute right-4 hidden'),

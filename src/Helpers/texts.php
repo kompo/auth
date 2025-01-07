@@ -79,7 +79,7 @@ if(!function_exists('_LabelMiniValue')) {
 
 /* DESCRIPTIONS AND OTHER */
 \Kompo\Elements\Element::macro('textSm', fn() => $this->class('text-sm'));
-\Kompo\Elements\Element::macro('textSmGray', fn() => $this->textSm()->class('text-level4'));
+\Kompo\Elements\Element::macro('textSmGray', fn() => $this->textSm()->class('opacity-60'));
 
 if(!function_exists('_TextSm')) {
     function _TextSm($label = '')

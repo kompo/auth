@@ -19,6 +19,7 @@ trait HasManyModelChanges
                     'changed_by' => auth()->id(),
                     'old_data' => collect(array_keys($model->getDirty()))->intersect($model->getColumnsToSaveOldData())
                         ->mapWithKeys(fn($col) => [$col => $model->getOriginal($col)])->toArray(),
+                    'new_data' => collect(array_keys($model->getDirty()))->mapWithKeys(fn($col) => [$col => $model->getAttribute($col)])->toArray(),
                     'changed_at' => now()
                 ]);
             }
@@ -40,7 +41,7 @@ trait HasManyModelChanges
         if (!property_exists($this, 'logChangesColumns')) return [];
 
         if (is_string($this->logChangesColumns) && $this->logChangesColumns == '*') {
-            return $this->logChangesColumns;
+            return array_keys($this->getAttributes());
         }
 
         return $this->logChangesColumns ?: [];

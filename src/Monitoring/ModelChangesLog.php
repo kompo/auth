@@ -18,7 +18,8 @@ class ModelChangesLog extends ModelBase
         'columns_changed',
         'changed_by',
         'old_data',
-        'changed_at'
+        'changed_at',
+        'new_data',
     ];
 
     protected $casts = [
@@ -26,6 +27,7 @@ class ModelChangesLog extends ModelBase
         'action' => ChangeTypeEnum::class,
         'changed_at' => 'datetime',
         'old_data' => 'array',
+        'new_data' => 'array',
     ];
     const CREATED_AT = 'changed_at';
 

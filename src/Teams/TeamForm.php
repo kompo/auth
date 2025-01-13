@@ -15,7 +15,7 @@ class TeamForm extends Modal
 
     public function created()
     {
-        if(!$this->model->id) {
+        if (!$this->model->id) {
             $this->model->parent_team_id = $this->prop('parent_team_id');
         }
     }
@@ -35,11 +35,8 @@ class TeamForm extends Modal
     {
         return _Rows(
             _Rows($this->firstFormPart()),
-
             _CardLevel5($this->contactFormPart()),
-
             _Rows($this->lastFormPart()),
-
             _SubmitButton('team-save')->closeModal()->class('mt-4'),
         );
     }
@@ -84,8 +81,8 @@ class TeamForm extends Modal
     {
         return [
             'team_name' => 'required',
-            'active_at' => 'required|date|date_format:Y-m-d H:i',
-            'inactive_at' => 'nullable|date|after:active_at|date_format:Y-m-d H:i',
+            'active_at' => 'required|date',
+            'inactive_at' => 'nullable|date',
         ];
     }
 }

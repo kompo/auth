@@ -10,7 +10,7 @@ abstract class ImgFormLayout extends Form
 
     protected $imgUrl = 'images/left-column-image.png';
 
-    protected $rightColumnBodyWrapperClass = 'justify-around md:justify-center';
+    protected $rightColumnBodyWrapperClass = 'flex-1 justify-around md:justify-center';
 
 	public function render()
 	{

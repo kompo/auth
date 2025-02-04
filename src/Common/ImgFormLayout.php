@@ -2,6 +2,8 @@
 
 namespace Kompo\Auth\Common;
 
+use Kompo\Form;
+
 abstract class ImgFormLayout extends Form
 {
     public $containerClass = '';
@@ -22,8 +24,8 @@ abstract class ImgFormLayout extends Form
                 _LocaleSwitcher()->class('absolute top-0 right-0'),
                 _Rows(
                     $this->rightColumnBody(),
-                )->class('h-screen overflow-auto p-6 md:p-8 w-full')->class($this->rightColumnBodyWrapperClass)->style('max-width:500px'),
-            )->class('items-center')
+                )->class('p-6 md:p-8 w-full')->class($this->rightColumnBodyWrapperClass)->style('max-width:500px'),
+            )->class('items-center h-screen overflow-auto mini-scroll')
             ->col('col-12 col-md-5 bg-greenmain'),
 		)->class('no-gutters');
 	}

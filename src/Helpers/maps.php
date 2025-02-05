@@ -73,9 +73,11 @@ if (!function_exists('loadFormattedLabel')) {
             return;
         }
 
-        $address->address_label = $address?->getAddressInline(); //todo remove after changing Kompo to autoload if formattedLabel
+        $address->setRawAttributes([
+            'address_label' => $address->getAddressInline(),
+            ...$address->getAttributes(),
+        ]);
 
         return $address;
     }
 }
-

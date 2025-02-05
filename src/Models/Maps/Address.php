@@ -36,6 +36,11 @@ class Address extends Model
         return $this->address1.' '.$this->postal_code.' '.$this->city;
     }
 
+    public function setAddressLabelAttribute($value)
+    {
+        return null;
+    }
+
     /* CALCULATED FIELDS */
     public function getAddressLabel($full = false)
     {

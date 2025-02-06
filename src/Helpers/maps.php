@@ -1,6 +1,7 @@
 <?php
 
 use \Kompo\Elements\Element;
+use Kompo\Place;
 
 const SAX_ICON_MAP = 'location';
 
@@ -72,10 +73,13 @@ if (!function_exists('loadFormattedLabel')) {
         if (!$address) {
             return;
         }
+        
+        $value = collect(config('kompo.places_attributes'))->map(fn ($key) => $address->{$key});
 
         $address->setRawAttributes([
             'address_label' => $address->getAddressInline(),
-            ...$address->getAttributes(),
+            ...$value->all(),
+            ...$address->getAttributes()
         ]);
 
         return $address;

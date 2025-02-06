@@ -41,7 +41,7 @@ class OptionsRolesSwitcher extends Form
         // getAllTeamIdsWithRoles return an key-value => team_id => role_id array
         $rolesSelectors = $teamsIdsWithRoles->sort()
             ->map(fn($roleId, $teamId) =>  $this->getTeamRoleLabel($teams[$teamId], $roles[$roleId])
-                    ->selfPost('switchToTeamRole', ['team_id' => $teamId, 'role_id' => $roleId])->redirect('dashboard')
+                    ->selfPost('switchToTeamRole', ['team_id' => $teamId, 'role_id' => $roleId])->redirect()
         );
 
         return _Rows(
@@ -71,5 +71,7 @@ class OptionsRolesSwitcher extends Form
         $teamRole = TeamRole::getOrCreateForUser($teamId, auth()->id(), $roleId);
 
         auth()->user()->switchToTeamRoleId($teamRole->id);
+
+        return refresh();
     }
 }

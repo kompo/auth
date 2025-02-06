@@ -42,6 +42,6 @@ class MenuTeamsBreadcrumbs extends Form
 			abort(403, __('auth-you-dont-have-access-to-this-team'));
 		}
 
-        return redirect()->route('dashboard');
+		return refresh();
     }
 }

@@ -91,7 +91,7 @@ class TeamInvitationForm extends TeamBaseForm
 
     public function rules()
     {
-        $rules = TeamRole::teamRoleRules();
+        $rules = [];
 
         $rules['email'] = baseEmailRules();
 

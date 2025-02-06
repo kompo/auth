@@ -12,7 +12,7 @@ class TeamInvitationMultiForm extends Form
     public function render()
     {
         return _Columns(
-            TeamRole::buttonGroupField()->col('col-6'),
+            // TeamRole::buttonGroupField()->col('col-6'),
             TeamRole::roleHierarchySelect()->col('col-5'),
             $this->deleteRoleChoice()->col('col-1'),
         )->alignCenter();

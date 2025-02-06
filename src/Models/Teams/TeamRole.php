@@ -210,25 +210,6 @@ class TeamRole extends Model
         return $this->team->team_name.' - '.$this->getRoleName();
     }
 
-    public static function baseRoles()
-    {
-        return [
-            SuperAdminRole::class,
-            TeamOwnerRole::class,
-        ];
-    }
-
-    public static function teamRoleRules()
-    {
-        if (!config('kompo-auth.team_hierarchy_roles')) {
-            $rules['role'] = ['required', 'array', 'in:'.implode(',', TeamRole::getUsableRoleClasses()->map(fn($c) => $c::ROLE_KEY)->toArray())];
-        } else {
-            $rules['multi_roles'] = ['required'];
-        }
-
-        return $rules;
-    }
-
     public function getRoleHierarchyAccessDirect()
     {
         return $this->role_hierarchy->accessGrant();

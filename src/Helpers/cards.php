@@ -72,7 +72,7 @@ if (!function_exists("_CardSettings")) {
 }
 
 /* GENERAL CARD SETTINGS */
-Element::macro('kompoCard', fn() => $this->class('rounded-2xl mb-4 border'));
+Element::macro('kompoCard', fn() => $this->class('rounded-2xl mb-4'));
 
 if (!function_exists("_Card")) {
 	function _Card()
@@ -88,6 +88,7 @@ Element::macro('cardLevel1', fn() => $this->kompoCard()->class('bg-greenmain'));
 Element::macro('cardLevel2', fn() => $this->kompoCard()->class('bg-warning'));
 Element::macro('cardLevel3', fn() => $this->kompoCard()->class('bg-level3'));
 Element::macro('cardLevel4', fn() => $this->kompoCard()->class('bg-level4'));
+Element::macro('cardLevel6', fn() => $this->kompoCard()->class('bg-greendark'));
 
 if (!function_exists("_CardLevel1")) {
 	function _CardLevel1()
@@ -122,6 +123,15 @@ if (!function_exists("_CardLevel4")) {
 		return _Rows(
 			...func_get_args()
 		)->cardLevel4();
+	}
+}
+
+if (!function_exists("_CardLevel6")) {
+	function _CardLevel6()
+	{
+		return _Rows(
+			...func_get_args()
+		)->cardLevel6();
 	}
 }
 

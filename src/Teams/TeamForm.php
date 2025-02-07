@@ -37,7 +37,7 @@ class TeamForm extends Modal
             _Rows($this->firstFormPart()),
             _CardLevel5($this->contactFormPart()),
             _Rows($this->lastFormPart()),
-            _SubmitButton('team-save')->closeModal()->class('mt-4'),
+            _SubmitButton('team-save')->refresh(['teams-registry-page'])->closeModal()->class('mt-4'),
         );
     }
 

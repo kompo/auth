@@ -24,6 +24,10 @@ if (!function_exists('publicUrlFromFileModel')) {
 	function publicUrlFromFileModel($file, $defaultUrl = null)
 	{
 		if ($file->path ?? false) {
+			if ($file->disk) {
+				return \Storage::disk($file->disk)->url($file->path);
+			}
+
 			return publicUrlFromPath($file->path, $defaultUrl);
 		}
 

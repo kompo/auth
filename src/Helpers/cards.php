@@ -72,7 +72,7 @@ if (!function_exists("_CardSettings")) {
 }
 
 /* GENERAL CARD SETTINGS */
-Element::macro('kompoCard', fn() => $this->class('rounded-2xl mb-4 border'));
+Element::macro('kompoCard', fn() => $this->class('rounded-2xl mb-4'));
 
 if (!function_exists("_Card")) {
 	function _Card()

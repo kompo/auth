@@ -118,6 +118,15 @@ trait HasTeamsTrait
 
     public function createTeamRole($team, $role, $hierarchy = null)
     {
+        if ($teamRole = $this->teamRoles()->where('team_id', $team->id)->where('role', $role)->first()) {
+            if($hierarchy) {
+                $teamRole->role_hierarchy = $hierarchy;
+                $teamRole->save();
+            }
+            
+            return $teamRole;
+        }
+
         $teamRole = new TeamRole();
         $teamRole->team_id = $team->id;
         $teamRole->user_id = $this->id;
@@ -127,6 +136,7 @@ trait HasTeamsTrait
 
         return $teamRole;
     }
+
 
     public function createRolesFromInvitation($invitation)
     {

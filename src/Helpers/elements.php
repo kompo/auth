@@ -133,3 +133,10 @@ if (!function_exists('_ResponsiveTabs')) {
             ->tabsCallbackDecoration($callback);
     }
 }
+
+if (!function_exists('_ValidatedInput')) {
+    function _ValidatedInput()
+    {
+        return \Kompo\Auth\Elements\ValidatedInput::form(...func_get_args());
+    }
+}

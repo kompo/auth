@@ -119,7 +119,7 @@ trait MorphManyPhones
             $existingPhone?->delete();
         } else {
             if (!$existingPhone || !$existingPhone->isSameNumber($number)) {
-                $this->createPhoneFromNumber($number);
+                $this->setPrimaryPhone($this->createPhoneFromNumber($number)->id);
             }
         }
     }
@@ -129,7 +129,9 @@ trait MorphManyPhones
         $existingPhone = new Phone();
         $existingPhone->setPhonable($this);
         $existingPhone->setPhoneNumber($number);
-        $existingPhone->save();        
+        $existingPhone->save();   
+        
+        return $existingPhone;
     }
 
     /* ELEMENTS */

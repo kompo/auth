@@ -77,6 +77,8 @@ export default {
             this.dirty = true;
         },
         formatToModel(value) {
+            if (!value) return value;
+
             if (this.formatModels && Object.entries(this.formatModels).length > 0) {
                 Object.entries(this.formatModels).forEach(([from, to]) => {
                     value = value.replace(new RegExp(from), to)

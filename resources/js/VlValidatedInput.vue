@@ -26,8 +26,8 @@ export default {
     },
     watch: {
         'component.value'(value) {
-            this.rawValue = value;
-            this.pastValue = value;
+            this.rawValue = value ?? '';
+            this.pastValue = value ?? '';
         }
     },  
     computed: {
@@ -77,7 +77,7 @@ export default {
             this.dirty = true;
         },
         formatToModel(value) {
-            if (!value) return value;
+            if (!value) return '';
 
             if (this.formatModels && Object.entries(this.formatModels).length > 0) {
                 Object.entries(this.formatModels).forEach(([from, to]) => {

@@ -3,7 +3,7 @@
 use \Kompo\Elements\Element;
 
 /* BASE BUTTONS AND LINKS */
-Element::macro('button2', fn() => $this->class('!bg-warning !text-greenmain'));
+Element::macro('button2', fn() => $this->class('!bg-warning !text-greendark'));
 Element::macro('buttonBig', fn() => $this->class('!px-6 !py-3 !text-lg'));
 
 if (!function_exists('_ButtonBig')) {

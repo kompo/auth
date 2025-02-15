@@ -176,6 +176,11 @@ class Team extends Model
 		$query->where(fn($q) => $q->whereNull('inactive_at')->orWhere('inactive_at', '>', now()));
 	}
 
+    public function scopeValidForTasks($query)
+    {
+        return $query;
+    }
+
 	/* ACTIONS */
 	public function detachFromTeam($user)
 	{

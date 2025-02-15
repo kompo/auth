@@ -57,11 +57,12 @@ if (!function_exists('_TripleDotsDropdown')) {
 
 /* MENU */
 if (!function_exists('_SideLink')) {
-    function _SideLink($icon = '', $label = '', $link = '')
+    function _SideLink($icon = '', $label = '', $link = '', $newTab = false)
     {
         return _Flex(
             _Sax($icon)->class('text-white opacity-50 pl-4'),
-            _Link($label)->class('text-white opacity-90 pl-3 text-lg lg:text-base font-light py-1 px-3 hover:text-level5')->href($link),
+            _Link($label)->class('text-white opacity-90 pl-3 text-lg lg:text-base font-light py-1 px-3 hover:text-level5')->href($link)
+                ->when($newTab, fn($el) => $el->inNewTab())
         )->class('mb-3');
     }
 }

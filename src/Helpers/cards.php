@@ -126,7 +126,7 @@ if (!function_exists("_CardLevel4")) {
 }
 
 /* WHITE CARDS */
-Element::macro('cardWhite', fn() => $this->kompoCard()->class('bg-white'));
+Element::macro('cardWhite', fn() => $this->kompoCard()->class('bg-white border border-level4'));
 
 if (!function_exists("_CardWhite")) {
 	function _CardWhite()

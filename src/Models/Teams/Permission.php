@@ -7,6 +7,16 @@ use Kompo\Auth\Models\Model;
 
 class Permission extends Model
 {
+    protected $fillable = [
+        'permission_key',
+        'permission_name',
+        'permission_description',
+        'permission_section_id',
+        'object_type',
+        'added_by', 
+        'modified_by'
+    ];
+
     protected $casts = [
         'object_type' => PermissionObjectTypeEnum::class,
     ];

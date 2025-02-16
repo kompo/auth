@@ -12,6 +12,7 @@ use Kompo\Auth\Models\Teams\BelongsToTeamTrait;
 use Kompo\Auth\Models\Traits\BelongsToUserTrait;
 use Kompo\Auth\Models\Traits\HasSearchableNameTrait;
 use Kompo\Core\FileHandler;
+use Intervention\Image\Facades\Image;
 
 class File extends Model implements Searchable
 {
@@ -177,6 +178,20 @@ class File extends Model implements Searchable
 
             return $file->id;
         });
+    }
+
+    public function resizeImage($width, $height)
+    {
+        $file = \Storage::disk($this->disk ?? 'public')->get($this->path);
+        $format = pathinfo($this->path, PATHINFO_EXTENSION);
+
+        $image = Image::make($file)->resize($width, $height, function ($constraint) {
+            $constraint->aspectRatio();
+            $constraint->upsize();
+        })->orientate()->encode($format);
+
+        \Storage::disk($this->disk ?? 'public')->put($this->path, $image);
+        \Storage::disk($this->disk ?? 'public')->setVisibility($this->path, 'public');
     }
 
     /* ELEMENTS */

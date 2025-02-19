@@ -26,7 +26,7 @@ trait ExportableUtilsTrait
                 $filename,
             );
         } catch (\Exception $e) {
-            Log::error($e->getMessage(), ['class' => static::class, 'trace' => $e->getTraceAsString(), 'user' => auth()->user(), 'campaign' => currentCampaign()]);
+            Log::error($e->getMessage(), ['class' => static::class, 'trace' => $e->getTraceAsString(), 'user' => auth()->user()]);
 
             return _Html('reports.export-failed')->icon('icon-x')->class('text-lg font-semibold p-4');
         }

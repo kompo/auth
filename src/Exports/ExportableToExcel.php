@@ -27,6 +27,8 @@ abstract class ExportableToExcel extends Query implements FromArray, WithHeading
     protected $columnFormats = [];
 
     protected $exportChildClass = null;
+    protected $boldColumns = [1];
+    protected $pastCountOfItems = 1; // Just needed to child classes
 
     public function title(): string
     {
@@ -35,10 +37,15 @@ abstract class ExportableToExcel extends Query implements FromArray, WithHeading
 
     public function styles($sheet)
     {
-        return [
-            // Style the first row as bold text.
-            1    => ['font' => ['bold' => true]],
-        ];
+        // Rows height adjustment when we use break lines in cells
+        $sheet->getStyle('A1:Z' . $sheet->getHighestRow())
+            ->getAlignment()
+            ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP)
+            ->setWrapText(true);
+
+        return collect($this->boldColumns)
+            ->mapWithKeys(fn($col) => [$col => ['font' => ['bold' => true]]])
+            ->all();
     }
 
     // Excel export methods
@@ -50,7 +57,9 @@ abstract class ExportableToExcel extends Query implements FromArray, WithHeading
     public function headings(): array
     {
         if ($this->exportChildClass) {
-            return $this->parseHeaders((new $this->exportChildClass)->headers());
+            $childInstance = $this->render($this->getItems(null, 1)->first())->findByComponent($this->exportChildClass);
+
+            return $this->parseHeaders($childInstance->headers());
         }
 
         try {
@@ -70,6 +79,11 @@ abstract class ExportableToExcel extends Query implements FromArray, WithHeading
 
                 $items = $this->getItems($childInstance);
 
+                // Adding a separator between each child with a bold column
+                $boldColumn = collect($this->boldColumns)->last() + $this->pastCountOfItems;
+                $this->pastCountOfItems = ($items->count() ?: 1) + 1;
+                $this->boldColumns[] = $boldColumn;
+
                 $items->prepend([$childInstance->exportableSeparator()]);
 
                 return ['items' => $items, 'component' => $childInstance];
@@ -88,10 +102,10 @@ abstract class ExportableToExcel extends Query implements FromArray, WithHeading
 
                     return $this->formatItemToExport($item, $itemsGroup['component']);
                 });
-            })->flatten(1)->toArray();
+            })->flatten(1)->all();
         }
 
-        return $this->getItems()->map(fn($item) => $this->formatItemToExport($item))->toArray();
+        return $this->getItems()->map(fn($item) => $this->formatItemToExport($item))->all();
     }
 
     /* PARSING METHODS */
@@ -119,12 +133,12 @@ abstract class ExportableToExcel extends Query implements FromArray, WithHeading
             }
 
             return $this->sanatizeText($text);
-        })->toArray();
+        })->all();
     }
 
     protected function parseHeaders($ths)
     {
-        return collect($ths)->map(fn($th) => ($this->isExcludedHeader($th) || !$th) ? null : ($th?->label ?: '-'))->filter()->toArray();
+        return collect($ths)->map(fn($th) => ($this->isExcludedHeader($th) || !$th) ? null : ($th?->label ?: '-'))->filter()->all();
     }
 
     protected function isExcludedHeader($th)
@@ -145,23 +159,23 @@ abstract class ExportableToExcel extends Query implements FromArray, WithHeading
                 return $this->convertHtmlToPlainText($el->label);
             }
 
-            return $el->label;
+            return \Lang::has($el->label) ? __($el->label) : $el->label;
         }
 
         return "";
     }
 
-    protected function getItems($fromInstance = null)
+    protected function getItems($fromInstance = null, $perPage = 1000)
     {
         $fromInstance = $fromInstance ?? $this;
 
         $prevPerPage = $fromInstance->perPage;
-        $fromInstance->perPage = 10000;
+        $fromInstance->perPage = $perPage ?? 1000000;
 
         $items = $fromInstance->query();
 
         if ($items instanceof Builder) {
-            $items = $items->get();
+            $items = $items->take($perPage ?? 1000000)->get();
         }
 
         $fromInstance->perPage = $prevPerPage;
@@ -208,7 +222,7 @@ abstract class ExportableToExcel extends Query implements FromArray, WithHeading
         } catch (\Exception $e) {
             Log::error($e->getMessage(), ['class' => static::class, 'html' => $html, 'trace' => $e->getTraceAsString(), 'user' => auth()->user()]);
 
-            return $html;
+            return preg_replace("/\n+/", "\n", strip_tags($html));;
         }
 
         $xpath = new \DOMXPath($dom);
@@ -220,8 +234,10 @@ abstract class ExportableToExcel extends Query implements FromArray, WithHeading
             $texts[] = trim($node->nodeValue);
         }
 
+        $texts = array_filter($texts);
+
         $text = implode(" \n", $texts);
 
-        return $text;
+        return \Lang::has($text) ? __($text) : $text;
     }
 }

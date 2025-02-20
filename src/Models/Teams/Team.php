@@ -13,9 +13,6 @@ class Team extends Model
     use \Kompo\Auth\Models\Email\MorphManyEmails;
     use \Kompo\Auth\Models\Phone\MorphManyPhones;
 
-    protected $deleteSecurityRestrictions = true;
-    protected $saveSecurityRestrictions = true;
-
 	/* RELATIONS */
 	public function owner()
     {

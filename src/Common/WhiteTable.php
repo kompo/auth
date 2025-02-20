@@ -2,9 +2,9 @@
 
 namespace Kompo\Auth\Common;
 
-use Kompo\Table as KompoTable;
+use Kompo\Auth\Exports\TableExportableToExcel;
 
-class WhiteTable extends KompoTable
+class WhiteTable extends TableExportableToExcel
 {
     use HasAuthorizationUtils;
     

@@ -6,6 +6,8 @@ use Kompo\Auth\Models\Model;
 
 class PermissionSection extends Model
 {
+    protected $fillable = ['name', 'added_by', 'modified_by'];
+
     public function permissions()
     {
         return $this->hasMany(Permission::class, 'permission_section_id');

@@ -15,7 +15,7 @@ trait RoleRequestsUtils
 
         $role = Role::findOrFail(request('role'));
         $permissions = Permission::where('permission_section_id', request('permissionSection'))
-            ->when(request('permission_name'), fn($q) => $q->where('permission_name', 'like', wildcardSpace(request('permission_name'))))
+            ->when(request('permission_name') && request('permission_name') !== "null", fn($q) => $q->where('permission_name', 'like', wildcardSpace(request('permission_name'))))
             ->pluck('id');
 
         if($value) {

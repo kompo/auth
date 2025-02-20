@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 if (!function_exists("_CheckAllItems")) {
     function _CheckAllItems()
@@ -24,6 +24,6 @@ if (!function_exists('_CheckButton')) {
 if (!function_exists('_InputSearch')) {
     function _InputSearch()
     {
-        return _Input()->icon(_Sax('search-status-1'))->inputClass('px-6 py-4');
+        return _Input()->icon(_Sax('search-normal'))->inputClass('px-6 py-4');
     }
 }

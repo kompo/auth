@@ -46,7 +46,7 @@ if (!function_exists('_TripleDotsDropdown')) {
     {
         return _Dropdown()
             ->icon(
-                _Svg('dots-vertical')->class('text-xl text-warning')
+                _Svg('dots-vertical')->class('text-xl text-gray-400')
             )
             ->submenu(
                 $submenu

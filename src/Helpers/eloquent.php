@@ -28,7 +28,7 @@ if (!function_exists("performSearchOptions")) {
 }
 
 /* MORPHS STRINGS */
-if (!function_exists("performSearchOptions")) {
+if (!function_exists("getModelFromMorphable")) {
 	function getModelFromMorphable($morphableType, $morphableId)
 	{
 		$modelClass = Relation::morphMap()[$morphableType];

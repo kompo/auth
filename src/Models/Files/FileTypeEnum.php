@@ -2,6 +2,12 @@
 
 namespace Kompo\Auth\Models\Files;
 
+use Kompo\Auth\Files\AudioPreview;
+use Kompo\Auth\Files\ImagePreview;
+use Kompo\Auth\Files\PdfPreview;
+use Kompo\Auth\Files\VideoPreview;
+use PhpOffice\PhpSpreadsheet\Writer\Pdf;
+
 enum FileTypeEnum: int
 {
     use \Kompo\Auth\Models\Traits\EnumKompo;
@@ -70,6 +76,19 @@ enum FileTypeEnum: int
             self::PDF => $komponent->href(fileRoute($model->getMorphClass(), $model->id))->inNewTab(),
             self::AUDIO => $komponent->get('audio.preview', ['id' => $model->id, 'type' => $model->getMorphClass()])->inModal(),
             self::VIDEO => $komponent->get('video.preview', ['id' => $model->id, 'type' => $model->getMorphClass()])->inModal(),
+            default => null,
+        };
+    }
+
+    public function componentFromColumn($type, $id, $column, $index = null)
+    {
+        $route = route('preview-files', ['type' => $type, 'id' => $id, 'column' => $column, 'index' => $index]);
+
+        return match ($this) {
+            self::IMAGE => _Img()->src($route)->bgCover(),
+            self::PDF => _Html('<embed src="' . $route . '" frameborder="0" width="100%" height="100%">'),
+            self::AUDIO => _Audio($route),
+            self::VIDEO => _Video($route),
             default => null,
         };
     }

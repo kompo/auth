@@ -2,19 +2,8 @@
 
 namespace Kompo\Auth\Files;
 
-use Illuminate\Database\Eloquent\Relations\Relation;
-use Kompo\Form;
-
-class AudioPreview extends Form
+class AudioPreview extends AbstractPreview
 {
-	public $model;
-
-	public function created()
-	{
-		$model = Relation::morphMap()[request('type')];
-
-    	$this->model($model::findOrFail(request('id')));
-	}
 
 	public function render()
 	{

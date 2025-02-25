@@ -26,7 +26,7 @@ class TagForm extends Modal
 
     public function beforeSave()
     {
-        $this->model->type = $this->tagType;
+        $this->model->tag_type = $this->tagType;
         $this->model->context = $this->tagContext;
         $this->model->team_id = currentTeamId();
     }

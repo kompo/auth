@@ -23,7 +23,7 @@ class CreateTagsTable extends Migration
             $table->string('name');
             $table->string('description', 500)->nullable();
 
-            $table->tinyInteger('type')->nullable(Tag::TAG_TYPE_GENERAL);
+            $table->tinyInteger('tag_type')->nullable();
             $table->tinyInteger('context')->default(TagContextEnum::TEAM);
         });
 

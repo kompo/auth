@@ -42,7 +42,7 @@ class Tag extends Model
 
 	public function scopeOfType($query, $type)
 	{
-		return $query->where('type', $type);
+		return $query->where('tag_type', $type);
 	}
 
 	public function scopeOfContext($query, $context)

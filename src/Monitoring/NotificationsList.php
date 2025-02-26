@@ -100,7 +100,7 @@ class NotificationsList extends Query
             if ($contact->mainEmail()) {
 
                 $message = new Message();
-                $message->sender_id = auth()->user()->getSenderAccountId();
+                $message->sender_id = getCurrentMailboxId();
                 $message->subject = __('email-message-from').' '.$contact->units()->first()->union->display;
                 $message->html = '<p>'.__('general-hi').' '.$contact->first_name.'</p>'.
                     '<p>'.__('email-missing-informations').'</p>';

@@ -85,7 +85,7 @@ enum FileTypeEnum: int
         $route = route('preview-files', ['type' => $type, 'id' => $id, 'column' => $column, 'index' => $index]);
 
         return match ($this) {
-            self::IMAGE => _Img()->src($route)->bgCover(),
+            self::IMAGE => _Img($route)->bgCover(),
             self::PDF => _Html('<embed src="' . $route . '" frameborder="0" width="100%" height="100%">'),
             self::AUDIO => _Audio($route),
             self::VIDEO => _Video($route),

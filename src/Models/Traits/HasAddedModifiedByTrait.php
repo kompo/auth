@@ -35,10 +35,10 @@ trait HasAddedModifiedByTrait
     {
         if (auth()->check()) {
             if (!$this->getKey() || !$this->exists) {
-                $this->added_by = $this->added_by ?: auth()->id();
+                $this->added_by = $this->added_by ?: auth()->id() ?? config('kompo-auth.default-added-by-modified-by');
             }
 
-            $this->modified_by = auth()->id();
+            $this->modified_by = auth()->id() ?? config('kompo-auth.default-added-by-modified-by');
         }
     }
 }

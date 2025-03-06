@@ -165,7 +165,7 @@ class Team extends Model
 
     public function scopeSearch($query, $search)
     {
-        $query->where('team_name', 'LIKE', wildcardSpace($search));
+        return $query->where('team_name', 'LIKE', wildcardSpace($search));
     }
 
     public function scopeActive($query)

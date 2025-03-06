@@ -183,6 +183,9 @@ if(!function_exists('currentPermissions')) {
 }
 
 if(!function_exists('currentTeam')) {
+    /**
+     * @return \Kompo\Auth\Models\Teams\Team|null The current team
+     */
     function currentTeam() 
     {
         if (!auth()->user()) {

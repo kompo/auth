@@ -22,5 +22,7 @@ return [
 
     'check-if-user-has-permission' => true,
 
+    'default-added-by-modified-by' => 1,
+
     'profile-enum' => getAppClass(App\Models\Teams\ProfileEnum::class, Kompo\Auth\Models\Teams\ProfileEnum::class),
 ];

@@ -1,17 +1,18 @@
 <?php
 
 if (count($argv) < 2) {
-    echo "Usage: php create-facade.php <ModelNamespace>\n";
-    echo "Example: php create-facade.php \\Models\\User\n";
+    echo "Usage: php create-facade-enum.php <EnumNamespace>\n";
+    echo "Example: php create-facade-enum.php \\Models\\UserStatus\n";
     exit(1);
 }
 
-$namespaceModel = 'Models\\' . $argv[1];
+$namespaceEnum = 'Models\\' . $argv[1];
 $path = getcwd();
 
 // Process path and namespace
-$split = explode("\\", $namespaceModel);
-$model = end($split);
+$split = explode("\\", $namespaceEnum);
+$enum = end($split);
+$enum = str_replace('Enum', '', $enum);
 
 $getComposerContent = file_get_contents($path . '/composer.json');
 $composer = json_decode($getComposerContent, true);
@@ -21,46 +22,47 @@ $packageName = $composer['name'] ?? '';
 $packageParts = explode('/', $packageName);
 $packageLastPart = end($packageParts);
 
-$namespace = $initialNamespace . $namespaceModel;
+$namespace = $initialNamespace . $namespaceEnum;
 
-$modelUppercase = strtoupper($model);
-$modelLowercase = strtolower($model);
-$modelSnakeCase = str_replace('_', '-', strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $model)));
+$enumSnakeUpperCase = strtoupper($enum);
+$enumLowercase = strtolower($enum);
+$enumSnakeCase = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $enum));
+$enumSnakeUpperCase = strtoupper($enumSnakeCase);
 
-// Determine config file based on model namespace
-$configKey = determineConfigKey($namespaceModel, $packageLastPart, $path);
+// Determine config file based on enum namespace
+$configKey = determineConfigKey($namespaceEnum, $packageLastPart, $path);
 
-echo "Creating facade for model: $model\n";
-echo "Model key: $modelUppercase\n";
+echo "Creating facade for enum: $enum\n";
+echo "Enum key: $enumSnakeUpperCase\n";
 echo "Config key: $configKey\n";
 
 // 1. Create facade file
-createFacadeFile($path, $initialNamespace, $namespace, $model, $modelUppercase);
+createFacadeFile($path, $initialNamespace, $namespace, $enum, $enumSnakeUpperCase);
 
 // 2. Add constant to facades.php
-addModelConstant($path, $modelUppercase, $modelSnakeCase);
+addEnumConstant($path, $enumSnakeUpperCase, $enumSnakeCase);
 
 // 3. Add binding to service provider
 $serviceProviderPath = findServiceProvider($path, $initialNamespace);
 if ($serviceProviderPath) {
-    addBindingToServiceProvider($serviceProviderPath, $modelUppercase, $configKey, $modelSnakeCase);
+    addBindingToServiceProvider($serviceProviderPath, $enumSnakeUpperCase, $configKey, $enumSnakeCase);
 } else {
     echo "Warning: Could not find service provider. You'll need to add the binding manually.\n";
     echo "Binding code to add: \n";
-    echo "\$this->app->bind('$modelSnakeCase-model', function () {
-    return new (config('$configKey.$modelSnakeCase-model-namespace'));
+    echo "\$this->app->bind('$enumSnakeCase-enum', function () {
+    return config('$configKey.' . {$enumSnakeUpperCase} . '-namespace');
 });\n";
 }
 
 // 4. Add entry to config file
-addConfigEntry($path, $configKey, $modelUppercase, $namespace, $namespaceModel);
+addConfigEntry($path, $configKey, $enumSnakeUpperCase, $namespace, $namespaceEnum);
 
-echo "Facade for model $model created successfully!\n";
+echo "Facade for enum $enum created successfully!\n";
 
 /**
  * Create the facade file using stub
  */
-function createFacadeFile($path, $initialNamespace, $namespace, $model, $modelUppercase) {
+function createFacadeFile($path, $initialNamespace, $namespace, $enum, $enumSnakeUpperCase) {
     // Create Facades directory if it doesn't exist
     $facadesDir = $path . '/src/Facades';
     
@@ -68,15 +70,17 @@ function createFacadeFile($path, $initialNamespace, $namespace, $model, $modelUp
         mkdir($facadesDir, 0755, true);
         echo "Created directory: $facadesDir\n";
     }
+
+    $suffix = strpos($enum, 'Enum') === false ? 'Enum' : '';
     
-    $facadePath = $facadesDir . "/{$model}Model.php";
+    $facadePath = $facadesDir . "/{$enum}{$suffix}.php";
     
     // Check if we have a stub file first
-    $stubPath = $path . '/Facade.stub';
+    $stubPath = $path . '/FacadeEnum.stub';
     if (file_exists($stubPath)) {
         $facadeContent = file_get_contents($stubPath);
-        $facadeContent = str_replace('{ModelName}', $model, $facadeContent);
-        $facadeContent = str_replace('{UppercaseModelName}', $modelUppercase, $facadeContent);
+        $facadeContent = str_replace('{EnumName}', $enum, $facadeContent);
+        $facadeContent = str_replace('{UppercaseEnumName}', $enumSnakeUpperCase, $facadeContent);
         
         // Add namespace to @mixin if applicable
         if (strpos($facadeContent, '@mixin ') !== false && strpos($facadeContent, '@mixin ' . $namespace) === false) {
@@ -88,16 +92,16 @@ function createFacadeFile($path, $initialNamespace, $namespace, $model, $modelUp
 
 namespace {$initialNamespace}Facades;
 
-use Kompo\Komponents\Form\KompoModelFacade;
+use Kompo\Auth\Facades\FacadeEnum;
 
 /**
  * @mixin \\{$namespace}
  */
-class {$model}Model extends KompoModelFacade
+class {$enum}Enum extends FacadeEnum
 {
-    protected static function getModelBindKey()
+    protected static function getFacadeAccessor()
     {
-        return {$modelUppercase}_MODEL_KEY;
+        return {$enumSnakeUpperCase}_ENUM_KEY;
     }
 }";
     }
@@ -107,9 +111,9 @@ class {$model}Model extends KompoModelFacade
 }
 
 /**
- * Add model constant to facades.php helper
+ * Add enum constant to facades.php helper
  */
-function addModelConstant($path, $modelUppercase, $modelSnakeCase) {
+function addEnumConstant($path, $enumSnakeUpperCase, $enumSnakeCase) {
     // Create Helpers directory if it doesn't exist
     $helpersDir = $path . '/src/Helpers';
     
@@ -129,16 +133,16 @@ function addModelConstant($path, $modelUppercase, $modelSnakeCase) {
     $facadesContent = file_get_contents($facadesHelperPath);
     
     // Check if constant already exists
-    if (strpos($facadesContent, $modelUppercase . '_MODEL_KEY') === false) {
-        $constant = "const {$modelUppercase}_MODEL_KEY = '{$modelSnakeCase}-model';\n";
+    if (strpos($facadesContent, $enumSnakeUpperCase . '_ENUM_KEY') === false) {
+        $constant = "const {$enumSnakeUpperCase}_ENUM_KEY = '{$enumSnakeCase}-enum';\n";
         
         // Add the constant
-        $newContent = $facadesContent . "\n" . $constant;
+        $newContent = $facadesContent . $constant;
         file_put_contents($facadesHelperPath, $newContent);
         
-        echo "Added constant {$modelUppercase}_MODEL_KEY to facades.php\n";
+        echo "Added constant {$enumSnakeUpperCase}_ENUM_KEY to facades.php\n";
     } else {
-        echo "Warning: Constant {$modelUppercase}_MODEL_KEY already exists in facades.php\n";
+        echo "Warning: Constant {$enumSnakeUpperCase}_ENUM_KEY already exists in facades.php\n";
     }
 }
 
@@ -159,11 +163,11 @@ function findServiceProvider($path, $initialNamespace) {
 /**
  * Add binding to the service provider
  */
-function addBindingToServiceProvider($serviceProviderPath, $modelUppercase, $configKey, $modelSnakeCase) {
+function addBindingToServiceProvider($serviceProviderPath, $enumSnakeUpperCase, $configKey, $enumSnakeCase) {
     $serviceProviderContent = file_get_contents($serviceProviderPath);
     
     // Check if binding already exists
-    if (strpos($serviceProviderContent, "{$modelUppercase}_MODEL_KEY") === false) {
+    if (strpos($serviceProviderContent, "{$enumSnakeUpperCase}_ENUM_KEY") === false) {
         // Find the register method
         $registerMethod = "public function register";
         $registerMethodPos = strpos($serviceProviderContent, $registerMethod);
@@ -204,8 +208,8 @@ function addBindingToServiceProvider($serviceProviderPath, $modelUppercase, $con
                     
                     if ($bindingEndPos) {
                         // Add our new binding
-                        $binding = "\n\n        \$this->app->bind({$modelUppercase}_MODEL_KEY, function () {
-            return new (config('{$configKey}.'. {$modelUppercase}_MODEL_KEY .'-model-namespace'));
+                        $binding = "\n\n        \$this->app->bind({$enumSnakeUpperCase}_ENUM_KEY, function () {
+            return config('{$configKey}.{$enumSnakeCase}-namespace');
         });";
                         
                         $newContent = substr($serviceProviderContent, 0, $bindingEndPos) . 
@@ -214,7 +218,7 @@ function addBindingToServiceProvider($serviceProviderPath, $modelUppercase, $con
                                       
                         file_put_contents($serviceProviderPath, $newContent);
                         
-                        echo "Added binding for {$modelSnakeCase}-model to service provider\n";
+                        echo "Added binding for {$enumSnakeCase}-enum to service provider\n";
                     }
                 } else {
                     // No existing bindings, add the first one
@@ -222,8 +226,8 @@ function addBindingToServiceProvider($serviceProviderPath, $modelUppercase, $con
                     if ($methodBody !== false) {
                         $methodBodyEnd = $methodBody + 1;
                         
-                        $binding = "\n        \$this->app->bind({$modelUppercase}_MODEL_KEY, function () {
-            return new (config('{$configKey}.'. {$modelUppercase}_MODEL_KEY .'model-namespace'));
+                        $binding = "\n        \$this->app->bind('{$enumSnakeUpperCase}_MODEL_KEY', function () {
+            return config('{$configKey}.{$enumSnakeCase}-namespace');
         });";
                         
                         $newContent = substr($serviceProviderContent, 0, $methodBodyEnd) . 
@@ -232,20 +236,20 @@ function addBindingToServiceProvider($serviceProviderPath, $modelUppercase, $con
                                       
                         file_put_contents($serviceProviderPath, $newContent);
                         
-                        echo "Added first binding for {$modelSnakeCase}-model to service provider\n";
+                        echo "Added first binding for {$enumSnakeCase}-enum to service provider\n";
                     }
                 }
             }
         }
     } else {
-        echo "Warning: Binding for {$modelSnakeCase}-model already exists in service provider\n";
+        echo "Warning: Binding for {$enumSnakeCase}-enum already exists in service provider\n";
     }
 }
 
 /**
  * Add entry to appropriate config file
  */
-function addConfigEntry($path, $configKey, $modelUppercase, $namespace, $namespaceModel) {
+function addConfigEntry($path, $configKey, $enumSnakeUpperCase, $namespace, $namespaceEnum) {
     // First check if config directory exists
     $configDir = $path . '/config';
     if (!file_exists($configDir)) {
@@ -257,21 +261,21 @@ function addConfigEntry($path, $configKey, $modelUppercase, $namespace, $namespa
     
     if (!file_exists($configPath)) {
         // Create a basic config file if it doesn't exist
-        $configContent = "<?php\n\nreturn [\n    // Generated by create-facade.php script\n];\n";
+        $configContent = "<?php\n\nreturn [\n    // Generated by create-facade-enum.php script\n];\n";
         file_put_contents($configPath, $configContent);
         echo "Created config file: $configPath\n";
     }
     
     $configContent = file_get_contents($configPath);
     
-    $configEntryKey = "{$modelUppercase}_MODEL_KEY . '-namespace'";
+    $configEntryKey = "{$enumSnakeUpperCase}_ENUM_KEY . '-namespace'";
     
     if (strpos($configContent, $configEntryKey) === false) {
         // Find the return array
         $returnPos = strpos($configContent, "return [");
         
         if ($returnPos !== false) {
-            $configEntry = "\n    {$configEntryKey} => getAppClass(App\\{$namespaceModel}::class, {$namespace}::class)";
+            $configEntry = "\n    {$configEntryKey} => getAppClass(App\Models\\{$namespaceEnum}::class, \\{$namespace}::class),";
             
             // Find a good place to insert the config entry
             $insertPos = strrpos($configContent, "];");
@@ -279,18 +283,18 @@ function addConfigEntry($path, $configKey, $modelUppercase, $namespace, $namespa
             if ($insertPos !== false) {
                 $newContent = substr($configContent, 0, $insertPos) . $configEntry . "\n" . substr($configContent, $insertPos);
                 file_put_contents($configPath, $newContent);
-                echo "Added config entry for {$modelUppercase}-model-namespace to {$configKey}.php\n";
+                echo "Added config entry for {$enumSnakeUpperCase}-enum-namespace to {$configKey}.php\n";
             }
         }
     } else {
-        echo "Warning: Config entry for {$modelUppercase}-model-namespace already exists in {$configKey}.php\n";
+        echo "Warning: Config entry for {$enumSnakeUpperCase}-enum-namespace already exists in {$configKey}.php\n";
     }
 }
 
 /**
  * Determine which config file to use - get the first config file with kompo- or condoedge- prefix
  */
-function determineConfigKey($namespaceModel, $packageLastPart, $path) {
+function determineConfigKey($namespaceEnum, $packageLastPart, $path) {
     // Check for existing config files with kompo- prefix
     $kompoConfigFiles = glob($path . '/config/kompo-*.php');
     

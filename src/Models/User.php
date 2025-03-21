@@ -10,7 +10,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasFactory, Notifiable;
 
     use \Lab404\Impersonate\Models\Impersonate;
     use \Kompo\Auth\Models\Teams\HasTeamsTrait;

@@ -218,7 +218,8 @@ abstract class ExportableToExcel extends Query implements FromArray, WithHeading
         $dom = new \DOMDocument;
         $html = preg_replace('/&(?!amp)/', '&amp;', $html);
         try{
-            $dom->loadHTML($html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+            $encodingMetaHtml = '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />';
+            $dom->loadHTML($encodingMetaHtml . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
         } catch (\Exception $e) {
             Log::error($e->getMessage(), ['class' => static::class, 'html' => $html, 'trace' => $e->getTraceAsString(), 'user' => auth()->user()]);
 

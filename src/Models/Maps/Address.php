@@ -3,12 +3,26 @@
 namespace Kompo\Auth\Models\Maps;
 
 use Kompo\Auth\Models\Model;
+use Kompo\Place;
 
 class Address extends Model
 {
     use \Kompo\Auth\Models\Teams\BelongsToTeamTrait;
 
     public const BASE_SEPARATOR = '<br>';
+
+    protected $fillable = [
+        'address1',
+        'city',
+        'state',
+        'postal_code',
+        'country',
+        'street',
+        'street_number',
+        'lat',
+        'lng',
+        'external_id',
+    ];
 
     public function save(array $options = [])
     {
@@ -88,6 +102,26 @@ class Address extends Model
     {
         $this->addressable_type = $model->getRelationType();
         $this->addressable_id = $model->id;
+    }
+
+    public static function createMainForFromRequest($addressable, $addressMaps)
+    {
+        // Calling place we initialize de key => value mapping in places.
+        _Place();
+        $addressMaps = Place::placeToDB($addressMaps);
+
+        if ($addressable->addresses()->where('address1', $addressMaps['address1'])->exists()) {
+            return;
+        }
+
+        $address = new static;
+        $address->fill($addressMaps);
+        $address->addressable_id = $addressable->id;
+        $address->addressable_type = $addressable->getMorphClass();
+        $address->save();
+
+        $addressable->setPrimaryBillingAddress($address->id);
+        $addressable->setPrimaryShippingAddress($address->id);
     }
 
     /* ELEMENTS */

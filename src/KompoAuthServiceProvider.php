@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Kompo\Auth\Facades\FileModel;
+use Kompo\Auth\GlobalConfig\GlobalConfigServiceContract;
 
 class KompoAuthServiceProvider extends ServiceProvider
 {
@@ -125,6 +126,20 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->app->bind('role-model', function () {
             return new (config('kompo-auth.role-model-namespace'));
         });
+
+        $this->app->singleton(GlobalConfigServiceContract::class, function ($app) {
+            $driver = config('services.global_config_service.driver');
+
+            $driverConfig = config("services.global_config_service.drivers.{$driver}");
+
+            if (!$driverConfig) {
+                throw new \Exception("The driver {$driver} is not defined in the global config service configuration.");
+            }
+
+            $driverClass = $driverConfig['class'];
+
+            return new $driverClass();
+        });
     }
 
     protected function overrideTranslator()
@@ -180,6 +195,8 @@ class KompoAuthServiceProvider extends ServiceProvider
             'kompo-auth' => __DIR__.'/../config/kompo-auth.php',
             'kompo-files' => __DIR__.'/../config/kompo-files.php',
             'kompo-tags' => __DIR__.'/../config/kompo-tags.php',
+            'services' => __DIR__.'/../config/services.php',
+            'kompo' => __DIR__. '/../config/kompo.php'
         ];
 
         foreach ($dirs as $key => $path) {

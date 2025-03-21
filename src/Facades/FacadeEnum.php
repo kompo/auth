@@ -16,7 +16,7 @@ abstract class FacadeEnum extends Facade
         $instance = static::getEnumClass();
 
         if (! $instance) {
-            throw new RuntimeException('A facade root has not been set.');
+            throw new \RuntimeException('A facade root has not been set.');
         }
 
         return $instance::$method(...$args);

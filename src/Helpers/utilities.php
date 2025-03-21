@@ -114,6 +114,18 @@ if (!function_exists('getAppClass')) {
 		return $defaultNamespace;
 	}
 }
+if (!function_exists('all_class_uses')) {
+	function all_class_uses($model)
+	{
+		$class = new ReflectionClass($model);
+		$traits = $class->getTraits();
+		while($parent = $class->getParentClass()) {
+			$traits += $class->getTraits();
+			$class = $parent;
+		}
+		return array_combine(array_keys($traits), array_keys($traits));
+	}
+}
 
 /* URIS */
 if (!function_exists('getPushParameterFn')) {

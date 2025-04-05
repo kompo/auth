@@ -126,39 +126,6 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->app->bind('role-model', function () {
             return new (config('kompo-auth.role-model-namespace'));
         });
-
-        $this->app->singleton(GlobalConfigServiceContract::class, function ($app) {
-            $driver = config('services.global_config_service.driver');
-
-            $driverConfig = config("services.global_config_service.drivers.{$driver}");
-
-            if (!$driverConfig) {
-                throw new \Exception("The driver {$driver} is not defined in the global config service configuration.");
-            }
-
-            $driverClass = $driverConfig['class'];
-
-            return new $driverClass();
-        });
-    }
-
-    protected function overrideTranslator()
-    {
-        // $this->app->extend('translator', function ($translator) {
-        //     $app = $this->app;
-        //     $loader = $app['translation.loader'];
-
-        //     // When registering the translator component, we'll need to set the default
-        //     // locale as well as the fallback locale. So, we'll grab the application
-        //     // configuration so we can easily get both of these values from there.
-        //     $locale = $app->getLocale();
-
-        //     $trans = new \Kompo\Auth\Translator\LoggedTranslator($loader, $locale);
-
-        //     $trans->setFallback($app->getFallbackLocale());
-
-        //     return $trans;
-        // });
     }
 
     protected function loadHelpers()

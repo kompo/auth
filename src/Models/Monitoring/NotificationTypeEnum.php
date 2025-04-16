@@ -4,7 +4,7 @@ namespace Kompo\Auth\Models\Monitoring;
 
 enum NotificationTypeEnum: int
 {
-    use \Kompo\Auth\Models\Traits\EnumKompo;
+    use \Condoedge\Utils\Models\Traits\EnumKompo;
 
     case CUSTOM = 1;
 

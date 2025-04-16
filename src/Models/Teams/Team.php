@@ -2,16 +2,16 @@
 
 namespace Kompo\Auth\Models\Teams;
 
-use Kompo\Auth\Models\Model;
+use Condoedge\Utils\Models\Model;
 use App\Models\User;
 
 class Team extends Model
 {
-    use \Kompo\Auth\Models\Tags\MorphToManyTagsTrait;
-    use \Kompo\Auth\Models\Files\MorphManyFilesTrait;
-    use \Kompo\Auth\Models\Maps\MorphManyAddresses;
-    use \Kompo\Auth\Models\Email\MorphManyEmails;
-    use \Kompo\Auth\Models\Phone\MorphManyPhones;
+    use \Condoedge\Utils\Models\Tags\MorphToManyTagsTrait;
+    use \Condoedge\Utils\Models\Files\MorphManyFilesTrait;
+    use \Condoedge\Utils\Models\ContactInfo\Maps\MorphManyAddresses;
+    use \Condoedge\Utils\Models\ContactInfo\Email\MorphManyEmails;
+    use \Condoedge\Utils\Models\ContactInfo\Phone\MorphManyPhones;
 
 	/* RELATIONS */
 	public function owner()

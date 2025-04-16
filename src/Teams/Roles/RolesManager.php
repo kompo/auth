@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Teams\Roles;
 
-use Kompo\Auth\Common\Form;
+use Condoedge\Utils\Kompo\Common\Form;
 
 class RolesManager extends Form
 {

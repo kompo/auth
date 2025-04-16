@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Models\Monitoring;
 
-use Kompo\Auth\Models\Model;
+use Condoedge\Utils\Models\Model;
 
 class History extends Model
 {

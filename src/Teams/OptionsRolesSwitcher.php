@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Teams;
 
-use Kompo\Auth\Common\Form;
+use Condoedge\Utils\Kompo\Common\Form;
 use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Facades\TeamModel;
 use Kompo\Auth\Models\Teams\TeamRole;

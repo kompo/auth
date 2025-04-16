@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Auth;
 
-use Kompo\Auth\Common\ImgFormLayout;
+use Condoedge\Utils\Kompo\Common\ImgFormLayout;
 use Kompo\Auth\Models\Teams\EmailRequest;
 
 class CheckToVerifyEmailForm extends ImgFormLayout

@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Teams\Roles;
 
-use Kompo\Auth\Common\Form;
+use Condoedge\Utils\Kompo\Common\Form;
 use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionSection;

@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Models\Teams\Roles;
 
-use Kompo\Auth\Models\Model;
+use Condoedge\Utils\Models\Model;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\TeamRole;

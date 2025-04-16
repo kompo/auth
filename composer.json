@@ -24,7 +24,8 @@
         "socialiteproviders/microsoft-azure": "^5.2",
         "maatwebsite/excel": "^3.1",
         "laravel/vonage-notification-channel": "^3.3",
-        "simplesoftwareio/simple-qrcode": "^4.2"
+        "simplesoftwareio/simple-qrcode": "^4.2",
+        "condoedge/utils": "^0.0.5"
     },
     "extra": {
         "laravel": {

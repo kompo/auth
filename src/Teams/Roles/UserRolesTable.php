@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Teams\Roles;
 
-use Kompo\Auth\Common\WhiteTable;
+use Condoedge\Utils\Kompo\Common\WhiteTable;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Models\User;
 

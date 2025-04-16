@@ -3,7 +3,7 @@
 namespace Kompo\Auth\Models\Teams;
 
 use Kompo\Auth\Mail\ChangeNotificationTeamMail;
-use Kompo\Auth\Models\Model;
+use Condoedge\Utils\Models\Model;
 use Kompo\Auth\Models\Teams\Team;
 use Kompo\Auth\Models\User;
 

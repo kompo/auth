@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Teams\Roles;
 
-use Kompo\Auth\Common\Query;
+use Condoedge\Utils\Kompo\Common\Query;
 use Kompo\Auth\Models\Teams\PermissionSection;
 
 class RolesAndPermissionMatrix extends Query

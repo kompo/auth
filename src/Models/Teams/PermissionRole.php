@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Models\Teams;
 
-use Kompo\Auth\Models\Model;
+use Condoedge\Utils\Models\Model;
 
 class PermissionRole extends Model
 {

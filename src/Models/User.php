@@ -14,11 +14,12 @@ class User extends Authenticatable
 
     use \Lab404\Impersonate\Models\Impersonate;
     use \Kompo\Auth\Models\Teams\HasTeamsTrait;
-    use \Kompo\Auth\Models\Traits\HasRelationType;
-    use \Kompo\Auth\Models\Maps\MorphManyAddresses;
-    use \Kompo\Auth\Models\Phone\MorphManyPhones;
+    use \Condoedge\Utils\Models\Traits\HasRelationType;
+    use \Condoedge\Utils\Models\ContactInfo\Maps\MorphManyAddresses;
+    use \Condoedge\Utils\Models\ContactInfo\Phone\MorphManyPhones;
     
-    use \Kompo\Auth\Models\Traits\HasSearchableNameTrait;
+    use \Condoedge\Utils\Models\Traits\HasSearchableNameTrait;
+    
     public const SEARCHABLE_NAME_ATTRIBUTE = 'name';
 
     use \Kompo\Auth\Models\Traits\HasProfilePhotoTrait;

@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Teams;
 
-use Kompo\Auth\Common\ImgFormLayout;
+use Condoedge\Utils\Kompo\Common\ImgFormLayout;
 use Kompo\Auth\Models\Teams\TeamInvitation;
 use Kompo\Auth\Models\User;
 

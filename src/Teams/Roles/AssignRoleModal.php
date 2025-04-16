@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Teams\Roles;
 
-use Kompo\Auth\Common\Modal;
+use Condoedge\Utils\Kompo\Common\Modal;
 use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Facades\TeamModel;
 use Kompo\Auth\Models\Teams\RoleHierarchyEnum;

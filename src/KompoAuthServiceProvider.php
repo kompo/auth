@@ -2,14 +2,19 @@
 
 namespace Kompo\Auth;
 
+use Condoedge\Utils\CondoedgeUtilsServiceProvider;
+use Condoedge\Utils\Kompo\Common\Modal;
+use Condoedge\Utils\Kompo\Common\Query;
+use Condoedge\Utils\Models\ModelBase;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
-use Kompo\Auth\Facades\FileModel;
-use Kompo\Auth\GlobalConfig\GlobalConfigServiceContract;
+use Kompo\Auth\Common\Plugins\HasAuthorizationUtils;
+use Kompo\Auth\Models\Plugins\HasSecurity;
+use Condoedge\Utils\Kompo\Common\Form;
 
 class KompoAuthServiceProvider extends ServiceProvider
 {
@@ -52,8 +57,6 @@ class KompoAuthServiceProvider extends ServiceProvider
         //Usage: php artisan vendor:publish --tag="kompo-auth-config"
         $this->publishes([
             __DIR__.'/../config/kompo-auth.php' => config_path('kompo-auth.php'),
-            __DIR__ . '/../config/kompo-files.php' => config_path('kompo-files.php'),
-            __DIR__ . '/../config/kompo-tags.php' => config_path('kompo-tags.php'),
         ], 'kompo-auth-config');
 
         $this->loadConfig();
@@ -93,6 +96,16 @@ class KompoAuthServiceProvider extends ServiceProvider
                 Log::warning("MISSING TRANSLATION KEY: $key");
             }
         });
+
+        $this->app->bind(USER_MODEL_KEY, function () {
+            return new (config('kompo-auth.user-namespace'));
+        });
+
+        ModelBase::setPlugins([ HasSecurity::class ]);
+
+        Query::setPlugins([ HasAuthorizationUtils::class ]);
+        Form::setPlugins([ HasAuthorizationUtils::class ]);
+        Modal::setPlugins([ HasAuthorizationUtils::class ]);
     }
 
     /**
@@ -109,14 +122,6 @@ class KompoAuthServiceProvider extends ServiceProvider
 
         $this->app->bind('notification-model', function () {
             return new (config('kompo-auth.notification-model-namespace'));
-        });
-
-        $this->app->bind('file-model', function () {
-            return new (config('kompo-files.file-model-namespace'));
-        });
-
-        $this->app->bind('note-model', function () {
-            return new (config('kompo-auth.note-model-namespace'));
         });
 
         $this->app->bind('team-model', function () {
@@ -160,9 +165,6 @@ class KompoAuthServiceProvider extends ServiceProvider
     {
         $dirs = [
             'kompo-auth' => __DIR__.'/../config/kompo-auth.php',
-            'kompo-files' => __DIR__.'/../config/kompo-files.php',
-            'kompo-tags' => __DIR__.'/../config/kompo-tags.php',
-            'services' => __DIR__.'/../config/services.php',
             'kompo' => __DIR__. '/../config/kompo.php'
         ];
 
@@ -178,7 +180,6 @@ class KompoAuthServiceProvider extends ServiceProvider
     {
         Relation::morphMap([
             'team' => config('kompo-auth.team-model-namespace'),
-            'file' => FileModel::getClass(),
         ]);
     }
 

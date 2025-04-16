@@ -4,7 +4,7 @@ namespace Kompo\Auth\Models\Teams;
 
 enum RoleHierarchyEnum: string
 {
-    use \Kompo\Auth\Models\Traits\EnumKompo;
+    use \Condoedge\Utils\Models\Traits\EnumKompo;
 
     case DIRECT = 'B';
     case DIRECT_AND_BELOW = 'A';

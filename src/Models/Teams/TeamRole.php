@@ -3,7 +3,7 @@
 namespace Kompo\Auth\Models\Teams;
 
 use Kompo\Auth\Facades\RoleModel;
-use Kompo\Auth\Models\Model;
+use Condoedge\Utils\Models\Model;
 use Kompo\Auth\Models\Teams\BaseRoles\SuperAdminRole;
 use Kompo\Auth\Models\Teams\BaseRoles\TeamOwnerRole;
 use Kompo\Auth\Models\Teams\Permission;

@@ -33,7 +33,7 @@ class RolesAndPermissionMatrix extends Query
         return _Rows(
             _Flex(
                 _Html('translate.legend')->class('mr-1'),
-                _Flex(collect(PermissionTypeEnum::cases())->map(function ($case) {
+                _Flex(collect(PermissionTypeEnum::cases())->filter(fn($case) => $case->visibleInSelects())->map(function ($case) {
                     return _Flex(
                         _Html($case->label())->class('text-gray-700'),
                         _Html()->class('rounded h-4 w-4 border border-black')->class($case->color()),

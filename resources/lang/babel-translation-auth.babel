@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<babeledit_project be_version="5.3.0" version="1.3">
+<babeledit_project be_version="5.4.1" version="1.3">
 	<!--
 
     BabelEdit project file
@@ -96,6 +96,21 @@
 					</concept_node>
 					<concept_node>
 						<name>auth-deleted</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
+						<name>auth-disabled</name>
 						<description/>
 						<comment/>
 						<translations>
@@ -231,6 +246,21 @@
 					</concept_node>
 					<concept_node>
 						<name>auth-ip-address</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
+						<name>auth-legend</name>
 						<description/>
 						<comment/>
 						<translations>
@@ -396,6 +426,21 @@
 					</concept_node>
 					<concept_node>
 						<name>auth-name</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
+						<name>auth-not-set</name>
 						<description/>
 						<comment/>
 						<translations>
@@ -3149,6 +3194,8 @@
 		</copy_templates>
 		<custom_languages/>
 		<id_extractor_ignores/>
+		<machine_translation_formality>default</machine_translation_formality>
+		<machine_translation_context/>
 	</editor_configuration>
 	<primary_language>en-US</primary_language>
 	<configuration>

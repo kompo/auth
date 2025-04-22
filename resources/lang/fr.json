@@ -55,6 +55,8 @@
 	"auth-your-last-name": "Votre nom de famille",
 	"auth.auth-no-owner": "Pas de propriétaire",
 	"auth.copied-to-clipboard": "Copié dans le presse-papiers",
+	"auth.disabled": "Désactivé",
+	"auth.legend": "Légende",
 	"auth.search": "Rechercher",
 	"auth.search-placeholder": "Rechercher une équipe",
 	"auth.you-must-select-at-least-one-role": "Vous devez sélectionner au moins un rôle",

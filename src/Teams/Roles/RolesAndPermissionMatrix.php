@@ -40,7 +40,7 @@ class RolesAndPermissionMatrix extends Query
                     )->class('gap-3');
                 }))->class('gap-5'),
                  _Flex(
-                    _Html('auth-disabled')->class('text-gray-700'),
+                    _Html('auth-not-set')->class('text-gray-700'),
                     _Html()->class('rounded h-4 w-4 border border-black')->class('bg-transparent'),
                 )->class('gap-3'),
             )->class('mb-6 gap-5'),

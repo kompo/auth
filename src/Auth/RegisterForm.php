@@ -3,7 +3,7 @@
 namespace Kompo\Auth\Auth;
 
 use App\Models\User;
-use Kompo\Auth\Common\ImgFormLayout;
+use Condoedge\Utils\Kompo\Common\ImgFormLayout;
 use Kompo\Auth\Models\Teams\EmailRequest;
 
 class RegisterForm extends ImgFormLayout

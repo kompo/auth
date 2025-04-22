@@ -5,12 +5,12 @@ namespace Kompo\Auth\Facades;
 use Kompo\Komponents\Form\KompoModelFacade;
 
 /**
- * @mixin \Kompo\Auth\Models\Files\File
+ * @mixin \Kompo\Auth\Models\User
  */
-class FileModel extends KompoModelFacade
+class UserModel extends KompoModelFacade
 {
     protected static function getModelBindKey()
     {
-        return FILE_MODEL_KEY;
+        return USER_MODEL_KEY;
     }
 }

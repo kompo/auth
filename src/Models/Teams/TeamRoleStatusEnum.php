@@ -3,7 +3,7 @@
 namespace Kompo\Auth\Models\Teams;
 
 enum TeamRoleStatusEnum: int {
-    use \Kompo\Auth\Models\Traits\EnumKompo;
+    use \Condoedge\Utils\Models\Traits\EnumKompo;
 
     case IN_PROGRESS = 1;
     case FINISHED = 2;

@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Monitoring;
 
-use Kompo\Auth\Common\Table;
+use Condoedge\Utils\Kompo\Common\Table;
 use Kompo\Auth\Models\Monitoring\CommunicationTemplateGroup;
 
 class CommunicationsList extends Table

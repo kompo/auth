@@ -75,7 +75,7 @@ class PermissionSectionRolesTable extends Query
     public function render($permission)
     {
         return _Flex(
-            _Html($permission->permission_name)->class('bg-white border-r border-gray-300'),
+            _Html($permission->permission_name)->balloon($permission->permission_description)->class('bg-white border-r border-gray-300'),
             ...$this->roles->map(function ($role) use ($permission) {
                 return $this->sectionRoleEl($role, $permission, $this->permissionSectionId, $this->permissionsIds, $permission->getPermissionTypeByRoleId($role->id));
             }),

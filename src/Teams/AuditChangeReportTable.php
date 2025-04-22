@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Teams;
 
-use Kompo\Auth\Common\Table;
+use Condoedge\Utils\Kompo\Common\Table;
 use Kompo\Auth\Models\Teams\TeamChange;
 
 class AuditChangeReportTable extends Table

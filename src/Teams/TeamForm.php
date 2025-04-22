@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Teams;
 
-use Kompo\Auth\Common\Modal;
+use Condoedge\Utils\Kompo\Common\Modal;
 use Kompo\Auth\Facades\TeamModel;
 
 class TeamForm extends Modal

@@ -4,7 +4,7 @@ namespace Kompo\Auth\Models\Teams;
 
 enum PermissionTypeEnum: int
 {
-    use \Kompo\Auth\Models\Traits\EnumKompo;
+    use \Condoedge\Utils\Models\Traits\EnumKompo;
     
     case READ = 1;
     case WRITE = 3;

@@ -6,10 +6,7 @@
         "psr-4": {
             "Kompo\\Auth\\": "src/",
             "Kompo\\Auth\\Database\\Factories\\": "database/factories/"
-        },
-        "files": [
-            "src/Helpers/*.php"
-        ]
+        }
     },
     "require": {
         "php": "^7.3|^8.0",
@@ -24,7 +21,8 @@
         "socialiteproviders/microsoft-azure": "^5.2",
         "maatwebsite/excel": "^3.1",
         "laravel/vonage-notification-channel": "^3.3",
-        "simplesoftwareio/simple-qrcode": "^4.2"
+        "simplesoftwareio/simple-qrcode": "^4.2",
+        "condoedge/utils": "^0.1.1"
     },
     "extra": {
         "laravel": {

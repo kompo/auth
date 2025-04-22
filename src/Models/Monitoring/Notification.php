@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Models\Monitoring;
 
-use Kompo\Auth\Models\Model;
+use Condoedge\Utils\Models\Model;
 use Kompo\Auth\Models\Teams\BelongsToTeamTrait;
 use Kompo\Auth\Models\Traits\BelongsToUserTrait;
 

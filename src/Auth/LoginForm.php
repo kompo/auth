@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Auth;
 
-use Kompo\Auth\Common\ImgFormLayout;
+use Condoedge\Utils\Kompo\Common\ImgFormLayout;
 
 class LoginForm extends ImgFormLayout
 {

@@ -4,7 +4,7 @@ namespace Kompo\Auth\Models\Teams;
 
 enum ProfileEnum: int
 {
-    use \Kompo\Auth\Models\Traits\EnumKompo;
+    use \Condoedge\Utils\Models\Traits\EnumKompo;
     CASE GENERAL = 1;
     case ACCOUNTING = 2;
     case CHILD = 3; 

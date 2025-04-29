@@ -207,3 +207,10 @@ if(!function_exists('currentTeamId')) {
         return currentTeamRole()->team_id;
     }
 }
+
+if (!function_exists('isSuperAdmin')) {
+    function isAppSuperAdmin()
+    {
+        return auth()->user() && auth()->user()->hasAccessToTeam(1, 'super-admin');
+    }
+}

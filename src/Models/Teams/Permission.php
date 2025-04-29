@@ -4,9 +4,12 @@ namespace Kompo\Auth\Models\Teams;
 
 use Kompo\Auth\Facades\RoleModel;
 use Condoedge\Utils\Models\Model;
+use Kompo\Database\HasTranslations;
 
 class Permission extends Model
 {
+    use HasTranslations;
+
     protected $fillable = [
         'permission_key',
         'permission_name',
@@ -15,6 +18,11 @@ class Permission extends Model
         'object_type',
         'added_by', 
         'modified_by'
+    ];
+
+    protected $translatable = [
+        'permission_name',
+        'permission_description',
     ];
 
     protected $casts = [

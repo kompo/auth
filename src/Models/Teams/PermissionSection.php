@@ -3,10 +3,16 @@
 namespace Kompo\Auth\Models\Teams;
 
 use Condoedge\Utils\Models\Model;
+use Illuminate\Support\Facades\Cache;
+use Kompo\Database\HasTranslations;
 
 class PermissionSection extends Model
 {
+    use HasTranslations;
+
     protected $fillable = ['name', 'added_by', 'modified_by'];
+
+    protected $translatable = ['name'];
 
     public function permissions()
     {

@@ -27,7 +27,7 @@ class AdminMailPreviewTable extends Table
     public function top()
 	{
 		return _FlexBetween(
-			_Html('campaign.sent-mails')->class('text-level3'),
+			_Html('messaging.sent-mails')->class('text-level3'),
 			_FlexEnd4(
 
 			)
@@ -37,8 +37,8 @@ class AdminMailPreviewTable extends Table
 	public function headers()
 	{
 		return [
-			_Th('campaign.email'),
-			_Th('campaign.sent-at'),
+			_Th('messaging.email'),
+			_Th('messaging.sent-at'),
 			_Th(),
 			_Th(),
 		];
@@ -49,8 +49,8 @@ class AdminMailPreviewTable extends Table
         return _TableRow(
         	_Html($file->getBasename())->style('max-width:400px')->class('break-all'),
         	_Html(Carbon::createFromTimestamp($file->getMTime())->translatedFormat('d M Y H:i')),
-        	$this->getEmailLink('View .html', $file, 'html'),
-        	$this->getEmailLink('Download .eml', $file, 'eml'),
+        	$this->getEmailLink('messaging.view-html', $file, 'html'),
+        	$this->getEmailLink('messaging.download-eml', $file, 'eml'),
         );
     }
 

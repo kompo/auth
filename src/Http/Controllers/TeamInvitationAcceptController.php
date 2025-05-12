@@ -2,11 +2,11 @@
 
 namespace Kompo\Auth\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use Kompo\Auth\Models\Teams\TeamInvitation;
 use App\Models\User;
+use Illuminate\Routing\Controller as RoutingController;
 
-class TeamInvitationAcceptController extends Controller
+class TeamInvitationAcceptController extends RoutingController
 {
     public function __invoke($id)
     {

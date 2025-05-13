@@ -8,7 +8,7 @@ use Kompo\Auth\Facades\RoleModel;
 class RoleForm extends Modal
 {
     use RoleElementsUtils;
-    
+
     protected $_Title = 'permissions-add-role';
     protected $noHeaderButtons = true;
 
@@ -55,9 +55,9 @@ class RoleForm extends Modal
             _Flex(
                 $this->model->id ? _DeleteButton('permissions-delete')->outlined()->byKey($this->model)->class('w-full') : null,
                 _SubmitButton('permissions-save')->class('w-full')->inPanel('role-header-' . $this->model?->id)->closeModal()
-                    ->onSuccess(fn($e) =>$e->selfGet('roleMultiSelect')->inPanel('multi-select-roles')),
+                    ->onSuccess(fn($e) => $e->selfGet('roleMultiSelect')->inPanel('multi-select-roles')),
             )->class('gap-4')
-            
+
             // _Input('Role Permissions')->name('role_permissions')->required(),
         );
     }
@@ -80,5 +80,16 @@ class RoleForm extends Modal
     protected function extraFields()
     {
         return null;
+    }
+
+    public function rules()
+    {
+        return [
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:1000',
+            'profile' => 'string|in:' . implode(',', array_keys($this->profileOptions())),
+            'accept_roll_to_child' => 'required|boolean',
+            'accept_roll_to_neighbourg' => 'required|boolean',
+        ];
     }
 }

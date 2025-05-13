@@ -12,7 +12,7 @@ class RoleForm extends Modal
     protected $_Title = 'permissions-add-role';
     protected $noHeaderButtons = true;
 
-    public $class = 'min-w-96';
+    public $class = 'min-w-96 max-w-xl';
 
     public $model = RoleModel::class;
 

@@ -187,7 +187,7 @@
 	"permissions-team": "Équipe",
 	"permissions-terminate": "Mettre fin",
 	"permissions-user": "Utilisateur",
-	"permissions-you-do-not-have-write-permissions": "cet",
+	"permissions-you-do-not-have-write-permissions": "Vous n'avez pas les permissions d'écriture",
 	"permissions.unknown-hierarchy": "Hiérarchie inconnue",
 	"phone-manage-phone": "Gérer le téléphone",
 	"profile-accounting": "Comptabilité",

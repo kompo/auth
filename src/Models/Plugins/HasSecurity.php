@@ -25,26 +25,26 @@ class HasSecurity extends ModelPlugin
                     if (method_exists($this->modelClass, 'scopeForTeams')) {
                         $q->forTeams($teamIds);
                     } else {
-                        $q->whereIn($this->modelClass::TEAM_ID_COLUMN, $teamIds);
+                        $q->whereIn($this->getTeamIdColumn(), $teamIds);
                     }
                 });
             });
         }
 
         $this->modelClass::saving(function ($model) {
-            if (property_exists($model, 'saveSecurityRestrictions') && $model->saveSecurityRestrictions) {
+            if (property_exists($model, 'saveSecurityRestrictions') && getPrivateProperty($model, 'saveSecurityRestrictions')) {
                 $this->checkWritePermissions($model);
             }
         });
 
         $this->modelClass::deleting(function ($model) {
-            if (property_exists($model, 'deleteSecurityRestrictions') && $model->deleteSecurityRestrictions) {
+            if (property_exists($model, 'deleteSecurityRestrictions') && getPrivateProperty($model, 'deleteSecurityRestrictions')) {
                 $this->checkWritePermissions($model);
             }
         });
     }
 
-    protected function checkWritePermissions($model)
+    public function checkWritePermissions($model = null)
     {
         if (!Permission::findByKey($this->getPermissionKey())) {
             return true;
@@ -54,7 +54,7 @@ class HasSecurity extends ModelPlugin
             throw new PermissionException(__('permissions-you-do-not-have-write-permissions'));
         }
 
-        if ($this->restrictByTeam() && !auth()->user()->hasPermission($this->getPermissionKey(), PermissionTypeEnum::WRITE, $model->{$model::TEAM_ID_COLUMN})) {
+        if ($this->restrictByTeam() && !auth()->user()->hasPermission($this->getPermissionKey(), PermissionTypeEnum::WRITE, $model->{$this->getTeamIdColumn()})) {
             throw new PermissionException(__('permissions-you-do-not-have-write-permissions'));
         }
     }
@@ -67,7 +67,7 @@ class HasSecurity extends ModelPlugin
     protected function hasReadSecurityRestrictions()
     {
         if (property_exists($this->modelClass, 'readSecurityRestrictions')) {
-            return $this->modelClass::$readSecurityRestrictions;
+            return getPrivateProperty(new ($this->modelClass), 'readSecurityRestrictions');
         }
 
         return false;
@@ -76,11 +76,25 @@ class HasSecurity extends ModelPlugin
     protected function restrictByTeam()
     {
         if (property_exists($this->modelClass, 'restrictByTeam')) {
-            return $this->modelClass::$restrictByTeam;
+            return getPrivateProperty(new ($this->modelClass), 'restrictByTeam');
         }
 
         return false;
     }
 
-    
+    protected function getTeamIdColumn()
+    {
+        if (property_exists($this->modelClass, 'TEAM_ID_COLUMN')) {
+            return getPrivateProperty(new ($this->modelClass), 'TEAM_ID_COLUMN');
+        }
+
+        return 'team_id';
+    }
+
+    public function managableMethods()
+    {
+        return [
+            'checkWritePermissions',
+        ];
+    }
 }

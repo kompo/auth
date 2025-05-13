@@ -17,6 +17,9 @@ class TeamRole extends Model
 
     public const ROLES_DELIMITER = ',';
 
+    protected $deleteSecurityRestrictions = true;
+    protected $restrictByTeam = true;
+
     protected $casts = [
         'role_hierarchy' => RoleHierarchyEnum::class,
     ];
@@ -280,7 +283,7 @@ class TeamRole extends Model
             return true;
         }
 
-        if ($this->getRoleHierarchyAccessNeighbors() && $this->team->parentTeam->teams()->where('id', $teamId)->exists()) {
+        if ($this->getRoleHierarchyAccessNeighbors() && $this->team->parentTeam?->teams()?->where('id', $teamId)->exists()) {
             return true;
         }
 
@@ -344,6 +347,12 @@ class TeamRole extends Model
         $teamRole->save();
 
         return $teamRole;
+    }
+
+    // We're using HasSecurity plugin that handles deleting event to manage security restrictions.
+    public function deletable()
+    {
+        return true;
     }
 
     /* ELEMENTS */

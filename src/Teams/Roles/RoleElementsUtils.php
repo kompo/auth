@@ -14,7 +14,7 @@ trait RoleElementsUtils
         )->default($defaultRolesIds ?? [])
             ->onChange(
                 fn($e) => $e->run('precreateRoleVisuals')
-                    && $e->selfGet('getRoleUpdate')->inPanel('hidden-roles')->run('injectRoleContent')
+                    && $e->selfPost('getRoleUpdate')->inPanel('hidden-roles')->run('injectRoleContent')
             );
     }
 

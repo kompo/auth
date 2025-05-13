@@ -60,8 +60,11 @@ trait RoleElementsUtils
         )->class('!mb-0')
             ->onChange(
                 fn($e) => $e
-                    ->selfPost('changeRolePermissionSection', ['role' => $role->id, 'permissionSection' => $permissionSection->id, 'permission_name' => request('permission_name')]) &&
-                    $e->run('() => {changeMultipleLinkGroupColor("' . $checkboxName . '", "' . $role->id . '", "' . $permissionSection->getPermissions()->pluck('id')->implode(',') . '")}')
+                    ->selfPost('changeRolePermissionSection', ['role' => $role->id, 'permissionSection' => $permissionSection->id, 'permission_name' => request('permission_name')])->run('reduceApplyingChangesAlert') &&
+                    $e->run('() => {
+                        setApplyingChangesAlert(); 
+                        changeMultipleLinkGroupColor("' . $checkboxName . '", "' . $role->id . '", "' . $permissionSection->getPermissions()->pluck('id')->implode(',') . '")}
+                    ')
             ))->attr(['data-role-id' => $role->id]);
     }
 }

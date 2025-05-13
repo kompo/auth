@@ -306,11 +306,6 @@ class TeamRole extends Model
         $this->save();
     }
 
-    public function deleteAsignation()
-    {
-        $this->delete();
-    }
-
     public static function getParentHierarchyRole($teamId, $userId, $role = null)
     {
         return static::when($role, fn($q) => $q->where('role', $role))->where('user_id', $userId)->get()->first(

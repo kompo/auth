@@ -45,8 +45,15 @@ if(!function_exists('isImpersonated')) {
 
 function getRoles()
 {
+	return Role::get();
+}
+
+function getRolesOrderedByRelevance()
+{
 	return \Cache::remember('roles', 10800, function () {
-		return Role::withCount('teamRoles')->orderByDesc('team_roles_count')->get();
+		return Role::query()
+			->withCount('teamRoles')->orderByDesc('team_roles_count')
+			->get();
 	});
 }
 

@@ -87,7 +87,7 @@ class RoleForm extends Modal
         return [
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'profile' => 'string|in:' . implode(',', array_keys($this->profileOptions())),
+            'profile' => 'string|in:' . implode(',', array_keys($this->profileOptions()->all())),
             'accept_roll_to_child' => 'required|boolean',
             'accept_roll_to_neighbourg' => 'required|boolean',
         ];

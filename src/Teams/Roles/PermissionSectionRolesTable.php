@@ -80,7 +80,7 @@ class PermissionSectionRolesTable extends Query
         return _Flex(
             _Rows(
                 _Html($permission->permission_name),
-            )->balloon($permission->permission_description, 'right')->class('bg-white border-r border-gray-300 flex-row')
+            )->balloon($permission->permission_description, 'right')->class('bg-white border-r border-gray-300 flex-row')->balloonOver()
             ->when(isAppSuperAdmin(), fn($el) => $el->selfGet('getEditPermissionInfoForm', ['permission_id' => $permission->id])->inModal()),
             ...$this->roles->map(function ($role) use ($permission) {
                 return $this->sectionRoleEl($role, $permission, $this->permissionSectionId, $this->permissionsIds, $permission->getPermissionTypeByRoleId($role->id));

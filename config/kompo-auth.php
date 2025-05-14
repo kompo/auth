@@ -2,7 +2,7 @@
 
 return [
     'security' => [
-        'bypass-security' => false,
+        'bypass-security' => env('BYPASS_SECURITY', false),
 
         'default-read-security-restrictions' => true,
         'default-delete-security-restrictions' => true,

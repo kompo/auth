@@ -12,6 +12,10 @@ class HasAuthorizationUtils extends ComponentPlugin
     
     public function onBoot()
     {
+        if (config('kompo-auth.security.bypass-security')) {
+            return;
+        }
+    
         if(!$this->checkPermissions(PermissionTypeEnum::READ)) {
             abort(403, 'Unauthorized action.');
         }
@@ -19,6 +23,10 @@ class HasAuthorizationUtils extends ComponentPlugin
 
     public function authorize()
     {
+        if (config('kompo-auth.security.bypass-security')) {
+            return true;
+        }
+
         return $this->checkPermissions(PermissionTypeEnum::WRITE);
     }
 

@@ -8,6 +8,10 @@ function checkAuthPermission($id, $specificTeamId = null) {
 }
 
 \Kompo\Elements\BaseElement::macro('checkAuth', function ($id, $specificTeamId = null, $returnNullInstead = false) {
+    if (config('kompo-auth.security.bypass-security')) {
+        return $this;
+    }
+
     if(checkAuthPermission($id, $specificTeamId)) {
         return $this;
     }

@@ -98,7 +98,7 @@ class Team extends Model
 		while ((!$depth || $currentLevel < $depth)  &&(clone $query)->selectRaw("COUNT(t$currentLevel.id) as count")->first()->count) {
 			$lastestCurrentLevel = $currentLevel;
 			$currentLevel++;
-			$query->leftJoin("teams as t$currentLevel", "t$currentLevel.parent_team_id", '=', "t$lastestCurrentLevel.id");
+			$query->join("teams as t$currentLevel", "t$currentLevel.parent_team_id", '=', "t$lastestCurrentLevel.id");
         
             $selectRaw = "t$currentLevel.id" . ($staticExtraSelect ? ', "' . ($staticExtraSelect[0] . '" as ' . $staticExtraSelect[1]) : "");
 

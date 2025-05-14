@@ -71,7 +71,7 @@ class TeamRole extends Model
             ->selectRaw(constructComplexPermissionKeySql('permission_team_role') . ', permission_key, permissions.id')
             ->union(
                 $this->roleRelation->validPermissionsQuery()
-            );
+            )->getQuery();
     }
 
     /**
@@ -82,11 +82,11 @@ class TeamRole extends Model
      */
     public function deniedPermissionsQuery()
     {
-        return $this->deniedPermissions()
-            ->select('permissions.id')
-            ->union(
-                $this->roleRelation->deniedPermissionsQuery(),
-            );
+        return Permission::fromSub($this->deniedPermissions()->getQuery()
+            ->selectRaw('permissions.id, permissions.permission_key, permissions.deleted_at')
+            ->unionAll(
+                $this->roleRelation->deniedPermissionsQuery()->selectRaw('permissions.id, permissions.permission_key, permissions.deleted_at'),
+            ), 'permissions')->getQuery();
     }
 
     /**
@@ -98,10 +98,11 @@ class TeamRole extends Model
      */
     private function getAllPermissionsKeysQuery()
     {
-        return $this->validPermissionsQuery()
-            ->whereNotIn('permissions.id', 
+        return Permission::fromSub($this->validPermissionsQuery()->getQuery()
+            ->whereNotIn(
+                'permissions.id',
                 $this->deniedPermissionsQuery()->pluck('permissions.id')
-            )->distinct();
+            )->distinct(), 'permissions')->getQuery();
     }
 
     /**
@@ -113,7 +114,10 @@ class TeamRole extends Model
      */
     private function getAllPermissionsKeys()
     {
-        return \Cache::rememberWithTags(['permissions'], 'teamRolePermissions' . $this->id, 180, 
+        return \Cache::rememberWithTags(
+            ['permissions'],
+            'teamRolePermissions' . $this->id,
+            180,
             fn() => $this->getAllPermissionsKeysQuery()->pluck('complex_permission_key')
         );
     }
@@ -170,11 +174,11 @@ class TeamRole extends Model
                 ->join('permissions', 'permissions.id', '=', 'permission_team_role.permission_id')
                 ->selectRaw(constructComplexPermissionKeySql('permission_team_role') . ', permission_key, permissions.id'),
         );
-        
+
         // First we filter by role. We was using deniedPermissionsQuery of this class. But we was querying many times the same role.
         $deniedPermissionsQuery = $roles->reduce(function ($acc, $role) {
-            return $acc->union($role->deniedPermissionsQuery());
-        }, $roles->get(0)->deniedPermissionsQuery());
+            return $acc->union($role->deniedPermissionsQuery()->select('permissions.id'));
+        }, $roles->get(0)->deniedPermissionsQuery()->select('permissions.id'));
 
         // Then we filter by team role. We was using deniedPermissionsQuery of this class but we separated it to avoid querying the same role many times.
         $deniedPermissionsQuery->union(
@@ -207,7 +211,7 @@ class TeamRole extends Model
 
     public function getTeamAndRoleLabel()
     {
-        return $this->team->team_name.' - '.$this->getRoleName();
+        return $this->team->team_name . ' - ' . $this->getRoleName();
     }
 
     public function getRoleHierarchyAccessDirect()
@@ -322,7 +326,7 @@ class TeamRole extends Model
 
         if (!$teamRole) {
             $parentHierarchyRole = static::getParentHierarchyRole($teamId, $userId, $role);
-            
+
             $teamRole = $parentHierarchyRole?->createChildForHierarchy($teamId, $userId);
         }
 

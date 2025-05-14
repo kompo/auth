@@ -73,8 +73,7 @@ class Role extends Model
 
     public function deniedPermissionsQuery()
     {
-        return $this->deniedPermissions()
-            ->select('permissions.id');
+        return $this->deniedPermissions();
     }
 
     // SCOPES
@@ -92,7 +91,8 @@ class Role extends Model
         }
     }
 
-    public static function getOrCreate($name) {
+    public static function getOrCreate($name)
+    {
         $role = self::where('id', $name)->first();
 
         if (!$role) {

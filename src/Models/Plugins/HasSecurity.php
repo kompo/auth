@@ -9,6 +9,8 @@ use Condoedge\Utils\Models\Plugins\ModelPlugin;
 
 class HasSecurity extends ModelPlugin
 {
+    protected static $bypassedModels = [];
+
     public function onBoot()
     {
         $modelClass = $this->modelClass;
@@ -32,15 +34,41 @@ class HasSecurity extends ModelPlugin
         }
 
         $this->modelClass::saving(function ($model) {
+            // Skip security check if bypassSecurity property is set
+            if ($model->getAttribute('_bypassSecurity') === true || (static::$bypassedModels[spl_object_hash($model)] ?? false)) {
+                $model->offsetUnset('_bypassSecurity');
+
+                static::$bypassedModels[spl_object_hash($model)] = true;
+                
+                return;
+            }
+
             if (property_exists($model, 'saveSecurityRestrictions') && getPrivateProperty($model, 'saveSecurityRestrictions')) {
                 $this->checkWritePermissions($model);
             }
         });
 
         $this->modelClass::deleting(function ($model) {
+            // Skip security check if bypassSecurity property is set
+            if ($model->getAttribute('_bypassSecurity') === true || (static::$bypassedModels[spl_object_hash($this)] ?? false)) {
+                $model->offsetUnset('_bypassSecurity');
+
+                static::$bypassedModels[spl_object_hash($this)] = true;
+                
+                return;
+            }
+
             if (property_exists($model, 'deleteSecurityRestrictions') && getPrivateProperty($model, 'deleteSecurityRestrictions')) {
                 $this->checkWritePermissions($model);
             }
+        });
+
+        $this->modelClass::deleted(function ($model) {
+            unset(static::$bypassedModels[spl_object_hash($model)]);
+        });
+
+        $this->modelClass::saved(function ($model) {
+            unset(static::$bypassedModels[spl_object_hash($model)]);
         });
     }
 
@@ -91,10 +119,28 @@ class HasSecurity extends ModelPlugin
         return 'team_id';
     }
 
+    public function systemSave($model)
+    {
+        $model->_bypassSecurity = true;
+        $result = $model->save();
+
+        return $result;
+    }
+
+    public function systemDelete($model)
+    {
+        $model->_bypassSecurity = true;
+        $result = $model->delete();
+
+        return $result;
+    }
+
     public function managableMethods()
     {
         return [
             'checkWritePermissions',
+            'systemSave',
+            'systemDelete',
         ];
     }
 }

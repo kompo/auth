@@ -17,6 +17,7 @@ class TeamRole extends Model
 
     public const ROLES_DELIMITER = ',';
 
+    protected $saveSecurityRestrictions = true;
     protected $deleteSecurityRestrictions = true;
     protected $restrictByTeam = true;
 

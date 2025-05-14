@@ -121,7 +121,7 @@ trait HasTeamsTrait
         if ($teamRole = $this->teamRoles()->where('team_id', $team->id)->where('role', $role)->first()) {
             if($hierarchy) {
                 $teamRole->role_hierarchy = $hierarchy;
-                $teamRole->save();
+                $teamRole->systemSave();
             }
             
             return $teamRole;
@@ -132,7 +132,7 @@ trait HasTeamsTrait
         $teamRole->user_id = $this->id;
         $teamRole->role = $role;
         $teamRole->role_hierarchy = $hierarchy ?: RoleHierarchyEnum::DIRECT;
-        $teamRole->save();
+        $teamRole->systemSave();
 
         return $teamRole;
     }

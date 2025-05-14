@@ -45,7 +45,7 @@ if(!function_exists('isImpersonated')) {
 
 function getRoles()
 {
-	return Role::get();
+	return Role::orderBy('name')->get();
 }
 
 function getRolesOrderedByRelevance()

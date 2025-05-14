@@ -17,6 +17,9 @@ class Role extends Model
         'id' => 'string',
     ];
 
+    // It's impossible to set this kind of restriction because we read the role to get the permissions it would be getting a infinite loop.
+    protected $readSecurityRestrictions = false;
+
     public function save(array $options = [])
     {
         parent::save($options);

@@ -4,6 +4,7 @@ namespace Kompo\Auth\Models\Teams;
 
 use Kompo\Auth\Facades\RoleModel;
 use Condoedge\Utils\Models\Model;
+use Illuminate\Support\Facades\Cache;
 use Kompo\Database\HasTranslations;
 
 class Permission extends Model
@@ -28,6 +29,9 @@ class Permission extends Model
     protected $casts = [
         'object_type' => PermissionObjectTypeEnum::class,
     ];
+
+    // It's impossible to set this kind of restriction because we read the permission it would be getting a infinite loop.
+    protected $readSecurityRestrictions = false;
     
     /* RELATIONS */
     public function roles()
@@ -38,7 +42,9 @@ class Permission extends Model
     /* CALCULATED FIELDS */
     public static function findByKey($permissionKey)
     {
-        return Permission::where('permission_key', $permissionKey)->first();
+        return Cache::remember("permission_{$permissionKey}", 30, function () use ($permissionKey) {
+            return self::where('permission_key', $permissionKey)->first() ?? false;
+        });
     }
 
     public function getPermissionTypeByRoleId($roleId)

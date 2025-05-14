@@ -1,6 +1,15 @@
 <?php
 
 return [
+    'security' => [
+        'bypass-security' => false,
+
+        'default-read-security-restrictions' => true,
+        'default-delete-security-restrictions' => true,
+        'default-save-security-restrictions' => true,
+        'default-restrict-by-team' => true,
+    ],
+
     'register_with_first_last_name' => true,
 
     'img_form_layout_default_class' => '',

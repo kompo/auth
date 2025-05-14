@@ -4,11 +4,8 @@ namespace Kompo\Auth\Models\Teams;
 
 use Kompo\Auth\Facades\RoleModel;
 use Condoedge\Utils\Models\Model;
-use Kompo\Auth\Models\Teams\BaseRoles\SuperAdminRole;
-use Kompo\Auth\Models\Teams\BaseRoles\TeamOwnerRole;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\Roles\Role;
-use Kompo\Auth\Models\User;
 
 class TeamRole extends Model
 {
@@ -17,9 +14,8 @@ class TeamRole extends Model
 
     public const ROLES_DELIMITER = ',';
 
-    protected $saveSecurityRestrictions = true;
-    protected $deleteSecurityRestrictions = true;
-    protected $restrictByTeam = true;
+    // It's impossible to set this kind of restriction because we read the team role to get the permissions so it would be getting a infinite loop.
+    protected $readSecurityRestrictions = false;
 
     protected $casts = [
         'role_hierarchy' => RoleHierarchyEnum::class,

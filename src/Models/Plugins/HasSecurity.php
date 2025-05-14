@@ -6,6 +6,7 @@ use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\Roles\PermissionException;
 use Condoedge\Utils\Models\Plugins\ModelPlugin;
+use Illuminate\Support\Facades\Schema;
 
 class HasSecurity extends ModelPlugin
 {
@@ -13,6 +14,10 @@ class HasSecurity extends ModelPlugin
 
     public function onBoot()
     {
+        if (config('kompo-auth.security.bypass-security')) {
+            return;
+        }
+
         $modelClass = $this->modelClass;
 
         if($this->hasReadSecurityRestrictions() && Permission::findByKey($this->getPermissionKey())) {
@@ -98,13 +103,37 @@ class HasSecurity extends ModelPlugin
             return getPrivateProperty(new ($this->modelClass), 'readSecurityRestrictions');
         }
 
-        return false;
+        return config('kompo-auth.security.default-read-security-restrictions', true);
+    }
+
+    protected function hasDeleteSecurityRestrictions()
+    {
+        if (property_exists($this->modelClass, 'deleteSecurityRestrictions')) {
+            return getPrivateProperty(new ($this->modelClass), 'deleteSecurityRestrictions');
+        }
+
+        return config('kompo-auth.security.default-delete-security-restrictions', true);
+    }
+
+    protected function hasSaveSecurityRestrictions()
+    {
+        if (property_exists($this->modelClass, 'saveSecurityRestrictions')) {
+            return getPrivateProperty(new ($this->modelClass), 'saveSecurityRestrictions');
+        }
+
+        return config('kompo-auth.security.default-save-security-restrictions', true);
     }
 
     protected function restrictByTeam()
     {
         if (property_exists($this->modelClass, 'restrictByTeam')) {
             return getPrivateProperty(new ($this->modelClass), 'restrictByTeam');
+        }
+
+        $table = (new ($this->modelClass))->getTable();
+
+        if (method_exists($this->modelClass, 'scopeForTeams') || Schema::hasColumn($table, 'team_id')) {
+            return config('kompo-auth.security.default-restrict-by-team', true);
         }
 
         return false;

@@ -23,7 +23,7 @@ class RolesAndPermissionMatrix extends Query
 
     public function created()
     {
-        $this->defaultRolesIds = collect(session()->get('latest-roles') ?: getRoles()->take(static::DEFAULT_ROLES_NUM)->pluck('id'));
+        $this->defaultRolesIds = collect(session()->get('latest-roles') ?: getRolesOrderedByRelevance()->take(static::DEFAULT_ROLES_NUM)->pluck('id'));
 
         session()->put('latest-roles', $this->defaultRolesIds);
     }

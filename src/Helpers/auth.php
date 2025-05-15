@@ -4,10 +4,14 @@ use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 
 function checkAuthPermission($id, $specificTeamId = null) {
-    return !Permission::findByKey($id) || auth()->user()->hasPermission($id, PermissionTypeEnum::READ, $specificTeamId);
+    return !Permission::findByKey($id) || auth()->user()?->hasPermission($id, PermissionTypeEnum::READ, $specificTeamId);
 }
 
 \Kompo\Elements\BaseElement::macro('checkAuth', function ($id, $specificTeamId = null, $returnNullInstead = false) {
+    if (config('kompo-auth.security.bypass-security')) {
+        return $this;
+    }
+
     if(checkAuthPermission($id, $specificTeamId)) {
         return $this;
     }

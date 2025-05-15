@@ -19,7 +19,10 @@ trait HasTeamsTrait
             }
         }
 
-		return $this->belongsTo(TeamRole::class, 'current_team_role_id');
+		return $this->belongsTo(TeamRole::class, 'current_team_role_id')
+            ->when(auth()->id() == $this->id, function ($q) {
+                $q->withoutGlobalScope('authUserHasPermissions');
+            });
 	}
 
     public function ownedTeams()
@@ -34,12 +37,20 @@ trait HasTeamsTrait
 
     public function teamRoles()
     {
-    	return $this->hasMany(TeamRole::class);
+    	return $this->hasMany(TeamRole::class)
+            ->when(auth()->id() == $this->id, function ($q) {
+                $q->withoutGlobalScope('authUserHasPermissions');
+            });
     }
 
     public function activeTeamRoles()
     {
-        return $this->teamRoles()->whereHas('team', fn($q) => $q->active());
+        // Using ->withoutGlobalScope('authUserHasPermissions') to avoid infinite loop because we see teams to check permissions.
+        return $this->teamRoles()->whereHas('team', fn($q) => $q->active()
+            ->when(auth()->id() == $this->id, function ($q) {
+                $q->withoutGlobalScope('authUserHasPermissions');
+            })
+        );
     }
 
     /* SCOPES */
@@ -121,7 +132,7 @@ trait HasTeamsTrait
         if ($teamRole = $this->teamRoles()->where('team_id', $team->id)->where('role', $role)->first()) {
             if($hierarchy) {
                 $teamRole->role_hierarchy = $hierarchy;
-                $teamRole->save();
+                $teamRole->systemSave();
             }
             
             return $teamRole;
@@ -132,7 +143,7 @@ trait HasTeamsTrait
         $teamRole->user_id = $this->id;
         $teamRole->role = $role;
         $teamRole->role_hierarchy = $hierarchy ?: RoleHierarchyEnum::DIRECT;
-        $teamRole->save();
+        $teamRole->systemSave();
 
         return $teamRole;
     }

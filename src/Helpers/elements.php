@@ -31,7 +31,7 @@ function _CheckboxSectionMultipleStates($name, $values = [], $colors = [], $defa
     $colors = collect($colors);
 
     $parsedOptions = collect([
-        _Rows(
+        $values[0] => _Rows(
             _Html()->when($default && is_array($default) && !in_array(0, $default), fn($e) => $e->class('hidden') )
                 ->class('flex-1 subsection-item value-0'),
             ...$values->map(fn($value, $i) => _Html()->class(
@@ -43,8 +43,8 @@ function _CheckboxSectionMultipleStates($name, $values = [], $colors = [], $defa
     ]);
 
     for ($i = 0; $i < count($values); $i++) {
-        $nextIndex = $i + 1 == $values->count() ? 0 : $i + 1;
-        $nextValue = $values->get($nextIndex);
+        $nextIndex = $i == $values->count() ? 0 : $i + 1;
+        $nextValue = $values->get($nextIndex) ?: 0;
 
         $value = $values->get($i);
 
@@ -53,7 +53,7 @@ function _CheckboxSectionMultipleStates($name, $values = [], $colors = [], $defa
             ->when($default == $value && !is_array($default) , fn($el) => $el->class('perm-selected'))
             ->when($default != $value || is_array($default), fn($el) => $el->class('hidden'));
 
-        $parsedOptions->put($nextValue ?: 0, $option);
+        $parsedOptions->put($nextValue, $option);
     }
 
     return _LinkGroup()->name($name, false)->options($parsedOptions->toArray())

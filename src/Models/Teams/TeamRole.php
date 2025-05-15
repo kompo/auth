@@ -4,11 +4,8 @@ namespace Kompo\Auth\Models\Teams;
 
 use Kompo\Auth\Facades\RoleModel;
 use Condoedge\Utils\Models\Model;
-use Kompo\Auth\Models\Teams\BaseRoles\SuperAdminRole;
-use Kompo\Auth\Models\Teams\BaseRoles\TeamOwnerRole;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\Roles\Role;
-use Kompo\Auth\Models\User;
 
 class TeamRole extends Model
 {
@@ -50,7 +47,16 @@ class TeamRole extends Model
 
     public function roleRelation()
     {
-        return $this->belongsTo(RoleModel::getClass(), 'role');
+        // We need to use the withoutGlobalScope because it's required to get the permissions so we would be getting an infinite loop.
+        // The user shouldn't get the TeamRole if not allowed so he won't access here if he doesn't have the permission.
+        return $this->belongsTo(RoleModel::getClass(), 'role')->withoutGlobalScope('authUserHasPermissions');
+    }
+
+    public function team()
+    {
+        // We need to use the withoutGlobalScope because it's required to get the permissions so we would be getting an infinite loop.
+        // The user shouldn't get the TeamRole if not allowed so he won't access here if he doesn't have the permission.
+        return $this->belongsTo(config('kompo-auth.team-model-namespace'))->withoutGlobalScope('authUserHasPermissions');
     }
 
     /* SCOPES */
@@ -71,7 +77,7 @@ class TeamRole extends Model
             ->selectRaw(constructComplexPermissionKeySql('permission_team_role') . ', permission_key, permissions.id')
             ->union(
                 $this->roleRelation->validPermissionsQuery()
-            );
+            )->getQuery();
     }
 
     /**
@@ -82,11 +88,11 @@ class TeamRole extends Model
      */
     public function deniedPermissionsQuery()
     {
-        return $this->deniedPermissions()
-            ->select('permissions.id')
-            ->union(
-                $this->roleRelation->deniedPermissionsQuery(),
-            );
+        return Permission::fromSub($this->deniedPermissions()->getQuery()
+            ->selectRaw('permissions.id, permissions.permission_key, permissions.deleted_at')
+            ->unionAll(
+                $this->roleRelation->deniedPermissionsQuery()->selectRaw('permissions.id, permissions.permission_key, permissions.deleted_at'),
+            ), 'permissions')->getQuery();
     }
 
     /**
@@ -98,10 +104,11 @@ class TeamRole extends Model
      */
     private function getAllPermissionsKeysQuery()
     {
-        return $this->validPermissionsQuery()
-            ->whereNotIn('permissions.id', 
+        return Permission::fromSub($this->validPermissionsQuery()->getQuery()
+            ->whereNotIn(
+                'permissions.id',
                 $this->deniedPermissionsQuery()->pluck('permissions.id')
-            )->distinct();
+            )->distinct(), 'permissions')->getQuery();
     }
 
     /**
@@ -113,7 +120,10 @@ class TeamRole extends Model
      */
     private function getAllPermissionsKeys()
     {
-        return \Cache::rememberWithTags(['permissions'], 'teamRolePermissions' . $this->id, 180, 
+        return \Cache::rememberWithTags(
+            ['permissions'],
+            'teamRolePermissions' . $this->id,
+            180,
             fn() => $this->getAllPermissionsKeysQuery()->pluck('complex_permission_key')
         );
     }
@@ -170,11 +180,11 @@ class TeamRole extends Model
                 ->join('permissions', 'permissions.id', '=', 'permission_team_role.permission_id')
                 ->selectRaw(constructComplexPermissionKeySql('permission_team_role') . ', permission_key, permissions.id'),
         );
-        
+
         // First we filter by role. We was using deniedPermissionsQuery of this class. But we was querying many times the same role.
         $deniedPermissionsQuery = $roles->reduce(function ($acc, $role) {
-            return $acc->union($role->deniedPermissionsQuery());
-        }, $roles->get(0)->deniedPermissionsQuery());
+            return $acc->union($role->deniedPermissionsQuery()->select('permissions.id'));
+        }, $roles->get(0)->deniedPermissionsQuery()->select('permissions.id'));
 
         // Then we filter by team role. We was using deniedPermissionsQuery of this class but we separated it to avoid querying the same role many times.
         $deniedPermissionsQuery->union(
@@ -207,7 +217,7 @@ class TeamRole extends Model
 
     public function getTeamAndRoleLabel()
     {
-        return $this->team->team_name.' - '.$this->getRoleName();
+        return $this->team->team_name . ' - ' . $this->getRoleName();
     }
 
     public function getRoleHierarchyAccessDirect()
@@ -280,7 +290,7 @@ class TeamRole extends Model
             return true;
         }
 
-        if ($this->getRoleHierarchyAccessNeighbors() && $this->team->parentTeam->teams()->where('id', $teamId)->exists()) {
+        if ($this->getRoleHierarchyAccessNeighbors() && $this->team->parentTeam?->teams()?->where('id', $teamId)->exists()) {
             return true;
         }
 
@@ -306,11 +316,6 @@ class TeamRole extends Model
         $this->save();
     }
 
-    public function deleteAsignation()
-    {
-        $this->delete();
-    }
-
     public static function getParentHierarchyRole($teamId, $userId, $role = null)
     {
         return static::when($role, fn($q) => $q->where('role', $role))->where('user_id', $userId)->get()->first(
@@ -327,7 +332,7 @@ class TeamRole extends Model
 
         if (!$teamRole) {
             $parentHierarchyRole = static::getParentHierarchyRole($teamId, $userId, $role);
-            
+
             $teamRole = $parentHierarchyRole?->createChildForHierarchy($teamId, $userId);
         }
 
@@ -349,6 +354,12 @@ class TeamRole extends Model
         $teamRole->save();
 
         return $teamRole;
+    }
+
+    // We're using HasSecurity plugin that handles deleting event to manage security restrictions.
+    public function deletable()
+    {
+        return true;
     }
 
     /* ELEMENTS */

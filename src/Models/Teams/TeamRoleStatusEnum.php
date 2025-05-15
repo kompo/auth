@@ -45,6 +45,10 @@ enum TeamRoleStatusEnum: int {
             return self::FINISHED;
         }
 
+        if ($teamRole->deleted_at) {
+            return self::FINISHED;
+        }
+
         return self::IN_PROGRESS;
     }
 }

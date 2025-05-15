@@ -21,7 +21,7 @@ trait RoleRequestsUtils
         if($value) {
             $value = PermissionTypeEnum::from($value);
         }
-    
+
         if (!$value) {
             $role->permissions()->detach($permissions);
         } else {

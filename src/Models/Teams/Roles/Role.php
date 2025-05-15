@@ -17,6 +17,9 @@ class Role extends Model
         'id' => 'string',
     ];
 
+    // It's impossible to set this kind of restriction because we read the role to get the permissions it would be getting a infinite loop.
+    protected $readSecurityRestrictions = false;
+
     public function save(array $options = [])
     {
         parent::save($options);
@@ -70,8 +73,7 @@ class Role extends Model
 
     public function deniedPermissionsQuery()
     {
-        return $this->deniedPermissions()
-            ->select('permissions.id');
+        return $this->deniedPermissions();
     }
 
     // SCOPES
@@ -89,7 +91,8 @@ class Role extends Model
         }
     }
 
-    public static function getOrCreate($name) {
+    public static function getOrCreate($name)
+    {
         $role = self::where('id', $name)->first();
 
         if (!$role) {

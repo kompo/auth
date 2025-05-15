@@ -178,6 +178,11 @@ class Team extends Model
         return $query;
     }
 
+    public function scopeSecurityForTeams($query, $teamIds)
+    {
+        $query->where(fn($q) => $q->whereIn('id', $teamIds)->orWhere('id', currentTeamId()));
+    }
+
 	/* ACTIONS */
 	public function detachFromTeam($user)
 	{

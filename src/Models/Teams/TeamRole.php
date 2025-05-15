@@ -14,9 +14,6 @@ class TeamRole extends Model
 
     public const ROLES_DELIMITER = ',';
 
-    // It's impossible to set this kind of restriction because we read the team role to get the permissions so it would be getting a infinite loop.
-    protected $readSecurityRestrictions = false;
-
     protected $casts = [
         'role_hierarchy' => RoleHierarchyEnum::class,
     ];
@@ -50,7 +47,16 @@ class TeamRole extends Model
 
     public function roleRelation()
     {
-        return $this->belongsTo(RoleModel::getClass(), 'role');
+        // We need to use the withoutGlobalScope because it's required to get the permissions so we would be getting an infinite loop.
+        // The user shouldn't get the TeamRole if not allowed so he won't access here if he doesn't have the permission.
+        return $this->belongsTo(RoleModel::getClass(), 'role')->withoutGlobalScope('authUserHasPermissions');
+    }
+
+    public function team()
+    {
+        // We need to use the withoutGlobalScope because it's required to get the permissions so we would be getting an infinite loop.
+        // The user shouldn't get the TeamRole if not allowed so he won't access here if he doesn't have the permission.
+        return $this->belongsTo(config('kompo-auth.team-model-namespace'))->withoutGlobalScope('authUserHasPermissions');
     }
 
     /* SCOPES */

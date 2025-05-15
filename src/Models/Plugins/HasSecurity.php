@@ -29,8 +29,8 @@ class HasSecurity extends ModelPlugin
                 $builder->when($this->restrictByTeam(), function ($q) {
                     $teamIds = auth()->user()->getTeamsIdsWithPermission($this->getPermissionKey(), PermissionTypeEnum::READ);
 
-                    if (method_exists($this->modelClass, 'scopeForTeams')) {
-                        $q->forTeams($teamIds);
+                    if (method_exists($this->modelClass, 'scopeSecurityForTeams')) {
+                        $q->securityForTeams($teamIds);
                     } else {
                         $q->whereIn($this->getTeamIdColumn(), $teamIds);
                     }
@@ -132,7 +132,7 @@ class HasSecurity extends ModelPlugin
 
         $table = (new ($this->modelClass))->getTable();
 
-        if (method_exists($this->modelClass, 'scopeForTeams') || Schema::hasColumn($table, 'team_id')) {
+        if (method_exists($this->modelClass, 'scopeSecurityForTeams') || Schema::hasColumn($table, 'team_id')) {
             return config('kompo-auth.security.default-restrict-by-team', true);
         }
 

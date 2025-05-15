@@ -22,7 +22,8 @@ trait RoleElementsUtils
     {
         return _Panel(
             _FlexCenter(
-                _Html($role?->name ?? '&nbsp;'),
+                _Text($role?->name ?? '&nbsp;')->maxChars(13)->showMoreText('')->showLessText('')
+                    ->balloon($role?->name),
                 !$role ? null : _TripleDotsDropdown(
                     _Link('permissions-edit')->class('py-1 px-2')->selfGet('getRoleForm', ['id' => $role?->id])->inModal()
                 )->class('absolute right-1'),

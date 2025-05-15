@@ -180,7 +180,7 @@ class Team extends Model
 
     public function scopeSecurityForTeams($query, $teamIds)
     {
-        $query->where(fn($q) => $q->whereIn('id', $teamIds)->orWhere('id', currentTeamId()));
+        $query->where(fn($q) => $q->whereIn('id', $teamIds)->orWhere('id', currentTeamId())->orWhere('parent_team_id', $teamIds)->orWhere('parent_team_id', currentTeamId()));
     }
 
 	/* ACTIONS */

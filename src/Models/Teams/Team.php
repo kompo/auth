@@ -16,12 +16,14 @@ class Team extends Model
 	/* RELATIONS */
 	public function owner()
     {
-		return $this->belongsTo(User::class, 'user_id');
+		return $this->belongsTo(User::class, 'user_id')
+            ->withoutGlobalScope('authUserHasPermissions');
 	}
 
     public function parentTeam()
     {
-        return $this->belongsTo(config('kompo-auth.team-model-namespace'), 'parent_team_id');
+        return $this->belongsTo(config('kompo-auth.team-model-namespace'), 'parent_team_id')
+            ->withoutGlobalScope('authUserHasPermissions');
     }
 
     public function teams()
@@ -180,7 +182,7 @@ class Team extends Model
 
     public function scopeSecurityForTeams($query, $teamIds)
     {
-        $query->where(fn($q) => $q->whereIn('id', $teamIds)->orWhere('id', currentTeamId()));
+        $query->where(fn($q) => $q->whereIn('id', $teamIds)->orWhere('id', currentTeamId())->orWhere('parent_team_id', $teamIds)->orWhere('parent_team_id', currentTeamId()));
     }
 
 	/* ACTIONS */

@@ -279,15 +279,15 @@ _Rows(
 _Button('Delete')
     ->checkAuth(
         'Record',                        // Resource to check
-        PermissionTypeEnum::ALL,         // Permission type (READ, WRITE, ALL)
         $teamId,                         // Team ID (optional)
-        'You need admin permissions'     // Message when permission is denied
+        false                            // Retun null instead of a void element
     );
 ```
 
 If permission is denied, the element:
-- Is not rendered (default behavior)
-- Or is displayed with a different style if you use conditional style classes
+
+- Is will be rendered using null data
+- Or it will return a fully null
 
 ## Implementation Strategies
 
@@ -487,10 +487,6 @@ $teamsWithAccess = auth()->user()->getTeamsIdsWithPermission('Resource');
 \Cache::get('currentPermissions' . auth()->id());
 \Cache::tags(['permissions'])->flush(); // Force clear cache
 ```
-
-## Developer Guide: Authorization Flow
-
-Understanding how the KompoAuth package processes security checks can help you implement permissions correctly and debug access issues. This section explains the key workflows in the authorization system.
 
 ## Developer Guide: Authorization Flow
 

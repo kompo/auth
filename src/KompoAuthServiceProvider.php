@@ -109,12 +109,25 @@ class KompoAuthServiceProvider extends ServiceProvider
      */
     public function register()
     {
+        $this->loadHelpers();
+
         // We must put it here instead of boot because of the order of loading
         ModelBase::setPlugins([ HasSecurity::class ]);
 
         Query::setPlugins([ HasAuthorizationUtils::class ]);
         Form::setPlugins([ HasAuthorizationUtils::class ]);
         Modal::setPlugins([ HasAuthorizationUtils::class ]);
+
+        // Bind security bypass service
+        $this->app->singleton('kompo-auth.security-bypass', function ($app) {
+            return function() {
+                if (in_array(auth()->user()?->email, config('kompo-auth.superadmin-emails', []))) {
+                    return true;
+                }
+                
+                return config('kompo-auth.security.bypass-security', false);
+            };
+        });
 
         //Best way to load routes. This ensures loading at the very end (after fortifies' routes for ex.)
         $this->booted(function () {
@@ -131,17 +144,6 @@ class KompoAuthServiceProvider extends ServiceProvider
 
         $this->app->bind('role-model', function () {
             return new (config('kompo-auth.role-model-namespace'));
-        });
-
-        // Bind security bypass service
-        $this->app->singleton('kompo-auth.security-bypass', function ($app) {
-            return function() {
-                if (in_array(auth()->user()?->email, config('superadmin-emails'))) {
-                    return true;
-                }
-                
-                return config('kompo-auth.security.bypass-security', false);
-            };
         });
     }
 

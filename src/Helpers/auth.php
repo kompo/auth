@@ -7,8 +7,25 @@ function checkAuthPermission($id, $specificTeamId = null) {
     return !Permission::findByKey($id) || auth()->user()?->hasPermission($id, PermissionTypeEnum::READ, $specificTeamId);
 }
 
+if (!function_exists('globalSecurityBypass')) {
+    /**
+     * Checks if security should be globally bypassed.
+     * Uses the service container to get the security-bypass service.
+     * 
+     * @return bool True if security should be bypassed
+     */
+    function globalSecurityBypass() 
+    {
+        if (app()->bound('kompo-auth.security-bypass')) {
+            return app()->make('kompo-auth.security-bypass')();
+        }
+        
+        return config('kompo-auth.security.bypass-security', false);
+    }
+}
+
 \Kompo\Elements\BaseElement::macro('checkAuth', function ($id, $specificTeamId = null, $returnNullInstead = false) {
-    if (config('kompo-auth.security.bypass-security')) {
+    if (globalSecurityBypass()) {
         return $this;
     }
 

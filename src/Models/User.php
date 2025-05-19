@@ -91,6 +91,11 @@ class User extends Authenticatable
         return 'role_id';
     }
 
+    public function usersIdsAllowedToSee()
+    {
+        return [$this->id];
+    }
+
     /* ACTIONS */
     public function handleRegisterNames()
     {

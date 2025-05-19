@@ -418,137 +418,47 @@ auth()->user()->givePermissionTo('CreateReports');
 auth()->user()->givePermissionTo('ManageUsers', $teamRoleId);
 ```
 
-## Internal Architecture
+## Developer Guide: Package Architecture
 
-### Permission Resolution Process
+This section provides a streamlined view of how the package works internally, its key components, and how to effectively implement and debug permission-related issues.
 
-1. **Permission Check Workflow**:
-   - Check if security is bypassed at application level
-   - Look up permission record by key
-   - For global permissions: check if user has required permission type
-   - For team-specific permissions: check if user has permission in the requested team(s)
-   - Apply DENY rules which override other permission
-
-2. **Permission Caching**:
-   - User permissions are cached with tags for efficient invalidation
-   - Team hierarchies are cached to minimize database queries
-   - Cache is refreshed when team roles or permissions change
-
-### Global Model Security
-
-The `HasSecurity` plugin applies these safeguards:
-
-1. **READ restriction**: Global scope filters queries to only show records user has permission to see
-2. **WRITE restriction**: Saving event handler verifies write permission before allowing changes
-3. **DELETE restriction**: Deleting event handler verifies delete permission
-4. **Sensitive fields**: Retrieved event handler removes sensitive fields from models lacking appropriate permission
-
-### Team-Based Security
-
-For team-restricted models:
-
-1. Permission check includes team context
-2. Query scope limits visible records to allowed teams
-3. Custom scopes can define complex team relationships with `scopeSecurityForTeams`
-
-## Configuration Options
-
-Key configuration settings in `config/kompo-auth.php`:
-
-```php
-// Global security bypass (useful for development)
-'bypass-security' => env('BYPASS_SECURITY', false),
-```
-
-### SuperAdmin Email Access
-
-The package provides a built-in mechanism to grant full access to specific users based on their email addresses:
-
-```php
-// In your config file
-// config/app.php or a custom config file
-return [
-    // ...existing config...
-    
-    // Emails that automatically bypass all security checks
-    'superadmin-emails' => [
-        'admin@example.com',
-        'superuser@yourcompany.com',
-    ],
-];
-```
-
-This feature works independently of the permissions system and is useful for:
-- Development and debugging
-- System administrators who need unrestricted access
-- Emergency access when permission issues occur
-
-**Implementation Note**: Users with emails in this list will bypass all permission checks across the entire application.
-
-## Developer Guide: In-Depth Package Flow
-
-This section provides a detailed view of how the package works internally, showing the key files and their interactions.
-
-### Package Architecture Overview
+### Core Components & Flow
 
 ```
 ┌─────────────────────────┐
-│ KompoAuthServiceProvider│◄──────────────────┐
-└───────────┬─────────────┘                   │
-            │                                 │
-            ▼                                 │
-┌───────────────────────┐    ┌───────────────────────┐
-│    HasSecurity        │◄───┤   ModelBase           │
-│    (Model Plugin)     │    │   (Base Model Class)  │
-└───────────┬───────────┘    └───────────────────────┘
+│ KompoAuthServiceProvider│◄──────────────┐
+└───────────┬─────────────┘               │
+            │                             │
+            ▼                             │
+┌───────────────────────┐    ┌───────────────┐
+│    HasSecurity        │◄───┤   Models      │
+│    (Model Plugin)     │    │               │
+└───────────┬───────────┘    └───────────────┘
             │
             │
-┌───────────▼───────────┐    ┌───────────────────────┐
-│ HasAuthorizationUtils │◄───┤   Form, Query, Modal  │
-│ (Component Plugin)    │    │   (UI Components)     │
-└───────────────────────┘    └───────────────────────┘
+┌───────────▼───────────┐    ┌───────────────┐
+│ HasAuthorizationUtils │◄───┤  UI Elements  │
+│ (Component Plugin)    │    │               │
+└───────────────────────┘    └───────────────┘
 
-┌───────────────────────┐    ┌───────────────────────┐
-│ HasTeamsTrait         │    │   User Model          │
-│ (User Trait)          │◄───┤                       │
-└───────────────────────┘    └───────────────────────┘
+┌───────────────────────┐    ┌───────────────┐
+│ HasTeamsTrait         │◄───┤  User Model   │
+│                       │    │               │
+└───────────────────────┘    └───────────────┘
 ```
 
-### Bootstrap Process
-
-1. **Service Provider Registration** 
-   - File: `src/KompoAuthServiceProvider.php`
-   - Registers the package's service provider with Laravel
-   - Binds core services like security bypass and model repositories
-
-2. **Plugin Registration** 
-   - Plugins are attached to base classes:
-   ```php
-   // In KompoAuthServiceProvider.php
-   ModelBase::setPlugins([HasSecurity::class]);
-   Query::setPlugins([HasAuthorizationUtils::class]);
-   Form::setPlugins([HasAuthorizationUtils::class]);
-   Modal::setPlugins([HasAuthorizationUtils::class]);
-   ```
-
-3. **Configuration Loading**
-   - Config files are published and merged
-   - Database migrations are loaded and run
-
-### Key Files and Responsibilities
+### Key Files & Responsibilities
 
 | File | Responsibility |
 |------|----------------|
-| `src/KompoAuthServiceProvider.php` | Bootstrap package and register services |
-| `src/Models/Plugins/HasSecurity.php` | Model-level security enforcement |
-| `src/Common/Plugins/HasAuthorizationUtils.php` | Component-level security checks |
-| `src/Models/Teams/HasTeamsTrait.php` | User team and permission management |
-| `src/Models/Teams/Permission.php` | Permission definition and storage |
-| `src/Models/Teams/TeamRole.php` | Team role management |
+| `KompoAuthServiceProvider.php` | Bootstrap, registers services, binds model plugins |
+| `HasSecurity.php` | Model security: global scopes, event listeners for CRUD operations |
+| `HasAuthorizationUtils.php` | UI security: form/query/component permission checks |
+| `HasTeamsTrait.php` | User permissions, team management, permission caching |
+| `Permission.php` | Permission storage and retrieval |
+| `TeamRole.php` | Team-user-role relationships and inheritance |
 
-### Security Enforcement Flow
-
-When a model is accessed, the following sequence occurs:
+### Security Enforcement Sequence
 
 ```
 1. Query Builder Created
@@ -563,164 +473,24 @@ When a model is accessed, the following sequence occurs:
 
 **Model Read Operation:**
 ```php
-// File: src/Models/Plugins/HasSecurity.php
-// Method: setupReadSecurity()
-
-User::all(); // Example query
-↓
-addGlobalScope('authUserHasPermissions') // Applied by HasSecurity
-↓
-auth()->user()->hasPermission() // Checks user permission
-↓
-getTeamsIdsWithPermission() // Gets teams where user has access
-↓
-Query returns filtered results
-```
-
-**Component Authorization:**
-```php
-// File: src/Common/Plugins/HasAuthorizationUtils.php
-// Methods: onBoot(), authorize()
-
-Form loads
-↓
-onBoot() called // Checks permission to view form
-↓
-checkPermissions(READ) // Verifies READ permission
-↓
-Form displays if authorized
-```
-
-### Permission Checking Process
-
-The permission checking logic flows through multiple classes:
-
-```
-HasTeamsTrait::hasPermission()
-├─> Gets cached permissions list
-│   └─> getCurrentPermissionKeysInTeams() or getCurrentPermissionsInAllTeams()
-│       └─> TeamRole::getAllPermissionsKeysForMultipleRoles()
-└─> Checks if permission exists in list
-    └─> PermissionTypeEnum::hasPermission() validates permission type
-```
-
-**File References:**
-- Permission type checking: `src/Models/Teams/PermissionTypeEnum.php`
-- Permission model: `src/Models/Teams/Permission.php`
-- Team role model: `src/Models/Teams/TeamRole.php`
-
-### Cache System
-
-The package uses an caching mechanism with tags for optimal performance (if the tags are not allowed because of the driver, `rememberWithTags` its a macro that allows that kind of cases, so it'll be just ignore the tag and create it as usual):
-
-```php
-// File: src/Models/Teams/HasTeamsTrait.php
-// Method: getCurrentPermissionsInAllTeams()
-
-\Cache::rememberWithTags(['permissions'], 'currentPermissionsInAllTeams' . $this->id, 120,
-    fn() => TeamRole::getAllPermissionsKeysForMultipleRoles($this->activeTeamRoles),
-);
-```
-
-Cache is invalidated when:
-- User team roles change
-- User switches current team
-- Permissions are modified
-- Roles are updated
-
-### Security Bypass Flow Chart
-
-```
-┌─────────────────┐     ┌──────────────────┐     ┌───────────────────┐
-│ Security Check  │────▶│   Bypass Check   │────▶│   Normal Flow     │
-└─────────────────┘     └────────┬─────────┘     └───────────────────┘
-                                 │
-                                 ▼
-                        ┌──────────────────┐
-                        │  Check Email     │
-                        │  superadmin list │
-                        └────────┬─────────┘
-                                 │ No
-                                 ▼
-                        ┌──────────────────┐
-                        │ Check Config     │
-                        │ bypass-security  │
-                        └────────┬─────────┘
-                                 │ No
-                                 ▼
-                        ┌──────────────────┐
-                        │ Check Model      │
-                        │ Bypass Methods   │
-                        └────────┬─────────┘
-                                 │ No
-                                 ▼
-                        ┌──────────────────┐     ┌───────────────────┐
-                        │ Access Denied    │────▶│ Exception/Empty   │
-                        └──────────────────┘     └───────────────────┘
-```
-
-### Implementing a New Plugin Feature
-
-If you need to extend the package functionality, here's how to create a plugin:
-
-```php
-// Create a new plugin class that extends ModelPlugin
-namespace YourNamespace;
-
-use Condoedge\Utils\Models\Plugins\ModelPlugin;
-
-class YourModelPlugin extends ModelPlugin 
-{
-    public function onBoot()
-    {
-        // Your initialization code here
-    }
-    
-    public function yourCustomMethod()
-    {
-        // Your custom functionality
-    }
-    
-    public function managableMethods()
-    {
-        return [
-            'yourCustomMethod',
-        ];
-    }
-}
-
-// Then register it in your service provider
-ModelBase::setPlugins([
-    HasSecurity::class,
-    YourModelPlugin::class
-]);
-```
-
-### Debugging Tools
-
-The package provides several tools to help debug security issues:
-
-```php
-// Check if permission exists (in tinker or controller)
+// Check permission existence
 Permission::findByKey('User')->exists();
 
-// Test permission directly
-auth()->user()->hasPermission('User', PermissionTypeEnum::READ, null, true); // Debug mode
+// Test permission with debug mode
+auth()->user()->hasPermission('User', PermissionTypeEnum::READ, null, true);
 
-// Check team access
+// Check team permissions
 auth()->user()->hasAccessToTeam($teamId);
+$teamsWithAccess = auth()->user()->getTeamsIdsWithPermission('Resource');
 
-// Get user's teams with a specific permission
-$teamsWithAccess = auth()->user()->getTeamsIdsWithPermission('Project');
-
-// View currently cached permissions
+// Cache inspection
 \Cache::get('currentPermissions' . auth()->id());
-
-// Force clear permissions cache
-\Cache::tags(['permissions'])->flush();
+\Cache::tags(['permissions'])->flush(); // Force clear cache
 ```
 
-For deeper debugging, you can temporarily modify `globalSecurityBypass()` or add a super admin email to your configuration.
+## Developer Guide: Authorization Flow
+
+Understanding how the KompoAuth package processes security checks can help you implement permissions correctly and debug access issues. This section explains the key workflows in the authorization system.
 
 ## Developer Guide: Authorization Flow
 
@@ -750,13 +520,6 @@ Understanding how the KompoAuth package processes security checks can help you i
    - Considers team hierarchies (parent/child relationships)
 
 ### Model Security Flow
-
-```
-┌─────────────┐     ┌───────────────┐     ┌─────────────────┐
-│   Query     │────▶│  Global Scope │────▶│ Filtered Query  │
-│  Builder    │     │    Applied    │     │    Results      │
-└─────────────┘     └───────────────┘     └─────────────────┘
-```
 
 1. **Query Filtering**:
    - Global scope automatically filters records based on permissions

@@ -129,6 +129,11 @@ The visual interface allows administrators to:
 - Apply permissions to entire sections with a single click
 - Set role hierarchies with inheritance options
 
+4. **Dynamic role selector**: A team role switcher when you can impersonate different team_roles
+```php
+new OptionsRolesSwitcher()
+```
+
 ## Authorization System Design
 
 ### Database Structure
@@ -148,7 +153,45 @@ The package uses the following tables to manage roles and permissions:
 
 [View or edit diagram on dbdiagram.io](https://dbdiagram.io/d/6703f4b8fb079c7ebd9db055)
 
-<iframe width="560" height="315" src='https://dbdiagram.io/e/6703f4b8fb079c7ebd9db055/682b7e961227bdcb4e05c232'></iframe>
+### Team Hierarchy & Role Inheritance
+
+Kompo Auth provides a sophisticated team hierarchy system with dynamic role creation based on inheritance settings:
+
+#### Teams Organization
+
+Teams can be organized in parent-child relationships, creating a tree structure:
+
+```
+Root Team
+├── Child Team 1
+│   ├── Grandchild Team 1
+│   └── Grandchild Team 2
+└── Child Team 2
+    └── Grandchild Team 3
+```
+
+- **Root Team**: The top-level team, usually representing an organization or a major division.
+- **Child Teams**: Teams that belongs to a parent team, including grandchild teams.
+- **Neighboring Teams**: Teams that are at the same level in the hierarchy.
+
+#### Teams Hierarchy
+
+Team roles can accept inheritance so the user that has them will have the permissions on all the children teams or neighbouring teams.
+
+The role_hierarchy column on team_roles depends on the `RoleHierarchyEnum` that defines how permissions cascade through team hierarchies:
+
+**DIRECT**: Access limited to only the specific team
+**DOWN** Access extends to the team and all its children
+**SIBLINGS**: Access extends to the team and its sibling teams
+**DOWN_AND_SIBLINGS**: Access extends to the team, its children, and siblings
+
+The roles must accept those configurations on the accept_roll_to_children and accept_roll_to_neighbour fields.
+
+#### Lazy Role Creation
+
+The basic team roles are created when you assign them to an user. But in the roles switcher you can see all the inherited teams and they will be created dynamically so you can enter to their dashboard.
+
+When you try to set an unexistent role as your current role and you have a team role that allows inheritance it'll be created it in that moment using `TeamRole::getParentHierarchyRole()` inside of `TeamRole::getOrCreateForUser()`
 
 ## Permission Types
 
@@ -599,4 +642,3 @@ When troubleshooting access problems:
 4. **Examine Team Hierarchy**: Team permissions can be affected by parent/child relationships.
 
 Remember that the security system is designed to be restrictive by default - you need to explicitly grant permissions for users to access resources.
-Recuerda que el sistema de seguridad está diseñado para ser restrictivo por defecto: debes otorgar permisos explícitamente para que los usuarios accedan a los recursos.

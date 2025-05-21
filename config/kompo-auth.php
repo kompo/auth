@@ -10,6 +10,10 @@ return [
         'default-restrict-by-team' => true,
     ],
 
+    'superadmin-emails' => [
+        explode(',', env('SUPERADMIN_EMAILS', '')),
+    ],
+
     'register_with_first_last_name' => true,
 
     'img_form_layout_default_class' => '',

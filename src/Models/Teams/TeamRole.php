@@ -297,6 +297,11 @@ class TeamRole extends Model
         return false;
     }
 
+    public function hasAccessToTeamOfMany($teamIds)
+    {
+        return collect($teamIds)->contains(fn($teamId) => $this->hasAccessToTeam($teamId));
+    }
+
     /* ACTIONS */
     public function terminate()
     {

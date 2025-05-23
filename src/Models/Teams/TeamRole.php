@@ -167,7 +167,7 @@ class TeamRole extends Model
             return Permission::whereRaw('1=0')->selectRaw('0 as complex_permission_key');
         }
 
-        $roles = Role::whereIn('id', $teamRoles->unique('role')->pluck('role'))->get();
+        $roles = Role::whereIn('roles.id', $teamRoles->unique('role')->pluck('role'))->get();
 
         // First we filter by role. We was using validPermissionsQuery of this class. But we was querying many times the same role.
         $validPermissionsQuery = $roles->reduce(function ($acc, $role) {

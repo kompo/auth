@@ -121,6 +121,10 @@ class KompoAuthServiceProvider extends ServiceProvider
         // Bind security bypass service
         $this->app->singleton('kompo-auth.security-bypass', function ($app) {
             return function() {
+                if (app()->runningInConsole()) {
+                    return true;
+                }
+
                 if (in_array(auth()->user()?->email, config('kompo-auth.superadmin-emails', []))) {
                     return true;
                 }

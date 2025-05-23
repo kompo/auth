@@ -49,6 +49,14 @@ class HasSecurity extends ModelPlugin
     {
         // If security is globally disabled, exit early
         if ($this->isSecurityGloballyBypassed()) {
+            $this->modelClass::saving(function ($model) {
+                $this->markModelAsBypassed($model);
+            });
+
+            $this->modelClass::deleting(function ($model) {
+                $this->markModelAsBypassed($model);
+            });
+
             return;
         }
 
@@ -119,13 +127,13 @@ class HasSecurity extends ModelPlugin
      */
     protected function applyNonTeamReadSecurity($builder, $hasUserOwnedRecordsScope)
     {
-        if (!auth()->user()->hasPermission($this->getPermissionKey(), PermissionTypeEnum::READ)) {
+        if (!auth()->user()?->hasPermission($this->getPermissionKey(), PermissionTypeEnum::READ)) {
             $builder->when($hasUserOwnedRecordsScope, function ($q) {
                 // Allow access to user's own records
                 $q->userOwnedRecords();
             })->when(!$hasUserOwnedRecordsScope, function ($q) {
                 // Block all records if user ownership scope not available
-                $q->whereRaw("1 = 0");
+                $q->where('user_id', auth()->user()?->id);
             });
         }
     }
@@ -139,7 +147,7 @@ class HasSecurity extends ModelPlugin
     protected function applyTeamReadSecurity($builder, $hasUserOwnedRecordsScope) 
     {
         // Get teams where user has access
-        $teamIds = auth()->user()->getTeamsIdsWithPermission(
+        $teamIds = auth()->user()?->getTeamsIdsWithPermission(
             $this->getPermissionKey(), 
             PermissionTypeEnum::READ
         );
@@ -158,6 +166,8 @@ class HasSecurity extends ModelPlugin
                 $q->orWhere(function($sq) {
                     $sq->userOwnedRecords();
                 });
+            } else {
+                $q->orWhere('user_id', auth()->user()?->id);
             }
         });
     }
@@ -297,7 +307,7 @@ class HasSecurity extends ModelPlugin
             callPrivateMethod($model, 'securityRelatedTeamIds') : null;
 
         // Remove sensitive fields if permission check fails
-        if (!auth()->user()->hasPermission($sensibleColumnsKey, PermissionTypeEnum::READ, $teamsIdsRelated)) {
+        if (!auth()->user()?->hasPermission($sensibleColumnsKey, PermissionTypeEnum::READ, $teamsIdsRelated)) {
             $model->setRawAttributes(
                 array_diff_key($model->getRawOriginal(), array_flip($sensibleColumns))
             );
@@ -360,13 +370,13 @@ class HasSecurity extends ModelPlugin
 
         // For non-team-restricted models
         if (!$this->restrictByTeam() && 
-            !auth()->user()->hasPermission($this->getPermissionKey(), PermissionTypeEnum::WRITE)) {
+            !auth()->user()?->hasPermission($this->getPermissionKey(), PermissionTypeEnum::WRITE)) {
             throw new PermissionException(__('permissions-you-do-not-have-write-permissions'));
         }
 
         // For team-restricted models
         if ($this->restrictByTeam() && 
-            !auth()->user()->hasPermission($this->getPermissionKey(), PermissionTypeEnum::WRITE, $model->{$this->getTeamIdColumn()})) {
+            !auth()->user()?->hasPermission($this->getPermissionKey(), PermissionTypeEnum::WRITE, $model->{$this->getTeamIdColumn()})) {
             throw new PermissionException(__('permissions-you-do-not-have-write-permissions'));
         }
         

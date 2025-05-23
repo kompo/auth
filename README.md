@@ -611,6 +611,7 @@ The security system includes several bypass mechanisms that work in this order:
 6. **Custom Scope**: `scopeUserOwnedRecords()` method on model
 7. **Explicit Flag**: `$model->_bypassSecurity = true` attribute
 8. **System Methods**: `$model->systemSave()` and `$model->systemDelete()`
+9. **Running in console**: The security will be automatically bypassed when the app is running in console
 
 These mechanisms ensure that while security is enforced consistently, there are appropriate methods to bypass it when necessary, particularly for allowing users to access their own records.
 

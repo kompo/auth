@@ -253,7 +253,7 @@ class TeamRole extends Model
         }
 
         if ($this->getRoleHierarchyAccessNeighbors()) {
-            $teams = $teams->concat($this->team->parentTeam?->teams()?->pluck('id') ?: []);
+            $teams = $teams->concat($this->team->parentTeam?->teams()->withoutGlobalScope('authUserHasPermissions')->pluck('id') ?: []);
         }
 
         return $teams;

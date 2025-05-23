@@ -88,7 +88,7 @@ class Team extends Model
      */
     public function getAllChildrenRawSolution($depth = null, $staticExtraSelect = null, $search = '')
     {
-        if (!$this->teams()->count()) {
+        if (!$this->teams()->withoutGlobalScope('authUserHasPermissions')->count()) {
             return collect($staticExtraSelect ? [$this->id => $staticExtraSelect[0]] : [$this->id]);
         }
 
@@ -187,7 +187,7 @@ class Team extends Model
 
     public function scopeSecurityForTeams($query, $teamIds)
     {
-        $query->where(fn($q) => $q->whereIn('teams.id', $teamIds)->orWhere('teams.id', currentTeamId())->orWhere('teams.parent_team_id', $teamIds)->orWhere('parent_team_id', currentTeamId()));
+        $query->where(fn($q) => $q->whereIn('teams.id', $teamIds)->orWhere('teams.id', currentTeamId())->orWhereIn('teams.parent_team_id', $teamIds)->orWhere('parent_team_id', currentTeamId()));
     }
 
     /* ACTIONS */

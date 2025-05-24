@@ -48,7 +48,7 @@ class RoleWrap extends Form
 
     protected function getRoles()
     {
-        return RoleModel::whereIn('id', collect($this->rolesIds))
+        return RoleModel::whereIn('roles.id', collect($this->rolesIds))
         ->with([
             'permissionsTypes',
         ])->get();

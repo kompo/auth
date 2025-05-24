@@ -31,10 +31,10 @@ class OptionsRolesSwitcher extends Form
             ->filter(fn($roleId, $teamId) => $roleId !== currentTeamRole()?->role || $teamId !== currentTeamRole()?->team_id);
 
         // Using this to avoid querying the database for each team and role
-        $teams = TeamModel::whereIn('id', $teamsIdsWithRoles->keys())->get()->mapWithKeys(function ($team) {
+        $teams = TeamModel::whereIn('teams.id', $teamsIdsWithRoles->keys())->get()->mapWithKeys(function ($team) {
             return [$team->id => $team];
         });
-        $roles = RoleModel::whereIn('id', $teamsIdsWithRoles->values())->get()->mapWithKeys(function ($role) {
+        $roles = RoleModel::whereIn('roles.id', $teamsIdsWithRoles->values())->get()->mapWithKeys(function ($role) {
             return [$role->id => $role];
         });
 

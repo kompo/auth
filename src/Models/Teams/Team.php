@@ -13,12 +13,12 @@ class Team extends Model
     use \Condoedge\Utils\Models\ContactInfo\Email\MorphManyEmails;
     use \Condoedge\Utils\Models\ContactInfo\Phone\MorphManyPhones;
 
-	/* RELATIONS */
-	public function owner()
+    /* RELATIONS */
+    public function owner()
     {
-		return $this->belongsTo(User::class, 'user_id')
+        return $this->belongsTo(User::class, 'user_id')
             ->withoutGlobalScope('authUserHasPermissions');
-	}
+    }
 
     public function parentTeam()
     {
@@ -38,7 +38,7 @@ class Team extends Model
 
     public function teamRoles()
     {
-    	return $this->hasMany(TeamRole::class);
+        return $this->hasMany(TeamRole::class);
     }
 
     public function authUserTeamRoles()
@@ -51,8 +51,8 @@ class Team extends Model
         return $this->hasMany(TeamInvitation::class);
     }
 
-	/* CALCULATED FIELDS */
-	public function hasUserWithEmail(string $email): int
+    /* CALCULATED FIELDS */
+    public function hasUserWithEmail(string $email): int
     {
         return $this->users()->where('email', $email)->count();
     }
@@ -88,20 +88,20 @@ class Team extends Model
      */
     public function getAllChildrenRawSolution($depth = null, $staticExtraSelect = null, $search = '')
     {
-		if (!$this->teams()->count()) { 
-			return collect($staticExtraSelect ? [$this->id => $staticExtraSelect[0]] : [$this->id]);
-		}
+        if (!$this->teams()->withoutGlobalScope('authUserHasPermissions')->count()) {
+            return collect($staticExtraSelect ? [$this->id => $staticExtraSelect[0]] : [$this->id]);
+        }
 
-		$currentLevel = 1;
-		$query = \DB::table("teams as t$currentLevel")->where("t$currentLevel.id", $this->id);
+        $currentLevel = 1;
+        $query = \DB::table("teams as t$currentLevel")->where("t$currentLevel.id", $this->id);
 
         $allIds = $search && !str_contains($this->team_name, $search) ? collect() : collect($staticExtraSelect ? [$this->id => $staticExtraSelect[0]] : [$this->id]);
 
-		while ((!$depth || $currentLevel < $depth)  &&(clone $query)->selectRaw("COUNT(t$currentLevel.id) as count")->first()->count) {
-			$lastestCurrentLevel = $currentLevel;
-			$currentLevel++;
-			$query->join("teams as t$currentLevel", "t$currentLevel.parent_team_id", '=', "t$lastestCurrentLevel.id");
-        
+        while ((!$depth || $currentLevel < $depth)  && (clone $query)->selectRaw("COUNT(t$currentLevel.id) as count")->first()->count) {
+            $lastestCurrentLevel = $currentLevel;
+            $currentLevel++;
+            $query->join("teams as t$currentLevel", "t$currentLevel.parent_team_id", '=', "t$lastestCurrentLevel.id");
+
             $selectRaw = "t$currentLevel.id" . ($staticExtraSelect ? ', "' . ($staticExtraSelect[0] . '" as ' . $staticExtraSelect[1]) : "");
 
             $pluckArgs = $staticExtraSelect ? [$staticExtraSelect[1], "id"] : ["id"];
@@ -113,7 +113,7 @@ class Team extends Model
             $allIds = $allIds->union($levelIds);
         }
 
-		return $allIds;
+        return $allIds;
     }
 
     public function hasChildrenIdRawSolution($childrenId)
@@ -122,24 +122,24 @@ class Team extends Model
             return true;
         }
 
-		if (!$this->teams()->count()) { 
-			return false;
-		}
+        if (!$this->teams()->count()) {
+            return false;
+        }
 
-		$currentLevel = 1;
-		$query = \DB::table("teams as t$currentLevel")->where("t$currentLevel.id", $this->id);
+        $currentLevel = 1;
+        $query = \DB::table("teams as t$currentLevel")->where("t$currentLevel.id", $this->id);
 
-		while ((clone $query)->selectRaw("COUNT(t$currentLevel.id) as count")->first()->count) {
+        while ((clone $query)->selectRaw("COUNT(t$currentLevel.id) as count")->first()->count) {
             if ((clone $query)->where("t$currentLevel.id", $childrenId)->count()) {
                 return true;
             }
-            
-			$lastestCurrentLevel = $currentLevel;
-			$currentLevel++;
-			$query->leftJoin("teams as t$currentLevel", "t$currentLevel.parent_team_id", '=', "t$lastestCurrentLevel.id");
+
+            $lastestCurrentLevel = $currentLevel;
+            $currentLevel++;
+            $query->leftJoin("teams as t$currentLevel", "t$currentLevel.parent_team_id", '=', "t$lastestCurrentLevel.id");
         }
 
-		return false;
+        return false;
     }
 
     public function rolePill()
@@ -153,6 +153,11 @@ class Team extends Model
             _Html($this->team_name)->class('font-semibold'),
             _Html($this->getParentTeams()->pluck('team_name')->implode('<br>'))->class('text-sm text-gray-500'),
         );
+    }
+
+    public function isActive()
+    {
+        return !$this->inactive_at || $this->inactive_at > now();
     }
 
     /* SCOPES */
@@ -171,9 +176,9 @@ class Team extends Model
     }
 
     public function scopeActive($query)
-	{
-		$query->where(fn($q) => $q->whereNull('inactive_at')->orWhere('inactive_at', '>', now()));
-	}
+    {
+        $query->where(fn($q) => $q->whereNull('inactive_at')->orWhere('inactive_at', '>', now()));
+    }
 
     public function scopeValidForTasks($query)
     {
@@ -182,14 +187,14 @@ class Team extends Model
 
     public function scopeSecurityForTeams($query, $teamIds)
     {
-        $query->where(fn($q) => $q->whereIn('id', $teamIds)->orWhere('id', currentTeamId())->orWhere('parent_team_id', $teamIds)->orWhere('parent_team_id', currentTeamId()));
+        $query->where(fn($q) => $q->whereIn('teams.id', $teamIds)->orWhere('teams.id', currentTeamId())->orWhereIn('teams.parent_team_id', $teamIds)->orWhere('parent_team_id', currentTeamId()));
     }
 
-	/* ACTIONS */
-	public function detachFromTeam($user)
-	{
+    /* ACTIONS */
+    public function detachFromTeam($user)
+    {
         //TODO: refactor for current_team_role_id
-		if ($user->current_team_id === $this->id) {
+        if ($user->current_team_id === $this->id) {
             $user->forceFill([
                 'current_team_id' => null,
             ])->save();
@@ -200,7 +205,7 @@ class Team extends Model
         if (!$this->user->teams()->count()) {
             // code...
         }
-	}
+    }
 
-	/* ELEMENTS */
+    /* ELEMENTS */
 }

@@ -24,6 +24,17 @@ if (!function_exists('globalSecurityBypass')) {
     }
 }
 
+if (!function_exists('bypassSecurityInThisRunningContext')) {
+    function bypassSecurityInThisRunningContext() 
+    {
+        app()->bind('kompo-auth.security-bypass', function ($app) {
+            return function () {
+                return true;
+            };
+        });
+    }
+}
+
 \Kompo\Elements\BaseElement::macro('checkAuth', function ($id, $specificTeamId = null, $returnNullInstead = false) {
     if (globalSecurityBypass()) {
         return $this;

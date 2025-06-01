@@ -3,8 +3,8 @@
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 
-function checkAuthPermission($id, $specificTeamId = null) {
-    return !Permission::findByKey($id) || auth()->user()?->hasPermission($id, PermissionTypeEnum::READ, $specificTeamId);
+function checkAuthPermission($id, $type = PermissionTypeEnum::READ, $specificTeamId = null) {
+    return !Permission::findByKey($id) || auth()->user()?->hasPermission($id, $type, $specificTeamId);
 }
 
 if (!function_exists('globalSecurityBypass')) {
@@ -35,12 +35,12 @@ if (!function_exists('bypassSecurityInThisRunningContext')) {
     }
 }
 
-\Kompo\Elements\BaseElement::macro('checkAuth', function ($id, $specificTeamId = null, $returnNullInstead = false) {
+\Kompo\Elements\BaseElement::macro('checkAuth', function ($id, $type = PermissionTypeEnum::READ, $specificTeamId = null, $returnNullInstead = false) {
     if (globalSecurityBypass()) {
         return $this;
     }
 
-    if(checkAuthPermission($id, $specificTeamId)) {
+    if(checkAuthPermission($id, $type, $specificTeamId)) {
         return $this;
     }
 

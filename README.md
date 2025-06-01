@@ -354,6 +354,7 @@ _Rows(
 _Button('Delete')
     ->checkAuth(
         'Record',                        // Resource to check
+        PermissionTypeEnum::WRITE,       // Permission type (READ, WRITE, ALL, DENY)
         $teamId,                         // Team ID (optional)
         false                            // Retun null instead of a void element
     );

@@ -11,7 +11,7 @@ class EditPermissionInfo extends Modal
 {
     public $model = Permission::class;
 
-    public $_Title = 'translate.edit-permission-info';
+    public $_Title = 'auth-edit-permission-info';
 
     public $hasSubmitButton = false;
 
@@ -31,14 +31,14 @@ class EditPermissionInfo extends Modal
     {
         return _Rows(
             _CardLevel4(
-                _Html('translate.permission-key'),
+                _Html('auth-permission-key'),
                 _Html($this->model->permission_key)->class('text-gray-700'),
             )->p4()->class('mb-2'),
 
             _Rows(
-                _Translatable('translate.permission')->name('permission_name'),
+                _Translatable('auth-permission')->name('permission_name'),
 
-                _Translatable('translate.permission-description')->name('permission_description'),
+                _Translatable('auth-permission-description')->name('permission_description'),
             ),
 
 

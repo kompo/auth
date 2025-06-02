@@ -111,7 +111,7 @@ class HasSecurity extends ModelPlugin
     {
         // Check if model has a method to identify user-owned records
         $hasUserOwnedRecordsScope = $this->modelHasMethod('scopeUserOwnedRecords');
-        
+
         // For models not restricted by team
         if (!$this->massRestrictByTeam()) {
             $this->applyNonTeamReadSecurity($builder, $hasUserOwnedRecordsScope);

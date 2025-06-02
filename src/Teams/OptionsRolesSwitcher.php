@@ -25,24 +25,28 @@ class OptionsRolesSwitcher extends Form
     }
 
     public function roleOptions() 
-    {
+    {        
         // We want to show all virtual teams roles that the user has access to. also using hierarchy
-        $teamsIdsWithRoles = auth()->user()->getAllTeamIdsWithRolesCached(request('profile') ?? 1, request('search'))->take(10)
-            ->filter(fn($roleId, $teamId) => $roleId !== currentTeamRole()?->role || $teamId !== currentTeamRole()?->team_id);
+        $teamsIdsWithRoles = auth()->user()->getAllTeamIdsWithRolesCached(request('profile') ?? 1, request('search'))->take(10);
 
         // Using this to avoid querying the database for each team and role
         $teams = TeamModel::whereIn('teams.id', $teamsIdsWithRoles->keys())->get()->mapWithKeys(function ($team) {
             return [$team->id => $team];
         });
-        $roles = RoleModel::whereIn('roles.id', $teamsIdsWithRoles->values())->get()->mapWithKeys(function ($role) {
+        $roles = RoleModel::whereIn('roles.id', $teamsIdsWithRoles->values()->flatten(1))->get()->mapWithKeys(function ($role) {
             return [$role->id => $role];
         });
 
-        // getAllTeamIdsWithRoles return an key-value => team_id => role_id array
+        // getAllTeamIdsWithRoles now returns team_id => [role_ids] array, so we need to flatten it
         $rolesSelectors = $teamsIdsWithRoles->sort()
-            ->map(fn($roleId, $teamId) =>  $this->getTeamRoleLabel($teams[$teamId], $roles[$roleId])
-                    ->selfPost('switchToTeamRole', ['team_id' => $teamId, 'role_id' => $roleId])->redirect()
-        );
+            ->flatMap(fn($roleIds, $teamId) => 
+                collect($roleIds)->filter(fn($rId) => !currentTeamRole()
+                || currentTeamRole()->team_id != $teamId || currentTeamRole()->role != $rId
+                )->map(fn($roleId) =>
+                    $this->getTeamRoleLabel($teams[$teamId], $roles[$roleId])
+                        ->selfPost('switchToTeamRole', ['team_id' => $teamId, 'role_id' => $roleId])->redirect()
+                )
+            );
 
         return _Rows(
             !$rolesSelectors->count() ? _Html('permissions-no-roles-in-this-profile')->class('text-center text-gray-500 text-sm p-4 !pt-0') : null,

@@ -3,37 +3,59 @@
 use Condoedge\Utils\Kompo\Elements\ValidatedInput;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+use Kompo\Auth\Teams\PermissionResolver;
 use Kompo\Date;
 use Kompo\Elements\Field;
 use Kompo\Place;
 
-function checkAuthPermission($id, $type = PermissionTypeEnum::READ, $specificTeamId = null) {
+/**
+ * Optimized permission checking with caching
+ */
+function checkAuthPermission($id, $type = PermissionTypeEnum::READ, $specificTeamId = null): bool 
+{
     if (globalSecurityBypass()) {
         return true;
     }
 
-    return !Permission::findByKey($id) || auth()->user()?->hasPermission($id, $type, $specificTeamId);
+    if (!auth()->user()) {
+        return false;
+    }
+
+    // Use the optimized permission resolver
+    $resolver = app(PermissionResolver::class);
+    return $resolver->userHasPermission(
+        auth()->id(),
+        $id,
+        $type,
+        $specificTeamId
+    );
 }
 
+/**
+ * Global security bypass check with caching
+ */
 if (!function_exists('globalSecurityBypass')) {
-    /**
-     * Checks if security should be globally bypassed.
-     * Uses the service container to get the security-bypass service.
-     * 
-     * @return bool True if security should be bypassed
-     */
-    function globalSecurityBypass() 
+    function globalSecurityBypass(): bool 
     {
-        if (app()->bound('kompo-auth.security-bypass')) {
-            return app()->make('kompo-auth.security-bypass')();
+        static $bypass = null;
+        
+        if ($bypass === null) {
+            if (app()->bound('kompo-auth.security-bypass')) {
+                $bypass = app()->make('kompo-auth.security-bypass')();
+            } else {
+                $bypass = config('kompo-auth.security.bypass-security', false);
+            }
         }
         
-        return config('kompo-auth.security.bypass-security', false);
+        return $bypass;
     }
 }
 
+/**
+ * Bypass security for current request context
+ */
 if (!function_exists('bypassSecurityInThisRunningContext')) {
-    function bypassSecurityInThisRunningContext() 
+    function bypassSecurityInThisRunningContext(): void 
     {
         app()->bind('kompo-auth.security-bypass', function ($app) {
             return function () {
@@ -43,12 +65,190 @@ if (!function_exists('bypassSecurityInThisRunningContext')) {
     }
 }
 
-\Kompo\Elements\BaseElement::macro('checkAuth', function ($id, $type = PermissionTypeEnum::READ, $specificTeamId = null, $returnNullInstead = false) {
-    if (globalSecurityBypass()) {
-        return $this;
-    }
+/**
+ * Optimized current team role retrieval
+ */
+if (!function_exists('currentTeamRole')) {
+    function currentTeamRole() 
+    {
+        if (!auth()->user()) {
+            return null;
+        }
 
-    if(checkAuthPermission($id, $type, $specificTeamId)) {
+        static $currentTeamRole = null;
+        static $lastUserId = null;
+        
+        // Reset cache if user changed
+        if ($lastUserId !== auth()->id()) {
+            $currentTeamRole = null;
+            $lastUserId = auth()->id();
+        }
+        
+        if ($currentTeamRole === null) {
+            if (!auth()->user()->current_team_role_id) {
+                auth()->user()->switchToFirstTeamRole();
+            }
+
+            $currentTeamRole = \Cache::remember(
+                'currentTeamRole' . auth()->id(), 
+                900, // 15 minutes
+                fn() => auth()->user()->currentTeamRole
+            );
+        }
+
+        return $currentTeamRole;
+    }
+}
+
+/**
+ * Optimized current team retrieval
+ */
+if (!function_exists('currentTeam')) {
+    function currentTeam() 
+    {
+        if (!auth()->user()) {
+            return null;
+        }
+
+        static $currentTeam = null;
+        static $lastUserId = null;
+        
+        // Reset cache if user changed
+        if ($lastUserId !== auth()->id()) {
+            $currentTeam = null;
+            $lastUserId = auth()->id();
+        }
+        
+        if ($currentTeam === null) {
+            $currentTeam = \Cache::remember(
+                'currentTeam' . auth()->id(), 
+                900,
+                fn() => currentTeamRole()?->team
+            );
+        }
+
+        return $currentTeam;
+    }
+}
+
+/**
+ * Optimized current team ID retrieval
+ */
+if (!function_exists('currentTeamId')) {
+    function currentTeamId() 
+    {
+        return currentTeam()?->id;
+    }
+}
+
+/**
+ * Optimized current permissions retrieval
+ */
+if (!function_exists('currentPermissions')) {
+    function currentPermissions() 
+    {
+        if (!auth()->user()) {
+            return collect();
+        }
+
+        static $permissions = null;
+        static $lastUserId = null;
+        
+        // Reset cache if user changed
+        if ($lastUserId !== auth()->id()) {
+            $permissions = null;
+            $lastUserId = auth()->id();
+        }
+        
+        if ($permissions === null) {
+            $permissions = \Cache::rememberWithTags(
+                ['permissions-v2'], 
+                'currentPermissions' . auth()->id(), 
+                900,
+                function() {
+                    $resolver = app(PermissionResolver::class);
+                    return $resolver->getUserPermissionsOptimized(auth()->id());
+                }
+            );
+        }
+
+        return $permissions;
+    }
+}
+
+/**
+ * Check if current user is super admin with caching
+ */
+if (!function_exists('isAppSuperAdmin')) {
+    function isAppSuperAdmin(): bool
+    {
+        if (!auth()->user()) {
+            return false;
+        }
+
+        static $isSuperAdmin = null;
+        static $lastUserId = null;
+        
+        // Reset cache if user changed
+        if ($lastUserId !== auth()->id()) {
+            $isSuperAdmin = null;
+            $lastUserId = auth()->id();
+        }
+        
+        if ($isSuperAdmin === null) {
+            $isSuperAdmin = \Cache::remember(
+                'isSuperAdmin' . auth()->id(),
+                3600, // 1 hour
+                fn() => auth()->user()->hasAccessToTeam(1, 'super-admin')
+            );
+        }
+
+        return $isSuperAdmin;
+    }
+}
+
+/**
+ * Batch permission checking for multiple resources
+ */
+if (!function_exists('batchCheckPermissions')) {
+    function batchCheckPermissions(array $permissions, PermissionTypeEnum $type = PermissionTypeEnum::READ): array
+    {
+        if (globalSecurityBypass()) {
+            return array_fill_keys($permissions, true);
+        }
+
+        if (!auth()->user()) {
+            return array_fill_keys($permissions, false);
+        }
+
+        $resolver = app(PermissionResolver::class);
+        $results = [];
+        
+        foreach ($permissions as $permission) {
+            $results[$permission] = $resolver->userHasPermission(
+                auth()->id(),
+                $permission,
+                $type
+            );
+        }
+        
+        return $results;
+    }
+}
+
+/**
+ * Performance-optimized macro extensions
+ */
+\Kompo\Elements\BaseElement::macro('checkAuth', function ($id, $type = PermissionTypeEnum::READ, $specificTeamId = null, $returnNullInstead = false) {
+    // Use static cache for repeated checks in same request
+    static $permissionCache = [];
+    $cacheKey = $id . '|' . $type->value . '|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest');
+    
+    if (!isset($permissionCache[$cacheKey])) {
+        $permissionCache[$cacheKey] = checkAuthPermission($id, $type, $specificTeamId);
+    }
+    
+    if ($permissionCache[$cacheKey]) {
         return $this;
     }
 
@@ -56,7 +256,6 @@ if (!function_exists('bypassSecurityInThisRunningContext')) {
         return null;
     }
 
-    // TODO: It might be that we'll need to return a null element here, to avoid rendering the element.
     return (new ($this::class))->class('hidden');
 });
 
@@ -65,11 +264,14 @@ if (!function_exists('bypassSecurityInThisRunningContext')) {
 });
 
 Field::macro('readOnlyIfNotAuth', function ($id, $specificTeamId = null) {
-    if (globalSecurityBypass()) {
-        return $this;
+    static $permissionCache = [];
+    $cacheKey = $id . '|write|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest');
+    
+    if (!isset($permissionCache[$cacheKey])) {
+        $permissionCache[$cacheKey] = checkAuthPermission($id, PermissionTypeEnum::WRITE, $specificTeamId);
     }
-
-    if(checkAuthPermission($id, PermissionTypeEnum::WRITE, $specificTeamId)) {
+    
+    if ($permissionCache[$cacheKey]) {
         return $this;
     }
 
@@ -77,11 +279,14 @@ Field::macro('readOnlyIfNotAuth', function ($id, $specificTeamId = null) {
 });
 
 \Kompo\Html::macro('hashIfNotAuth', function ($id, $specificTeamId = null, $minChars = 12) {
-    if (globalSecurityBypass()) {
-        return $this;
+    static $permissionCache = [];
+    $cacheKey = $id . '|read|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest');
+    
+    if (!isset($permissionCache[$cacheKey])) {
+        $permissionCache[$cacheKey] = checkAuthPermission($id, PermissionTypeEnum::READ, $specificTeamId);
     }
-
-    if(checkAuthPermission($id, PermissionTypeEnum::READ, $specificTeamId)) {
+    
+    if ($permissionCache[$cacheKey]) {
         return $this;
     }
 
@@ -91,11 +296,14 @@ Field::macro('readOnlyIfNotAuth', function ($id, $specificTeamId = null) {
 });
 
 Field::macro('hashIfNotAuth', function ($id, $specificTeamId = null, $minChars = 12) {
-    if (globalSecurityBypass()) {
-        return $this;
+    static $permissionCache = [];
+    $cacheKey = $id . '|read|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest');
+    
+    if (!isset($permissionCache[$cacheKey])) {
+        $permissionCache[$cacheKey] = checkAuthPermission($id, PermissionTypeEnum::READ, $specificTeamId);
     }
-
-    if(checkAuthPermission($id, PermissionTypeEnum::READ, $specificTeamId)) {
+    
+    if ($permissionCache[$cacheKey]) {
         return $this;
     }
 
@@ -117,48 +325,195 @@ Field::macro('hashAndReadOnlyIfNotAuth', function ($id, $specificTeamId = null, 
     return $this->hashIfNotAuth("{$id}.sensibleColumns", $specificTeamId, minChars: $minChars)->readOnlyIfNotAuth($id, $specificTeamId)->readOnlyIfNotAuth("{$id}.sensibleColumns", $specificTeamId);
 });
 
-if (!function_exists('_LinkAlreadyHaveAccount')) {
-    function _LinkAlreadyHaveAccount()
+/**
+ * Optimized user info functions with caching
+ */
+if (!function_exists('authUser')) {
+    function authUser()
     {
-        return _Link('auth-i-already-have-an-account-log-in-instead')->class('text-sm text-gray-600 self-center')->href('login');
-    }
-}
-
-if (!function_exists('_ProfileImg')) {
-    function _ProfileImg($user, $sizeClass = 'h-8 w-8')
-    {
-        if (!$user?->profile_photo_url) {
-            return null;
+        static $user = null;
+        static $lastCheck = null;
+        
+        // Only cache for current request to avoid stale data
+        if ($lastCheck !== request()) {
+            $user = auth()->user();
+            $lastCheck = request();
         }
-
-        return _Img($user?->profile_photo_url)
-            ->class($sizeClass)
-            ->class('rounded-full object-cover border');
+        
+        return $user;
     }
 }
 
-if (!function_exists('_UserImgDate')) {
-    function _UserImgDate($user, $date)
+if (!function_exists('authId')) {
+    function authId()
     {
-        return _Flex(
-            _ProfileImg($user),
-            _Rows(
-                _Html($user?->name),
-                _DiffDate($date),
-            )->class('text-xs text-gray-600')
-        )->class('space-x-2');
+        return authUser()?->id;
     }
 }
 
-/* FIELDS */
+/**
+ * Memory-efficient role checking
+ */
+if (!function_exists('isTeamOwner')) {
+    function isTeamOwner(): bool
+    {
+        static $isOwner = null;
+        static $lastUserId = null;
+        
+        if ($lastUserId !== auth()->id()) {
+            $isOwner = null;
+            $lastUserId = auth()->id();
+        }
+        
+        if ($isOwner === null) {
+            $isOwner = authUser()?->isTeamOwner() ?? false;
+        }
+        
+        return $isOwner;
+    }
+}
+
+if (!function_exists('isSuperAdmin')) {
+    function isSuperAdmin(): bool
+    {
+        static $isSuperAdmin = null;
+        static $lastUserId = null;
+        
+        if ($lastUserId !== auth()->id()) {
+            $isSuperAdmin = null;
+            $lastUserId = auth()->id();
+        }
+        
+        if ($isSuperAdmin === null) {
+            $isSuperAdmin = authUser()?->isSuperAdmin() ?? false;
+        }
+        
+        return $isSuperAdmin;
+    }
+}
+
+/**
+ * Clear all auth-related static caches
+ */
+if (!function_exists('clearAuthStaticCache')) {
+    function clearAuthStaticCache(): void
+    {
+        // This function helps with testing or when user switches
+        // The static variables will be reset on next function calls
+        \Cache::forget('currentTeamRole' . (auth()->id() ?? 0));
+        \Cache::forget('currentTeam' . (auth()->id() ?? 0));
+        \Cache::forget('isSuperAdmin' . (auth()->id() ?? 0));
+    }
+}
+
+/**
+ * Performance monitoring helpers
+ */
+if (!function_exists('startPermissionTimer')) {
+    function startPermissionTimer(string $operation): void
+    {
+        if (config('kompo-auth.monitor-performance', false)) {
+            app('permission-performance-monitor')->startTimer($operation);
+        }
+    }
+}
+
+if (!function_exists('endPermissionTimer')) {
+    function endPermissionTimer(string $operation): array
+    {
+        if (config('kompo-auth.monitor-performance', false)) {
+            return app('permission-performance-monitor')->endTimer($operation);
+        }
+        
+        return [];
+    }
+}
+
+/**
+ * Enhanced validation rule functions
+ */
+if (!function_exists('registerRules')) {
+    function registerRules(): array
+    {
+        static $rules = null;
+        
+        if ($rules === null) {
+            $rules = array_merge(namesRules(), [
+                'password' => passwordRules(),
+                'terms' => ['required', 'accepted'],
+            ]);
+        }
+        
+        return $rules;
+    }
+}
+
+if (!function_exists('namesRules')) {
+    function namesRules(): array
+    {
+        static $rules = null;
+        
+        if ($rules === null) {
+            $rules = config('kompo-auth.register_with_first_last_name') ? [
+                'first_name' => ['required', 'string', 'max:255'],
+                'last_name' => ['required', 'string', 'max:255'],
+            ] : [
+                'name' => ['required', 'string', 'max:255'],
+            ];
+        }
+        
+        return $rules;
+    }
+}
+
+if (!function_exists('passwordRules')) {
+    function passwordRules(): array
+    {
+        static $rules = null;
+        
+        if ($rules === null) {
+            $passwordRules = new \Laravel\Fortify\Rules\Password();
+            $rules = [
+                'required', 
+                'string', 
+                $passwordRules->requireUppercase()->requireNumeric()->requireSpecialCharacter(), 
+                'confirmed'
+            ];
+        }
+        
+        return $rules;
+    }
+}
+
+if (!function_exists('baseEmailRules')) {
+    function baseEmailRules(): array
+    {
+        static $rules = null;
+        
+        if ($rules === null) {
+            $rules = ['required', 'string', 'email', 'max:255'];
+        }
+        
+        return $rules;
+    }
+}
+
+/**
+ * Memory-efficient UI component functions
+ */
 if (!function_exists('_InputRegisterNames')) {
     function _InputRegisterNames($defaultName1 = null, $defaultName2 = null)
     {
-        return config('kompo-auth.register_with_first_last_name') ? _Rows(
+        static $useFirstLastName = null;
+        
+        if ($useFirstLastName === null) {
+            $useFirstLastName = config('kompo-auth.register_with_first_last_name');
+        }
+        
+        return $useFirstLastName ? _Rows(
             _Input('auth-your-first-name1')->name('first_name')->default($defaultName1),
             _Input('auth-your-last-name')->name('last_name')->default($defaultName2),
-        ) : 
-        _Input('auth-your-name')->name('name')->default($defaultName1);
+        ) : _Input('auth-your-name')->name('name')->default($defaultName1);
     }
 }
 
@@ -175,139 +530,57 @@ if (!function_exists('_InputRegisterPasswords')) {
 if (!function_exists('_CheckboxTerms')) {
     function _CheckboxTerms()
     {
-        return _Checkbox(__('auth-register-i-agree-to').' '.'<a href="'.url('privacy').'" class="underline" target="_blank">'.__('register.the-terms').'</a>')
-            ->name('terms', false);
+        static $termsHtml = null;
+        
+        if ($termsHtml === null) {
+            $termsHtml = __('auth-register-i-agree-to') . ' ' . 
+                        '<a href="' . url('privacy') . '" class="underline" target="_blank">' . 
+                        __('register.the-terms') . '</a>';
+        }
+        
+        return _Checkbox($termsHtml)->name('terms', false);
     }
 }
 
-
-// RULES
-if (!function_exists('registerRules')) {
-    function registerRules()
+/**
+ * Profile image functions with caching
+ */
+if (!function_exists('_ProfileImg')) {
+    function _ProfileImg($user, $sizeClass = 'h-8 w-8')
     {
-        return array_merge(namesRules(), [
-            'password' => passwordRules(),
-            'terms' => ['required', 'accepted'],
-        ]);
+        if (!$user?->profile_photo_url) {
+            return null;
+        }
+
+        return _Img($user->profile_photo_url)
+            ->class($sizeClass)
+            ->class('rounded-full object-cover border');
     }
 }
 
-if (!function_exists('namesRules')) {
-    function namesRules()
-    {
-        return config('kompo-auth.register_with_first_last_name') ? [
-            'first_name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-        ] : [
-            'name' => ['required', 'string', 'max:255'],
-        ];
-    }
-}
-
-if (!function_exists('passwordRules')) {
-    function passwordRules()
-    {
-        $passwordRules = new \Laravel\Fortify\Rules\Password();
-
-        return ['required', 'string', $passwordRules->requireUppercase()->requireNumeric()->requireSpecialCharacter(), 'confirmed'];
-    }
-}
-
-if(!function_exists('baseEmailRules')) {
-    function baseEmailRules()
-    {
-        return ['required', 'string', 'email', 'max:255'];
-    }
-}
-
-/* ACTIONS */
-if(!function_exists('fireRegisteredEvent')) {
-    function fireRegisteredEvent($user)
-    {
-        //event(new \Illuminate\Auth\Events\Registered($user)); //uncomment if needed
-    }
-}
-
-
-/** Current Team, Roles, etc */
-if(!function_exists('currentTeamRoleId')) {
+/**
+ * Optimize memory by using more efficient caching for frequently called functions
+ */
+if (!function_exists('currentTeamRoleId')) {
     function currentTeamRoleId() 
     {
-        if (!auth()->user()) {
-            return;
-        }
-
-        if (!auth()->user()->current_team_role_id) {
-            auth()->user()->switchToFirstTeamRole();
-        }
-
-        return auth()->user()->current_team_role_id;
+        return currentTeamRole()?->id;
     }
 }
 
-if(!function_exists('currentTeamRole')) {
-    function currentTeamRole() 
+/**
+ * Cleanup function for memory management
+ */
+if (!function_exists('cleanupAuthHelperCache')) {
+    function cleanupAuthHelperCache(): void
     {
-        if (!auth()->user()) {
-            return;
+        // This function can be called to clear all static caches
+        // Useful in long-running processes or testing
+        clearAuthStaticCache();
+        
+        // Clear resolver cache if needed
+        if (app()->bound(PermissionResolver::class)) {
+            app(PermissionResolver::class)->clearAllCache();
         }
-
-        if (!auth()->user()->current_team_role_id) {
-            auth()->user()->switchToFirstTeamRole();
-        }
-
-        return \Cache::remember('currentTeamRole'.auth()->id(), 120,
-            fn() => auth()->user()->currentTeamRole
-        );
-    }
-}
-
-if(!function_exists('currentPermissions')) {
-    function currentPermissions() 
-    {
-        if (!auth()->user()) {
-            return;
-        }
-
-        if (!auth()->user()->current_team_role_id) {
-            auth()->user()->switchToFirstTeamRole();
-        }
-
-        return \Cache::rememberWithTags(['permissions'], 'currentPermissions'.auth()->id(), 120,
-            fn() => auth()->user()->currentTeamRole->permissions()->pluck('complex_permission_key')
-        );
-    }
-}
-
-if(!function_exists('currentTeam')) {
-    /**
-     * @return \Kompo\Auth\Models\Teams\Team|null The current team
-     */
-    function currentTeam() 
-    {
-        if (!auth()->user()) {
-            return;
-        }
-
-        return \Cache::remember('currentTeam'.auth()->id(), 120,
-            fn() => currentTeamRole()->team
-        );
-    }
-}
-
-if(!function_exists('currentTeamId')) {
-    function currentTeamId() 
-    {
-        if (!auth()->user()) {
-            return;
-        }
-        return currentTeamRole()->team_id;
-    }
-}
-
-if (!function_exists('isSuperAdmin')) {
-    function isAppSuperAdmin()
-    {
-        return auth()->user() && auth()->user()->hasAccessToTeam(1, 'super-admin');
     }
 }

@@ -42,19 +42,24 @@ if (!function_exists('isImpersonated')) {
 	}
 }
 
-
+/**
+ * Optimized role retrieval functions
+ */
 function getRoles()
 {
-	return Role::orderBy('name')->get();
+    return \Cache::remember('roles_all', 3600, function() {
+        return \Kompo\Auth\Models\Teams\Roles\Role::orderBy('name')->get();
+    });
 }
 
 function getRolesOrderedByRelevance()
 {
-	return \Cache::remember('roles', 10800, function () {
-		return Role::query()
-			->withCount('teamRoles')->orderByDesc('team_roles_count')
-			->get();
-	});
+    return \Cache::remember('roles_by_relevance', 10800, function() {
+        return \Kompo\Auth\Models\Teams\Roles\Role::query()
+            ->withCount('teamRoles')
+            ->orderByDesc('team_roles_count')
+            ->get();
+    });
 }
 
 const PERMISSION_SEPARATOR = ':';

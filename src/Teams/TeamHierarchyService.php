@@ -30,7 +30,7 @@ class TeamHierarchyService
     /**
      * Gets descendants with assigned roles (for role switcher)
      */
-    public function getDescendantTeamsWithRole(int $teamId, string $role, string $search = ''): Collection
+    public function getDescendantTeamsWithRole(int $teamId, string $role, ?string $search = ''): Collection
     {
         $cacheKey = "descendants_with_role.{$teamId}.{$role}." . md5($search);
         
@@ -67,7 +67,7 @@ class TeamHierarchyService
     /**
      * Gets teams from the same level (siblings)
      */
-    public function getSiblingTeamIds(int $teamId, string $search = ''): Collection
+    public function getSiblingTeamIds(int $teamId, ?string $search = ''): Collection
     {
         $cacheKey = "siblings.{$teamId}";
         
@@ -99,7 +99,7 @@ class TeamHierarchyService
     /**
      * Optimized query using recursive CTE for descendants
      */
-    private function executeDescendantsQuery(int $teamId, string $search = '', ?int $maxDepth = null): Collection
+    private function executeDescendantsQuery(int $teamId, ?string $search = '', ?int $maxDepth = null): Collection
     {
         $maxDepthCondition = $maxDepth ? "AND depth < {$maxDepth}" : '';
         $searchCondition = $search ? "and team_name LIKE %{$search}%" : '';
@@ -128,7 +128,7 @@ class TeamHierarchyService
     /**
      * Optimized query for descendants with specific role
      */
-    private function executeDescendantsWithRoleQuery(int $teamId, string $role, string $search = ''): Collection
+    private function executeDescendantsWithRoleQuery(int $teamId, string $role, ?string $search = ''): Collection
     {
         $searchCondition = $search ? "AND t.team_name LIKE ?" : '';
         $params = [$teamId, $role];
@@ -207,7 +207,7 @@ class TeamHierarchyService
     /**
      * Query to get siblings (same parent_team_id)
      */
-    private function executeSiblingsQuery(int $teamId, string $search = ''): Collection
+    private function executeSiblingsQuery(int $teamId, ?string $search = ''): Collection
     {
         $searchCondition = $search ? 'AND team_name LIKE %{$search}% ' : '';
 

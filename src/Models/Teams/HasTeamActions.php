@@ -10,6 +10,18 @@ use Kompo\Auth\Models\Teams\RoleHierarchyEnum;
  */
 trait HasTeamActions
 {
+    /**
+     * Create team owner role for a team
+     */
+    private function createTeamOwnerRole($team)
+    {
+        return $this->createTeamRole(
+            $team, 
+            config('kompo-auth.team-owner-role-key', 'owner'),
+            RoleHierarchyEnum::DIRECT
+        );
+    }
+
     public function createPersonalTeamAndOwnerRole()
     {
         $team = Team::forceCreate([

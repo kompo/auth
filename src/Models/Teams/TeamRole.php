@@ -290,6 +290,28 @@ class TeamRole extends Model
         }
 
         return $teams;
+    }    
+    
+    public function getAccessibleTeamsOptimized()
+    {
+        $cacheKey = "team_role_accessible.{$this->id}";
+          return \Cache::rememberWithTags(['permissions-v2'], $cacheKey, 900, function() {
+            $teams = collect([$this->team_id]);
+            $hierarchyService = app(\Kompo\Auth\Teams\TeamHierarchyService::class);
+
+            // Use batch operations for hierarchy
+            if ($this->getRoleHierarchyAccessBelow()) {
+                $descendants = $hierarchyService->getDescendantTeamIds($this->team_id);
+                $teams = $teams->concat($descendants);
+            }
+            
+            if ($this->getRoleHierarchyAccessNeighbors()) {
+                $siblings = $hierarchyService->getSiblingTeamIds($this->team_id);
+                $teams = $teams->concat($siblings);
+            }
+            
+            return $teams->unique()->values();
+        });
     }
 
     public function hasAccessToTeam($teamId)

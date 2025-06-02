@@ -1,6 +1,7 @@
 <?php
 
 use Condoedge\Utils\Kompo\Elements\ValidatedInput;
+use Kompo\Auth\Models\Plugins\HasSecurity;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Teams\PermissionResolver;
@@ -37,14 +38,12 @@ function checkAuthPermission($id, $type = PermissionTypeEnum::READ, $specificTea
 if (!function_exists('globalSecurityBypass')) {
     function globalSecurityBypass(): bool 
     {
-        static $bypass = null;
+        $bypass = false;
         
-        if ($bypass === null) {
-            if (app()->bound('kompo-auth.security-bypass')) {
-                $bypass = app()->make('kompo-auth.security-bypass')();
-            } else {
-                $bypass = config('kompo-auth.security.bypass-security', false);
-            }
+        if (app()->bound('kompo-auth.security-bypass')) {
+            $bypass = app()->make('kompo-auth.security-bypass')();
+        } else {
+            $bypass = config('kompo-auth.security.bypass-security', false);
         }
         
         return $bypass;
@@ -243,7 +242,7 @@ if (!function_exists('batchCheckPermissions')) {
     // Use static cache for repeated checks in same request
     static $permissionCache = [];
     $cacheKey = $id . '|' . $type->value . '|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest');
-    
+  
     if (!isset($permissionCache[$cacheKey])) {
         $permissionCache[$cacheKey] = checkAuthPermission($id, $type, $specificTeamId);
     }
@@ -582,5 +581,49 @@ if (!function_exists('cleanupAuthHelperCache')) {
         if (app()->bound(PermissionResolver::class)) {
             app(PermissionResolver::class)->clearAllCache();
         }
+    }
+}
+
+/**
+ * Execute a callback in bypass context to prevent infinite loops
+ * This is useful when querying related models for security checks
+ */
+if (!function_exists('executeInBypassContext')) {
+    function executeInBypassContext(callable $callback)
+    {
+        $wasInBypassContext = HasSecurity::isInBypassContext();
+        
+        if (!$wasInBypassContext) {
+            HasSecurity::enterBypassContext();
+        }
+        
+        try {
+            return $callback();
+        } finally {
+            if (!$wasInBypassContext) {
+                HasSecurity::exitBypassContext();
+            }
+        }
+    }
+}
+
+/**
+ * Check if we're currently in a bypass context
+ */
+if (!function_exists('isInBypassContext')) {
+    function isInBypassContext(): bool
+    {
+        return HasSecurity::isInBypassContext();
+    }
+}
+
+/**
+ * Safely query related models for security checks
+ * This prevents field protection from triggering during security bypass logic
+ */
+if (!function_exists('safeSecurityQuery')) {
+    function safeSecurityQuery(callable $queryCallback)
+    {
+        return executeInBypassContext($queryCallback);
     }
 }

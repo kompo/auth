@@ -88,9 +88,9 @@ class KompoAuthServiceProvider extends ServiceProvider
         Form::setPlugins([HasAuthorizationUtils::class]);
         Modal::setPlugins([HasAuthorizationUtils::class]);
 
-        // Register core services
+        // Register core services in correct order
         $this->registerCoreServices();
-        $this->registerPermissionServices();
+        $this->registerOptimizedPermissionServices();
         
         // Register route loading
         $this->booted(function () {
@@ -103,7 +103,7 @@ class KompoAuthServiceProvider extends ServiceProvider
      */
     private function registerCoreServices(): void
     {
-        // Security bypass service
+        // Security bypass service (highest priority)
         $this->app->singleton('kompo-auth.security-bypass', function ($app) {
             return function() {
                 if (app()->runningInConsole()) {
@@ -133,31 +133,37 @@ class KompoAuthServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register optimized permission services
+     * Register optimized permission services with proper dependency injection
      */
-    private function registerPermissionServices(): void
+    private function registerOptimizedPermissionServices(): void
     {
-        // Team hierarchy service
-        $this->app->singleton(TeamHierarchyService::class);
+        // Team hierarchy service (foundation service - no dependencies)
+        $this->app->singleton(TeamHierarchyService::class, function ($app) {
+            return new TeamHierarchyService();
+        });
         
-        // Permission resolver
+        // Permission resolver (depends on TeamHierarchyService)
         $this->app->singleton(PermissionResolver::class, function ($app) {
             return new PermissionResolver($app->make(TeamHierarchyService::class));
         });
         
-        // Permission cache manager
-        $this->app->singleton(PermissionCacheManager::class);
+        // Permission cache manager (depends on PermissionResolver)
+        $this->app->singleton(PermissionCacheManager::class, function ($app) {
+            return new PermissionCacheManager($app->make(PermissionResolver::class));
+        });
         
         // Performance monitoring service
         $this->app->singleton('permission-performance-monitor', function () {
             return new class {
                 private array $metrics = [];
+                private array $queryLog = [];
                 
                 public function startTimer(string $operation): void
                 {
                     $this->metrics[$operation] = [
                         'start_time' => microtime(true),
-                        'start_memory' => memory_get_usage(true)
+                        'start_memory' => memory_get_usage(true),
+                        'query_count_start' => count(\DB::getQueryLog())
                     ];
                 }
                 
@@ -168,16 +174,36 @@ class KompoAuthServiceProvider extends ServiceProvider
                     }
                     
                     $start = $this->metrics[$operation];
+                    $currentQueries = \DB::getQueryLog();
+                    $newQueries = array_slice($currentQueries, $start['query_count_start']);
                     
-                    return [
+                    $result = [
                         'execution_time_ms' => (microtime(true) - $start['start_time']) * 1000,
-                        'memory_used_bytes' => memory_get_usage(true) - $start['start_memory']
+                        'memory_used_bytes' => memory_get_usage(true) - $start['start_memory'],
+                        'queries_count' => count($newQueries),
+                        'slow_queries' => array_filter($newQueries, fn($q) => $q['time'] > 100)
                     ];
+                    
+                    // Clean up
+                    unset($this->metrics[$operation]);
+                    
+                    return $result;
                 }
                 
                 public function getMetrics(): array
                 {
                     return $this->metrics;
+                }
+                
+                public function logSlowOperation(string $operation, array $metrics): void
+                {
+                    if ($metrics['execution_time_ms'] > 500 || $metrics['queries_count'] > 10) {
+                        \Log::warning("Slow permission operation detected", [
+                            'operation' => $operation,
+                            'metrics' => $metrics,
+                            'user_id' => auth()->id()
+                        ]);
+                    }
                 }
             };
         });
@@ -188,110 +214,224 @@ class KompoAuthServiceProvider extends ServiceProvider
      */
     private function setupCacheMacros(): void
     {
+        // Enhanced cache macros with better error handling
         Cache::macro('rememberWithTags', function ($tags, $key, $ttl, $callback) {
-            if (Cache::supportsTags()) {
-                return Cache::tags($tags)->remember($key, $ttl, $callback);
+            try {
+                if (Cache::supportsTags()) {
+                    return Cache::tags($tags)->remember($key, $ttl, $callback);
+                }
+                return Cache::remember($key, $ttl, $callback);
+            } catch (\Exception $e) {
+                \Log::warning('Cache operation failed, executing callback directly', [
+                    'key' => $key,
+                    'tags' => $tags,
+                    'error' => $e->getMessage()
+                ]);
+                return $callback();
             }
-            return Cache::remember($key, $ttl, $callback);
         });
 
         Cache::macro('flushTags', function ($tags, $forceAll = true) {
-            if (Cache::supportsTags()) {
-                return Cache::tags($tags)->flush();
+            try {
+                if (Cache::supportsTags()) {
+                    return Cache::tags($tags)->flush();
+                }
+                return $forceAll ? Cache::flush() : null;
+            } catch (\Exception $e) {
+                \Log::warning('Cache flush failed', [
+                    'tags' => $tags,
+                    'error' => $e->getMessage()
+                ]);
+                return false;
             }
-            return $forceAll ? Cache::flush() : null;
         });
 
         Cache::macro('forgetTagsPattern', function ($tags, $pattern, $forceAll = true) {
-            if (Cache::supportsTags()) {
-                return Cache::tags($tags)->forget($pattern);
+            try {
+                if (Cache::supportsTags()) {
+                    return Cache::tags($tags)->forget($pattern);
+                }
+                return $forceAll ? Cache::flush() : null;
+            } catch (\Exception $e) {
+                \Log::warning('Cache pattern forget failed', [
+                    'tags' => $tags,
+                    'pattern' => $pattern,
+                    'error' => $e->getMessage()
+                ]);
+                return false;
             }
-            return $forceAll ? Cache::flush() : null;
         });
         
-        // New macro for intelligent cache warming
+        // Intelligent cache warming with failure tolerance
         Cache::macro('warmIfMissing', function ($key, $ttl, $callback, $tags = []) {
+            try {
+                $store = Cache::supportsTags() && !empty($tags) ? Cache::tags($tags) : Cache::store();
+                
+                if ($store->missing($key)) {
+                    $value = $callback();
+                    $store->put($key, $value, $ttl);
+                    return $value;
+                }
+                
+                return $store->get($key);
+            } catch (\Exception $e) {
+                \Log::warning('Cache warm operation failed, executing callback', [
+                    'key' => $key,
+                    'error' => $e->getMessage()
+                ]);
+                return $callback();
+            }
+        });
+
+        // Batch cache operations
+        Cache::macro('putMany', function ($items, $ttl, $tags = []) {
             $store = Cache::supportsTags() && !empty($tags) ? Cache::tags($tags) : Cache::store();
+            $failed = [];
             
-            if ($store->missing($key)) {
-                $value = $callback();
-                $store->put($key, $value, $ttl);
-                return $value;
+            foreach ($items as $key => $value) {
+                try {
+                    $store->put($key, $value, $ttl);
+                } catch (\Exception $e) {
+                    $failed[] = $key;
+                    \Log::warning("Failed to cache item: {$key}", ['error' => $e->getMessage()]);
+                }
             }
             
-            return $store->get($key);
+            return $failed;
         });
     }
 
     /**
-     * Setup performance monitoring
+     * Setup performance monitoring with configurable thresholds
      */
     private function setupPerformanceMonitoring(): void
     {
-        if (config('kompo-auth.monitor-performance', false)) {
-            // Register global middleware
-            $this->app['router']->pushMiddlewareToGroup('web', MonitorPermissionPerformance::class);
+        if (!config('kompo-auth.monitor-performance', false)) {
+            return;
+        }
 
-            // Setup memory threshold monitoring
-            register_shutdown_function(function() {
-                $memoryUsage = memory_get_peak_usage(true);
-                $memoryLimit = $this->parseMemoryLimit(ini_get('memory_limit'));
-                
-                if ($memoryUsage > ($memoryLimit * 0.9)) { // 90% threshold
-                    Log::warning('High memory usage detected', [
-                        'memory_used' => $this->formatBytes($memoryUsage),
-                        'memory_limit' => $this->formatBytes($memoryLimit),
-                        'usage_percentage' => round(($memoryUsage / $memoryLimit) * 100, 2),
-                        'user_id' => auth()->id(),
-                        'url' => request()->url() ?? 'N/A'
-                    ]);
+        // Register global middleware for web routes
+        $this->app['router']->pushMiddlewareToGroup('web', MonitorPermissionPerformance::class);
+
+        // Setup memory threshold monitoring with configurable limits
+        register_shutdown_function(function() {
+            $memoryUsage = memory_get_peak_usage(true);
+            $memoryLimit = $this->parseMemoryLimit(ini_get('memory_limit'));
+            $threshold = config('kompo-auth.performance.memory_threshold', 0.9);
+            
+            if ($memoryUsage > ($memoryLimit * $threshold)) {
+                Log::warning('High memory usage detected', [
+                    'memory_used' => $this->formatBytes($memoryUsage),
+                    'memory_limit' => $this->formatBytes($memoryLimit),
+                    'usage_percentage' => round(($memoryUsage / $memoryLimit) * 100, 2),
+                    'threshold_percentage' => $threshold * 100,
+                    'user_id' => auth()->id(),
+                    'url' => request()->url() ?? 'N/A',
+                    'request_id' => request()->header('X-Request-ID', 'N/A')
+                ]);
+            }
+        });
+
+        // Setup query monitoring for permission-related operations
+        if (config('kompo-auth.performance.monitor_queries', false)) {
+            \DB::listen(function ($query) {
+                if ($query->time > config('kompo-auth.performance.slow_query_threshold', 1000)) {
+                    $isPermissionQuery = str_contains($query->sql, 'permission') ||
+                                       str_contains($query->sql, 'team_role') ||
+                                       str_contains($query->sql, 'role');
+                    
+                    if ($isPermissionQuery) {
+                        Log::warning('Slow permission query detected', [
+                            'sql' => $query->sql,
+                            'bindings' => $query->bindings,
+                            'time' => $query->time,
+                            'user_id' => auth()->id()
+                        ]);
+                    }
                 }
             });
         }
     }
 
     /**
-     * Load commands
+     * Load commands with error handling
      */
     protected function loadCommands(): void
     {
-        $this->commands([
+        $commands = [
             WarmTeamHierarchyCache::class,
             OptimizePermissionCacheCommand::class,
-        ]);
+        ];
+
+        foreach ($commands as $command) {
+            try {
+                $this->commands([$command]);
+            } catch (\Exception $e) {
+                Log::warning("Failed to register command: {$command}", [
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
     }
 
     /**
-     * Load cron jobs
+     * Load cron jobs with better error handling
      */
     protected function loadCrons(): void
     {
-        $schedule = $this->app->make(Schedule::class);
-        
-        // Cache warming for critical users
-        $schedule->command('permissions:optimize-cache --warm')
-            ->hourly()
-            ->withoutOverlapping()
-            ->runInBackground();
-        
-        // Clear old cache statistics
-        $schedule->call(function () {
-            app(PermissionCacheManager::class)->clearAllCache();
-        })->daily();
+        $this->app->booted(function () {
+            $schedule = $this->app->make(Schedule::class);
+            
+            // Cache warming for critical users (with error handling)
+            $schedule->command('permissions:optimize-cache --warm')
+                ->hourly()
+                ->withoutOverlapping()
+                ->runInBackground()
+                ->onFailure(function () {
+                    Log::error('Failed to run permission cache warming');
+                });
+            
+            // Team hierarchy cache warming
+            $schedule->command('teams:warm-hierarchy-cache')
+                ->dailyAt('02:00')
+                ->withoutOverlapping()
+                ->runInBackground()
+                ->onFailure(function () {
+                    Log::error('Failed to run team hierarchy cache warming');
+                });
+            
+            // Clear old cache statistics and cleanup
+            $schedule->call(function () {
+                try {
+                    app(PermissionCacheManager::class)->clearOldStats();
+                    
+                    // Clear any orphaned cache keys
+                    if (Cache::supportsTags()) {
+                        Cache::tags(['permissions-v2-temp'])->flush();
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Cache cleanup failed', ['error' => $e->getMessage()]);
+                }
+            })->daily()->name('permission-cache-cleanup');
+        });
     }
 
     /**
-     * Load configuration files
+     * Load configuration files with validation
      */
     protected function loadConfig(): void
     {
-        $dirs = [
+        $configs = [
             'kompo-auth' => __DIR__.'/../config/kompo-auth.php',
             'kompo' => __DIR__. '/../config/kompo.php'
         ];
 
-        foreach ($dirs as $key => $path) {
-            $this->mergeConfigFrom($path, $key);
+        foreach ($configs as $key => $path) {
+            if (file_exists($path)) {
+                $this->mergeConfigFrom($path, $key);
+            } else {
+                Log::warning("Config file not found: {$path}");
+            }
         }
     }
     
@@ -306,28 +446,74 @@ class KompoAuthServiceProvider extends ServiceProvider
     }
 
     /**
-     * Load event listeners
+     * Load event listeners with optimized cache invalidation
      */
     protected function loadListeners(): void
     {
+        // Socialite events
         Event::listen(function (\SocialiteProviders\Manager\SocialiteWasCalled $event) {
             $event->extendSocialite('azure', \SocialiteProviders\Azure\Provider::class);
         });
 
+        // Auth events
         Event::listen(\Illuminate\Auth\Events\Login::class, \Kompo\Auth\Listeners\RecordSuccessLoginAttempt::class);
         Event::listen(\Illuminate\Auth\Events\Failed::class, \Kompo\Auth\Listeners\RecordFailedLoginAttempt::class);
         
-        // Permission cache invalidation listeners
+        // Optimized permission cache invalidation listeners
         Event::listen('eloquent.saved: ' . TeamRole::class, function ($teamRole) {
-            app(PermissionCacheManager::class)->invalidateByChange('team_role_changed', [
-                'user_ids' => [$teamRole->user_id]
-            ]);
+            try {
+                app(PermissionCacheManager::class)->invalidateByChange('team_role_changed', [
+                    'user_ids' => [$teamRole->user_id]
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('Failed to invalidate cache on team role save', [
+                    'team_role_id' => $teamRole->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
         });
         
         Event::listen('eloquent.deleted: ' . TeamRole::class, function ($teamRole) {
-            app(PermissionCacheManager::class)->invalidateByChange('team_role_changed', [
-                'user_ids' => [$teamRole->user_id]
-            ]);
+            try {
+                app(PermissionCacheManager::class)->invalidateByChange('team_role_changed', [
+                    'user_ids' => [$teamRole->user_id]
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('Failed to invalidate cache on team role delete', [
+                    'team_role_id' => $teamRole->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        });
+
+        // Role permission changes
+        Event::listen('eloquent.saved: ' . \Kompo\Auth\Models\Teams\Roles\Role::class, function ($role) {
+            try {
+                app(PermissionCacheManager::class)->invalidateByChange('role_permissions_changed', [
+                    'role_ids' => [$role->id]
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('Failed to invalidate cache on role save', [
+                    'role_id' => $role->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        });
+
+        // Team hierarchy changes
+        Event::listen('eloquent.saved: ' . config('kompo-auth.team-model-namespace'), function ($team) {
+            if ($team->isDirty('parent_team_id')) {
+                try {
+                    app(PermissionCacheManager::class)->invalidateByChange('team_hierarchy_changed', [
+                        'team_ids' => array_filter([$team->id, $team->parent_team_id, $team->getOriginal('parent_team_id')])
+                    ]);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to invalidate cache on team hierarchy change', [
+                        'team_id' => $team->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
         });
     }
 
@@ -336,12 +522,18 @@ class KompoAuthServiceProvider extends ServiceProvider
      */
     protected function loadMiddlewares(): void
     {
-        $this->app['router']->aliasMiddleware('sso.validate-driver', \Kompo\Auth\Http\Middleware\ValidateSsoDriver::class);
-        $this->app['router']->aliasMiddleware('monitor-permissions', MonitorPermissionPerformance::class);
+        $middlewares = [
+            'sso.validate-driver' => \Kompo\Auth\Http\Middleware\ValidateSsoDriver::class,
+            'monitor-permissions' => MonitorPermissionPerformance::class,
+        ];
+
+        foreach ($middlewares as $alias => $class) {
+            $this->app['router']->aliasMiddleware($alias, $class);
+        }
     }
 
     /**
-     * Register policies
+     * Register policies with error handling
      */
     protected function registerPolicies(): void
     {
@@ -350,8 +542,15 @@ class KompoAuthServiceProvider extends ServiceProvider
             \App\Models\User::class => \Kompo\Auth\Policies\UserPolicy::class,
         ];
 
-        foreach ($policies as $key => $value) {
-            \Gate::policy($key, $value);
+        foreach ($policies as $model => $policy) {
+            try {
+                \Gate::policy($model, $policy);
+            } catch (\Exception $e) {
+                Log::warning("Failed to register policy for {$model}", [
+                    'policy' => $policy,
+                    'error' => $e->getMessage()
+                ]);
+            }
         }
     }
 
@@ -361,6 +560,11 @@ class KompoAuthServiceProvider extends ServiceProvider
     protected function loadHelpers(): void
     {
         $helpersDir = __DIR__.'/Helpers';
+        
+        if (!is_dir($helpersDir)) {
+            return;
+        }
+
         $autoloadedHelpers = collect(\File::allFiles($helpersDir))->map(fn($file) => $file->getRealPath());
         
         $autoloadedHelpers->each(function ($path) {
@@ -375,6 +579,10 @@ class KompoAuthServiceProvider extends ServiceProvider
      */
     private function parseMemoryLimit(string $limit): int
     {
+        if ($limit === '-1') {
+            return PHP_INT_MAX; // Unlimited
+        }
+
         $unit = strtolower(substr($limit, -1));
         $amount = (int) substr($limit, 0, -1);
         

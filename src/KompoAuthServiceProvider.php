@@ -2,7 +2,6 @@
 
 namespace Kompo\Auth;
 
-use Condoedge\Utils\CondoedgeUtilsServiceProvider;
 use Condoedge\Utils\Kompo\Common\Modal;
 use Condoedge\Utils\Kompo\Common\Query;
 use Condoedge\Utils\Models\ModelBase;
@@ -15,6 +14,8 @@ use Illuminate\Support\ServiceProvider;
 use Kompo\Auth\Common\Plugins\HasAuthorizationUtils;
 use Kompo\Auth\Models\Plugins\HasSecurity;
 use Condoedge\Utils\Kompo\Common\Form;
+use Kompo\Auth\Commands\WarmTeamHierarchyCache;
+use Kompo\Auth\Teams\TeamHierarchyService;
 
 class KompoAuthServiceProvider extends ServiceProvider
 {
@@ -78,9 +79,17 @@ class KompoAuthServiceProvider extends ServiceProvider
             return Cache::remember($key, $ttl, $callback);
         });
 
-        Cache::macro('flushTags', function ($tags, $forceAll = false) {
+        Cache::macro('flushTags', function ($tags, $forceAll = true) {
             if (Cache::supportsTags()) {
                 return Cache::tags($tags)->flush();
+            }
+
+            return $forceAll ? Cache::flush() : null;
+        });
+
+        Cache::macro('forgetTagsPattern', function ($tags, $pattern, $forceAll = true) {
+            if (Cache::supportsTags()) {
+                return Cache::tags($tags)->forget($pattern);
             }
 
             return $forceAll ? Cache::flush() : null;
@@ -125,7 +134,7 @@ class KompoAuthServiceProvider extends ServiceProvider
                     return true;
                 }
 
-                if (in_array(auth()->user()?->email, config('kompo-auth.superadmin-emails', []))) {
+                if (auth()->user()?->isSuperAdmin()) {
                     return true;
                 }
                 
@@ -149,6 +158,8 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->app->bind('role-model', function () {
             return new (config('kompo-auth.role-model-namespace'));
         });
+
+        $this->app->singleton(TeamHierarchyService::class);
     }
 
     protected function loadHelpers()
@@ -221,9 +232,9 @@ class KompoAuthServiceProvider extends ServiceProvider
 
     protected function loadCommands()
     {
-        // $this->commands([
-
-        // ]);
+        $this->commands([
+            WarmTeamHierarchyCache::class,
+        ]);
     }
 
     protected function loadCrons()

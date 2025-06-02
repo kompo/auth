@@ -223,6 +223,38 @@ protected $restrictByTeam = true;
 protected $sensibleColumns = ['secret_field', 'confidential_data'];
 ```
 
+4. For team-based restrictions, you can use the `scopeSecurityForTeams` method for mass record restrictions or the `getTeamOwnersIds` method for individual record restrictions:
+
+#### Mass Record Restrictions
+
+The `scopeSecurityForTeams` method allows you to apply custom logic for restricting records by team. For example:
+
+```php
+public function scopeSecurityForTeams($query, $teamIds)
+{
+    $query->whereIn('team_id', $teamIds);
+}
+```
+
+#### Individual Record Restrictions
+
+The `getTeamOwnersIds` method determines the team ownership of an individual record. Ensure your model implements the `securityRelatedTeamIds` method or has a `team_id` column:
+
+```php
+// Method to define security-related team IDs
+public function securityRelatedTeamIds()
+{
+    return $this->teams->pluck('id')->toArray();
+}
+
+// Alternatively, ensure the team_id column exists
+Schema::table('your_table', function (Blueprint $table) {
+    $table->unsignedBigInteger('team_id');
+});
+```
+
+If neither is implemented, the record will not be restricted by team. This logic complements the `scopeSecurityForTeams` method for broader team-based restrictions.
+
 ### Bypass Security When Needed
 
 There are several ways to bypass security checks when necessary:
@@ -322,6 +354,7 @@ _Rows(
 _Button('Delete')
     ->checkAuth(
         'Record',                        // Resource to check
+        PermissionTypeEnum::WRITE,       // Permission type (READ, WRITE, ALL, DENY)
         $teamId,                         // Team ID (optional)
         false                            // Retun null instead of a void element
     );

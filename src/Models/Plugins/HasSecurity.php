@@ -2,11 +2,13 @@
 
 namespace Kompo\Auth\Models\Plugins;
 
+use Kompo\Auth\Facades\TeamModel;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\Roles\PermissionException;
 use Condoedge\Utils\Models\Plugins\ModelPlugin;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use LogicException;
 
@@ -111,7 +113,7 @@ class HasSecurity extends ModelPlugin
         $hasUserOwnedRecordsScope = $this->modelHasMethod('scopeUserOwnedRecords');
         
         // For models not restricted by team
-        if (!$this->restrictByTeam()) {
+        if (!$this->massRestrictByTeam()) {
             $this->applyNonTeamReadSecurity($builder, $hasUserOwnedRecordsScope);
         } else {
             // For team-restricted models
@@ -132,8 +134,10 @@ class HasSecurity extends ModelPlugin
                 // Allow access to user's own records
                 $q->userOwnedRecords();
             })->when(!$hasUserOwnedRecordsScope, function ($q) {
-                // Block all records if user ownership scope not available
-                $q->where('user_id', auth()->user()?->id);
+                if (Schema::hasColumn((new ($this->modelClass))->getTable(), 'user_id')) {
+                    // Allow access to user's own records if user_id column exists
+                    $q->where('user_id', auth()->user()?->id);
+                }
             });
         }
     }
@@ -156,9 +160,9 @@ class HasSecurity extends ModelPlugin
             if ($this->modelHasMethod('scopeSecurityForTeams')) {
                 // Custom team security logic
                 $q->securityForTeams($teamIds);
-            } else {
+            } else if($teamIdCol = $this->getTeamIdColumn()) {
                 // Standard team column filter
-                $q->whereIn($this->getTeamIdColumn(), $teamIds);
+                $q->whereIn($teamIdCol, $teamIds);
             }
 
             // Allow access to user's own records regardless of team
@@ -167,7 +171,10 @@ class HasSecurity extends ModelPlugin
                     $sq->userOwnedRecords();
                 });
             } else {
-                $q->orWhere('user_id', auth()->user()?->id);
+                if (Schema::hasColumn((new ($this->modelClass))->getTable(), 'user_id')) {
+                    // Allow access to user's own records if user_id column exists
+                    $q->orWhere('user_id', auth()->user()?->id);
+                }
             }
         });
     }
@@ -198,8 +205,7 @@ class HasSecurity extends ModelPlugin
         }
 
         // Enforce write permissions if configured
-        if ($this->modelHasProperty($model, 'saveSecurityRestrictions') && 
-            getPrivateProperty($model, 'saveSecurityRestrictions')) {
+        if ($this->hasSaveSecurityRestrictions()) {
             $this->checkWritePermissions($model);
         }
     }
@@ -230,8 +236,7 @@ class HasSecurity extends ModelPlugin
         }
 
         // Enforce delete permissions if configured
-        if ($this->modelHasProperty($model, 'deleteSecurityRestrictions') && 
-            getPrivateProperty($model, 'deleteSecurityRestrictions')) {
+        if ($this->hasDeleteSecurityRestrictions()) {
             $this->checkWritePermissions($model);
         }
     }
@@ -303,8 +308,7 @@ class HasSecurity extends ModelPlugin
         $sensibleColumns = getPrivateProperty($model, 'sensibleColumns');
 
         // Get team context for team-specific permissions
-        $teamsIdsRelated = $this->modelHasMethod($model, 'securityRelatedTeamIds') ? 
-            callPrivateMethod($model, 'securityRelatedTeamIds') : null;
+        $teamsIdsRelated = $this->getTeamOwnersIds($model);
 
         // Remove sensitive fields if permission check fails
         if (!auth()->user()?->hasPermission($sensibleColumnsKey, PermissionTypeEnum::READ, $teamsIdsRelated)) {
@@ -369,14 +373,14 @@ class HasSecurity extends ModelPlugin
         }
 
         // For non-team-restricted models
-        if (!$this->restrictByTeam() && 
+        if (!$this->individualRestrictByTeam($model) && 
             !auth()->user()?->hasPermission($this->getPermissionKey(), PermissionTypeEnum::WRITE)) {
             throw new PermissionException(__('permissions-you-do-not-have-write-permissions'));
         }
 
         // For team-restricted models
-        if ($this->restrictByTeam() && 
-            !auth()->user()?->hasPermission($this->getPermissionKey(), PermissionTypeEnum::WRITE, $model->{$this->getTeamIdColumn()})) {
+        if ($this->individualRestrictByTeam($model) && 
+            !auth()->user()?->hasPermission($this->getPermissionKey(), PermissionTypeEnum::WRITE, $this->getTeamOwnersIds($model))) {
             throw new PermissionException(__('permissions-you-do-not-have-write-permissions'));
         }
         
@@ -459,7 +463,6 @@ class HasSecurity extends ModelPlugin
     protected function hasBypassMethod($model)
     {
         if (method_exists($model, 'isSecurityBypassRequired')) {
-            $model->_bypassSecurity = true;
             return $model->securityHasBeenBypassed();
         }
         
@@ -475,7 +478,6 @@ class HasSecurity extends ModelPlugin
     protected function hasBypassByUserId($model)
     {
         if ($model->getAttribute('user_id') && auth()->user()) {
-            $model->_bypassSecurity = true;
             return $model->getAttribute('user_id') === auth()->user()->id;
         }
         
@@ -491,7 +493,6 @@ class HasSecurity extends ModelPlugin
     protected function hasBypassByAllowlist($model)
     {
         if (method_exists($model, 'usersIdsAllowedToManage') && auth()->user()) {
-            $model->_bypassSecurity = true;
             return collect($model->usersIdsAllowedToManage())->contains(auth()->user()->id);
         }
         
@@ -507,7 +508,6 @@ class HasSecurity extends ModelPlugin
     protected function hasBypassByScope($model)
     {
         if (method_exists($model, 'scopeUserOwnedRecords') && auth()->user()) {
-            $model->_bypassSecurity = true;
             return $model->userOwnedRecords()->where('id', $model->id)->exists();
         }
         
@@ -584,34 +584,93 @@ class HasSecurity extends ModelPlugin
      * 
      * @return bool True if team restrictions apply
      */
-    protected function restrictByTeam()
+    protected function massRestrictByTeam()
     {
+        $restrictByTeam = false;
+
         if (property_exists($this->modelClass, 'restrictByTeam')) {
-            return getPrivateProperty(new ($this->modelClass), 'restrictByTeam');
+            $restrictByTeam = getPrivateProperty(new ($this->modelClass), 'restrictByTeam');
+        } else {
+            $restrictByTeam = config('kompo-auth.security.default-restrict-by-team', true);
         }
 
-        $table = (new ($this->modelClass))->getTable();
+        if ($restrictByTeam && (!method_exists($this->modelClass, 'scopeSecurityForTeams') && !$this->getTeamIdColumn())) {
+            $restrictByTeam = false;
 
-        // Auto-detect team columns if securityForTeams scope exists or team_id column exists
-        if (method_exists($this->modelClass, 'scopeSecurityForTeams') || Schema::hasColumn($table, 'team_id')) {
-            return config('kompo-auth.security.default-restrict-by-team', true);
+            Log::error('The model ' . $this->modelClass . ' is not properly configured for team restrictions. For now it will not be restricted by team. Please implement scopeSecurityForTeams or ensure team_id column exists.');
         }
+
+        return $restrictByTeam;
+    }
+
+    protected function individualRestrictByTeam($model)
+    {
+        $restrictByTeam = false;
+
+        if (property_exists($model, 'restrictByTeam')) {
+            $restrictByTeam = getPrivateProperty($model, 'restrictByTeam');
+        } else {
+            $restrictByTeam = config('kompo-auth.security.default-restrict-by-team', true);
+        }
+
+        if ($restrictByTeam && $this->getTeamOwnersIds($model) === false) {
+            $restrictByTeam = false;
+
+            Log::error('The model ' . $this->modelClass . ' is not properly configured for team restrictions. For now it will not be restricted by team. Please implement securityRelatedTeamIds or ensure team_id column exists for individual checks.');
+        }
+
+        return $restrictByTeam;
+    }
+
+    /**
+     * Retrieves the team owner IDs for a given model.
+     *
+     * This method is used to restrict individual records by team. It checks for the
+     * `securityRelatedTeamIds` method or the presence of a `team_id` column. If neither
+     * is available, the record will not be restricted by team.
+     *
+     * @param mixed $model The model instance
+     * @return mixed The team owner IDs or false if not configured properly
+     */
+    protected function getTeamOwnersIds($model)
+    {
+        if ($this->modelHasMethod($model, 'securityRelatedTeamIds')) {
+            return callPrivateMethod($model, 'securityRelatedTeamIds');
+        }
+
+        if ($model::class == TeamModel::getClass()) {
+            return $model->getKey();
+        }
+
+        if ($teamIdColumn = $this->getTeamIdColumn()) {
+            return $model->{$teamIdColumn};
+        }
+
+        if (method_exists($model, 'team')) {
+            return $model->team;
+        }
+
+        Log::error(sprintf(
+            'Model %s does not have a method to retrieve team owner ID. Please implement getTeamOwnerId() or ensure team_id column exists.',
+            $this->modelClass
+        ));
 
         return false;
     }
 
-    /**
-     * Gets the team ID column name for the model.
-     * 
-     * @return string The team ID column name
-     */
     protected function getTeamIdColumn()
     {
+        $column = 'team_id';
+
         if (property_exists($this->modelClass, 'TEAM_ID_COLUMN')) {
-            return getPrivateProperty(new ($this->modelClass), 'TEAM_ID_COLUMN');
+            $column = getPrivateProperty(new ($this->modelClass), 'TEAM_ID_COLUMN');
         }
 
-        return 'team_id';
+        if (Schema::hasColumn((new ($this->modelClass))->getTable(), $column)) {
+            return $column;
+        }
+
+        return null;
     }
 
     /**

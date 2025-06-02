@@ -11,7 +11,7 @@ return [
     ],
 
     'superadmin-emails' => [
-        explode(',', env('SUPERADMIN_EMAILS', '')),
+        ...explode(',', env('SUPERADMIN_EMAILS', '')),
     ],
 
     'register_with_first_last_name' => true,

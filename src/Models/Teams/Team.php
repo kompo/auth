@@ -4,6 +4,8 @@ namespace Kompo\Auth\Models\Teams;
 
 use Condoedge\Utils\Models\Model;
 use App\Models\User;
+use Illuminate\Support\Collection;
+use Kompo\Auth\Teams\TeamHierarchyService;
 
 class Team extends Model
 {
@@ -12,6 +14,25 @@ class Team extends Model
     use \Condoedge\Utils\Models\ContactInfo\Maps\MorphManyAddresses;
     use \Condoedge\Utils\Models\ContactInfo\Email\MorphManyEmails;
     use \Condoedge\Utils\Models\ContactInfo\Phone\MorphManyPhones;
+
+    public static function booted()
+    {
+        parent::booted();
+        
+        static::saved(function ($team) {
+            app(TeamHierarchyService::class)->clearCache($team->id);
+            if ($team->isDirty('parent_team_id')) {
+                app(TeamHierarchyService::class)->clearCache($team->getOriginal('parent_team_id'));
+            }
+        });
+        
+        static::deleted(function ($team) {
+            app(TeamHierarchyService::class)->clearCache($team->id);
+            if ($team->parent_team_id) {
+                app(TeamHierarchyService::class)->clearCache($team->parent_team_id);
+            }
+        });
+    }
 
     /* RELATIONS */
     public function owner()
@@ -78,68 +99,62 @@ class Team extends Model
     }
 
     /**
-     * Get all the children teams ids with a raw sql query (A lot faster than Eloquent)
-     * @param mixed $depth If you want to limit the depth of the search
-     * @param array|null  $staticExtraSelect Used to assign a key-value pair to the result
-     * @param mixed $staticExtraSelect.0 The value of the extra select
-     * @param mixed $staticExtraSelect.1 The key of the extra select
-     * @param string $search A search string to filter the results
-     * @return \Illuminate\Support\Collection
+     * @deprecated Usar TeamHierarchyService::getDescendantTeamIds()
      */
     public function getAllChildrenRawSolution($depth = null, $staticExtraSelect = null, $search = '')
     {
-        if (!$this->teams()->withoutGlobalScope('authUserHasPermissions')->count()) {
-            return collect($staticExtraSelect ? [$this->id => $staticExtraSelect[0]] : [$this->id]);
+        // Mantener por compatibilidad pero marcar como deprecated
+        \Log::warning('getAllChildrenRawSolution is deprecated. Use TeamHierarchyService instead.');
+        
+        $service = app(TeamHierarchyService::class);
+        
+        if ($staticExtraSelect && $search) {
+            return $service->getDescendantTeamsWithRole($this->id, $staticExtraSelect[0], $search);
         }
-
-        $currentLevel = 1;
-        $query = \DB::table("teams as t$currentLevel")->where("t$currentLevel.id", $this->id);
-
-        $allIds = $search && !str_contains($this->team_name, $search) ? collect() : collect($staticExtraSelect ? [$this->id => $staticExtraSelect[0]] : [$this->id]);
-
-        while ((!$depth || $currentLevel < $depth)  && (clone $query)->selectRaw("COUNT(t$currentLevel.id) as count")->first()->count) {
-            $lastestCurrentLevel = $currentLevel;
-            $currentLevel++;
-            $query->join("teams as t$currentLevel", "t$currentLevel.parent_team_id", '=', "t$lastestCurrentLevel.id");
-
-            $selectRaw = "t$currentLevel.id" . ($staticExtraSelect ? ', "' . ($staticExtraSelect[0] . '" as ' . $staticExtraSelect[1]) : "");
-
-            $pluckArgs = $staticExtraSelect ? [$staticExtraSelect[1], "id"] : ["id"];
-
-            $levelIds = (clone $query)->selectRaw($selectRaw)
-                ->when($search, fn($q) => $q->where("t$currentLevel.team_name", 'LIKE', wildcardSpace($search)))
-                ->pluck(...$pluckArgs);
-
-            $allIds = $allIds->union($levelIds);
+        
+        $descendants = $service->getDescendantTeamIds($this->id, $search, $depth);
+        
+        if ($staticExtraSelect) {
+            return $descendants->mapWithKeys(fn($id) => [$id => $staticExtraSelect[0]]);
         }
-
-        return $allIds;
+        
+        return $descendants;
     }
 
-    public function hasChildrenIdRawSolution($childrenId)
+    /**
+     * Métodos nuevos más semánticamente claros
+     */
+    public function getDescendants(?int $maxDepth = null): Collection
     {
-        if ($this->id == $childrenId) {
-            return true;
-        }
+        return app(TeamHierarchyService::class)->getDescendantTeamIds($this->id, maxDepth: $maxDepth);
+    }
 
-        if (!$this->teams()->count()) {
-            return false;
-        }
+    public function getDescendantsWithRole(string $role, string $search = ''): Collection
+    {
+        return app(TeamHierarchyService::class)->getDescendantTeamsWithRole($this->id, $role, $search);
+    }
 
-        $currentLevel = 1;
-        $query = \DB::table("teams as t$currentLevel")->where("t$currentLevel.id", $this->id);
+    public function hasDescendant(int $teamId): bool
+    {
+        return app(TeamHierarchyService::class)->isDescendant($this->id, $teamId);
+    }
 
-        while ((clone $query)->selectRaw("COUNT(t$currentLevel.id) as count")->first()->count) {
-            if ((clone $query)->where("t$currentLevel.id", $childrenId)->count()) {
-                return true;
-            }
+    public function getAncestors(): Collection
+    {
+        return app(TeamHierarchyService::class)->getAncestorTeamIds($this->id);
+    }
 
-            $lastestCurrentLevel = $currentLevel;
-            $currentLevel++;
-            $query->leftJoin("teams as t$currentLevel", "t$currentLevel.parent_team_id", '=', "t$lastestCurrentLevel.id");
-        }
+    public function getSiblings(): Collection
+    {
+        return app(TeamHierarchyService::class)->getSiblingTeamIds($this->id);
+    }
 
-        return false;
+    /**
+     * Mejora del método existente hasChildrenIdRawSolution
+     */
+    public function hasChildrenIdRawSolution($childrenId): bool
+    {
+        return $this->hasDescendant($childrenId);
     }
 
     public function rolePill()

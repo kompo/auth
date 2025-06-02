@@ -10,7 +10,7 @@ class EditPermissionSectionInfo extends Modal
 {
     public $model = PermissionSection::class;
 
-    public $_Title = 'translate.edit-section-info';
+    public $_Title = 'auth-edit-section-info';
 
     public $hasSubmitButton = false;
 
@@ -24,10 +24,10 @@ class EditPermissionSectionInfo extends Modal
     public function body()
     {
         return _Rows(
-            _Translatable('generic.name')->name('name'),
+            _Translatable('auth-name')->name('name'),
 
             _FlexEnd(
-                _SubmitButton('generic.save')->closeModal()->refresh($this->refreshId),
+                _SubmitButton('auth-save')->closeModal()->refresh($this->refreshId),
             )
         );
     }

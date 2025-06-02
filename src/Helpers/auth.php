@@ -1,9 +1,17 @@
 <?php
 
+use Condoedge\Utils\Kompo\Elements\ValidatedInput;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+use Kompo\Date;
+use Kompo\Elements\Field;
+use Kompo\Place;
 
 function checkAuthPermission($id, $type = PermissionTypeEnum::READ, $specificTeamId = null) {
+    if (globalSecurityBypass()) {
+        return true;
+    }
+
     return !Permission::findByKey($id) || auth()->user()?->hasPermission($id, $type, $specificTeamId);
 }
 
@@ -50,6 +58,63 @@ if (!function_exists('bypassSecurityInThisRunningContext')) {
 
     // TODO: It might be that we'll need to return a null element here, to avoid rendering the element.
     return (new ($this::class))->class('hidden');
+});
+
+\Kompo\Elements\BaseElement::macro('checkAuthWrite', function ($id, $specificTeamId = null, $returnNullInstead = false) {
+    return $this->checkAuth($id, PermissionTypeEnum::WRITE, $specificTeamId, $returnNullInstead);
+});
+
+Field::macro('readOnlyIfNotAuth', function ($id, $specificTeamId = null) {
+    if (globalSecurityBypass()) {
+        return $this;
+    }
+
+    if(checkAuthPermission($id, PermissionTypeEnum::WRITE, $specificTeamId)) {
+        return $this;
+    }
+
+    return $this->readOnly()->disabled()->class('!opacity-60');
+});
+
+\Kompo\Html::macro('hashIfNotAuth', function ($id, $specificTeamId = null, $minChars = 12) {
+    if (globalSecurityBypass()) {
+        return $this;
+    }
+
+    if(checkAuthPermission($id, PermissionTypeEnum::READ, $specificTeamId)) {
+        return $this;
+    }
+
+    $this->label = str_pad(preg_replace('/.*/', '*', $this->label), $minChars, '*');
+
+    return $this;
+});
+
+Field::macro('hashIfNotAuth', function ($id, $specificTeamId = null, $minChars = 12) {
+    if (globalSecurityBypass()) {
+        return $this;
+    }
+
+    if(checkAuthPermission($id, PermissionTypeEnum::READ, $specificTeamId)) {
+        return $this;
+    }
+
+    $this->value = str_pad(preg_replace('/.*/', '*', $this->value), $minChars, '*');
+
+    $classesThatRequiresInputInstance = [Place::class, ValidatedInput::class, Date::class];
+
+    foreach ($classesThatRequiresInputInstance as $class) {
+        if ($this instanceof $class) {
+            return _Input($this->label)->value($this->value)->name('restricted_input', false);
+        }
+    }
+
+
+    return $this;
+});
+
+Field::macro('hashAndReadOnlyIfNotAuth', function ($id, $specificTeamId = null, $minChars = 12) {
+    return $this->hashIfNotAuth("{$id}.sensibleColumns", $specificTeamId, minChars: $minChars)->readOnlyIfNotAuth($id, $specificTeamId)->readOnlyIfNotAuth("{$id}.sensibleColumns", $specificTeamId);
 });
 
 if (!function_exists('_LinkAlreadyHaveAccount')) {

@@ -1,18 +1,18 @@
-<?php 
+<?php
 
 /* GENERAL CONVENTIONS */
 
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\Roles\Role;
 
-if(!function_exists('authUser')) {
+if (!function_exists('authUser')) {
 	function authUser()
 	{
 		return auth()->user();
 	}
 }
 
-if(!function_exists('authId')) {
+if (!function_exists('authId')) {
 	function authId()
 	{
 		return auth()->id();
@@ -20,14 +20,14 @@ if(!function_exists('authId')) {
 }
 
 /* ROLES */
-if(!function_exists('isTeamOwner')) {
+if (!function_exists('isTeamOwner')) {
 	function isTeamOwner()
 	{
 		return authUser()?->isTeamOwner();
 	}
 }
 
-if(!function_exists('isSuperAdmin')) {
+if (!function_exists('isSuperAdmin')) {
 	function isSuperAdmin()
 	{
 		return authUser()?->isSuperAdmin();
@@ -35,7 +35,7 @@ if(!function_exists('isSuperAdmin')) {
 }
 
 /* OTHER HELPERS */
-if(!function_exists('isImpersonated')) {
+if (!function_exists('isImpersonated')) {
 	function isImpersonated()
 	{
 		return authUser()?->isImpersonated();
@@ -68,7 +68,7 @@ const PERMISSION_SEPARATOR = ':';
  */
 function parsePermissionKey($permissionKey, PermissionTypeEnum $permissionType)
 {
-    return $permissionType->value . PERMISSION_SEPARATOR . $permissionKey;
+	return $permissionType->value . PERMISSION_SEPARATOR . $permissionKey;
 }
 
 /**
@@ -79,7 +79,7 @@ function parsePermissionKey($permissionKey, PermissionTypeEnum $permissionType)
  */
 function getPermissionKey($permissionKey)
 {
-    return substr($permissionKey, 2);
+	return substr($permissionKey, 2);
 }
 
 /**
@@ -90,7 +90,7 @@ function getPermissionKey($permissionKey)
  */
 function getPermissionType($permissionKey)
 {
-    return PermissionTypeEnum::from((int) substr($permissionKey, 0, 1));
+	return PermissionTypeEnum::from((int) substr($permissionKey, 0, 1));
 }
 
 /**
@@ -101,5 +101,5 @@ function getPermissionType($permissionKey)
  */
 function constructComplexPermissionKeySql($pivotTable)
 {
-    return "CONCAT($pivotTable.permission_type, '" . PERMISSION_SEPARATOR . "', permission_key) as complex_permission_key";
+	return "CONCAT($pivotTable.permission_type, '" . PERMISSION_SEPARATOR . "', permission_key) as complex_permission_key";
 }

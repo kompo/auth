@@ -6,6 +6,7 @@ use Kompo\Auth\Facades\RoleModel;
 use Condoedge\Utils\Models\Model;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\Roles\Role;
+use Kompo\Auth\Teams\TeamHierarchyService;
 
 class TeamRole extends Model
 {
@@ -246,14 +247,17 @@ class TeamRole extends Model
      */
     public function getAllTeamsWithAccess()
     {
+        $hierarchyService = app(TeamHierarchyService::class);
         $teams = collect([$this->team->id]);
 
         if ($this->getRoleHierarchyAccessBelow()) {
-            $teams = $teams->concat($this->team->getAllChildrenRawSolution());
+            $descendants = $hierarchyService->getDescendantTeamIds($this->team->id);
+            $teams = $teams->concat($descendants);
         }
 
         if ($this->getRoleHierarchyAccessNeighbors()) {
-            $teams = $teams->concat($this->team->parentTeam?->teams()->withoutGlobalScope('authUserHasPermissions')->pluck('id') ?: []);
+            $siblings = $hierarchyService->getSiblingTeamIds($this->team->id);
+            $teams = $teams->concat($siblings);
         }
 
         return $teams;
@@ -261,20 +265,28 @@ class TeamRole extends Model
 
     public function getAllHierarchyTeamsIds($search = '')
     {
+        $hierarchyService = app(TeamHierarchyService::class);
         $teams = collect([$this->team->id => $this->role]);
 
-        if ($search && !$this->team()->search($search)->exists()) {
+        if ($search && !str_contains(strtolower($this->team->team_name), strtolower($search))) {
             $teams = collect();
         }
 
         if ($this->getRoleHierarchyAccessBelow()) {
-            $teams = $teams->union($this->team->getAllChildrenRawSolution(staticExtraSelect: [$this->role, 'role'], search: $search));
+            $descendantsWithRole = $hierarchyService->getDescendantTeamsWithRole(
+                $this->team->id, 
+                $this->role, 
+                $search
+            );
+
+            $teams = $teams->union($descendantsWithRole);
         }
 
         if ($this->getRoleHierarchyAccessNeighbors()) {
-            $teams = $teams->union($this->team->parentTeam?->teams()?->selectRaw('id, ? as role', [$this->role])
-                ->when($search, fn($q) => $q->search($search))
-                ->pluck('role', 'id') ?: []);
+            $siblings = $hierarchyService->getSiblingTeamIds($this->team->id, $search);
+
+            $siblingsWithRole = $siblings->mapWithKeys(fn($id) => [$id => $this->role]);
+            $teams = $teams->union($siblingsWithRole);
         }
 
         return $teams;
@@ -286,11 +298,15 @@ class TeamRole extends Model
             return true;
         }
 
-        if ($this->getRoleHierarchyAccessBelow() && $this->team->hasChildrenIdRawSolution($teamId)) {
+        $hierarchyService = app(TeamHierarchyService::class);
+
+        if ($this->getRoleHierarchyAccessBelow() && $hierarchyService->isDescendant($this->team->id, $teamId)) {
             return true;
         }
 
-        if ($this->getRoleHierarchyAccessNeighbors() && $this->team->parentTeam?->teams()?->where('id', $teamId)->exists()) {
+        if ($this->getRoleHierarchyAccessNeighbors() 
+            && $hierarchyService->getSiblingTeamIds($this->team->id)->contains($teamId)
+        ) {
             return true;
         }
 

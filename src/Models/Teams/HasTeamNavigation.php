@@ -145,7 +145,7 @@ trait HasTeamNavigation
         $this->save();
 
         // Try to switch to first available team role
-        $firstRole = $this->teamRoles()->with(['team'])->first();
+        $firstRole = $this->teamRoles()->with(['team'])->whereHas('team')->first();
         
         if ($firstRole) {
             return $this->switchToTeamRole($firstRole);

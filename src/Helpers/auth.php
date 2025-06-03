@@ -104,6 +104,10 @@ if (!function_exists('currentTeam')) {
             fn() => currentTeamRole()?->team
         );
 
+        if (!$currentTeam) {
+            auth()->user()->resetToValidTeamRole();
+        }
+
         return $currentTeam;
     }
 }

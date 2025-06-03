@@ -231,7 +231,10 @@ class HasSecurity extends ModelPlugin
         }
 
         try {
+            HasSecurity::enterBypassContext();
             $allowedUserIds = $model->usersIdsAllowedToManage();
+            HasSecurity::exitBypassContext();
+
             return collect($allowedUserIds)->contains(auth()->user()->id);
         } catch (\Throwable $e) {
             Log::warning('usersIdsAllowedToManage check failed', [
@@ -254,7 +257,11 @@ class HasSecurity extends ModelPlugin
         }
 
         try {
-            return $model->userOwnedRecords()->where($model->getKeyName(), $model->getKey())->exists();
+            HasSecurity::enterBypassContext();
+            $hasByPassMethod = $model->userOwnedRecords()->where($model->getKeyName(), $model->getKey())->exists();
+            HasSecurity::exitBypassContext();
+            return $hasByPassMethod;
+
         } catch (\Throwable $e) {
             Log::warning('scopeUserOwnedRecords check failed', [
                 'model_class' => get_class($model),
@@ -393,7 +400,11 @@ class HasSecurity extends ModelPlugin
         try {
             // Strategy 1: Custom method
             if ($this->modelHasMethod($model, 'securityRelatedTeamIds')) {
-                return callPrivateMethod($model, 'securityRelatedTeamIds');
+                HasSecurity::enterBypassContext();
+                $teamIds = callPrivateMethod($model, 'securityRelatedTeamIds');
+                HasSecurity::exitBypassContext();
+
+                return $teamIds;
             }
 
             // Strategy 2: Direct team model check
@@ -592,6 +603,11 @@ class HasSecurity extends ModelPlugin
     {
         if ($this->hasReadSecurityRestrictions() && Permission::findByKey($this->getPermissionKey())) {
             $modelClass::addGlobalScope('authUserHasPermissions', function ($builder) {
+                if ($this->isSecurityBypassRequired(new ($this->modelClass))) {
+                    // If security is bypassed, skip the read security scope
+                    return $builder;
+                }
+
                 $this->applyReadSecurityScope($builder);
             });
         }
@@ -612,7 +628,9 @@ class HasSecurity extends ModelPlugin
     {
         if (!auth()->user()?->hasPermission($this->getPermissionKey(), PermissionTypeEnum::READ)) {
             $builder->when($hasUserOwnedRecordsScope, function ($q) {
+                static::enterBypassContext();
                 $q->userOwnedRecords();
+                static::exitBypassContext();
             })->when(!$hasUserOwnedRecordsScope, function ($q) {
                 if (hasColumnCached((new ($this->modelClass))->getTable(), 'user_id')) {
                     $q->where('user_id', auth()->user()?->id);
@@ -637,7 +655,9 @@ class HasSecurity extends ModelPlugin
 
             if ($hasUserOwnedRecordsScope) {
                 $q->orWhere(function ($sq) {
+                    static::enterBypassContext();
                     $sq->userOwnedRecords();
+                    static::exitBypassContext();
                 });
             } else {
                 if (hasColumnCached((new ($this->modelClass))->getTable(), 'user_id')) {

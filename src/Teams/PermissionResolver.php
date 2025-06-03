@@ -65,7 +65,7 @@ class PermissionResolver
         int $userId,
         string $permissionKey, 
         PermissionTypeEnum $type = PermissionTypeEnum::ALL
-    ): Collection {
+    ) {
         $cacheKey = "user_teams_with_permission.{$userId}.{$permissionKey}.{$type->value}";
         
         return $this->getRequestCache($cacheKey, function() use ($userId, $permissionKey, $type, $cacheKey) {
@@ -352,7 +352,7 @@ class PermissionResolver
     /**
      * Get teams where user has specific permission (not global)
      */
-    private function getTeamSpecificPermissions(int $userId, string $permissionKey, PermissionTypeEnum $type): Collection
+    private function getTeamSpecificPermissions(int $userId, string $permissionKey, PermissionTypeEnum $type)
     {
         $teamsWithPermission = collect();
         $teamRoles = $this->getUserActiveTeamRoles($userId);
@@ -364,7 +364,7 @@ class PermissionResolver
             }
         }
         
-        return $teamsWithPermission->unique()->values();
+        return $teamsWithPermission->unique()->values()->all();
     }
     
     /**

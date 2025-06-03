@@ -103,11 +103,11 @@ trait HasTeamPermissions
         string $permissionKey,
         PermissionTypeEnum $type = PermissionTypeEnum::ALL
     ): Collection {
-        return $this->getPermissionResolver()->getTeamsWithPermissionForUser(
+        return collect($this->getPermissionResolver()->getTeamsWithPermissionForUser(
             $this->id,
             $permissionKey,
             $type
-        );
+        ));
     }
 
     /**

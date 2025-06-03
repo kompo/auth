@@ -18,14 +18,14 @@ class Team extends Model
     public static function booted()
     {
         parent::booted();
-        
+
         static::saved(function ($team) {
             app(TeamHierarchyService::class)->clearCache($team->id);
             if ($team->isDirty('parent_team_id')) {
                 app(TeamHierarchyService::class)->clearCache($team->getOriginal('parent_team_id'));
             }
         });
-        
+
         static::deleted(function ($team) {
             app(TeamHierarchyService::class)->clearCache($team->id);
             if ($team->parent_team_id) {
@@ -105,19 +105,19 @@ class Team extends Model
     {
         // Mantener por compatibilidad pero marcar como deprecated
         \Log::warning('getAllChildrenRawSolution is deprecated. Use TeamHierarchyService instead.');
-        
+
         $service = app(TeamHierarchyService::class);
-        
+
         if ($staticExtraSelect && $search) {
             return $service->getDescendantTeamsWithRole($this->id, $staticExtraSelect[0], $search);
         }
-        
+
         $descendants = $service->getDescendantTeamIds($this->id, $search, $depth);
-        
+
         if ($staticExtraSelect) {
             return $descendants->mapWithKeys(fn($id) => [$id => $staticExtraSelect[0]]);
         }
-        
+
         return $descendants;
     }
 

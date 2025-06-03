@@ -14,6 +14,7 @@ use Illuminate\Support\ServiceProvider;
 use Kompo\Auth\Common\Plugins\HasAuthorizationUtils;
 use Kompo\Auth\Models\Plugins\HasSecurity;
 use Condoedge\Utils\Kompo\Common\Form;
+use Kompo\Auth\Commands\CleanupRedundantHierarchyRoles;
 use Kompo\Auth\Commands\OptimizePermissionCacheCommand;
 use Kompo\Auth\Commands\WarmTeamHierarchyCache;
 use Kompo\Auth\Teams\TeamHierarchyService;
@@ -361,6 +362,7 @@ class KompoAuthServiceProvider extends ServiceProvider
         $commands = [
             WarmTeamHierarchyCache::class,
             OptimizePermissionCacheCommand::class,
+            CleanupRedundantHierarchyRoles::class,
         ];
 
         foreach ($commands as $command) {
@@ -399,11 +401,20 @@ class KompoAuthServiceProvider extends ServiceProvider
                 ->onFailure(function () {
                     Log::error('Failed to run team hierarchy cache warming');
                 });
+
+            // Cleaning temp hierarchy roles
+            $schedule->command('auth:cleanup-hierarchy-roles')
+                ->dailyAt('01:00')
+                ->withoutOverlapping()
+                ->runInBackground()
+                ->onFailure(function () {
+                    Log::error('Failed to run team hierarchy cache warming');
+                });
             
             // Clear old cache statistics and cleanup
             $schedule->call(function () {
                 try {
-                    app(PermissionCacheManager::class)->clearOldStats();
+                    app(PermissionCacheManager::class)->clearAllCache();
                     
                     // Clear any orphaned cache keys
                     if (Cache::supportsTags()) {

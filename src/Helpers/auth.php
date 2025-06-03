@@ -498,66 +498,6 @@ if (!function_exists('baseEmailRules')) {
 }
 
 /**
- * Memory-efficient UI component functions
- */
-if (!function_exists('_InputRegisterNames')) {
-    function _InputRegisterNames($defaultName1 = null, $defaultName2 = null)
-    {
-        static $useFirstLastName = null;
-        
-        if ($useFirstLastName === null) {
-            $useFirstLastName = config('kompo-auth.register_with_first_last_name');
-        }
-        
-        return $useFirstLastName ? _Rows(
-            _Input('auth-your-first-name1')->name('first_name')->default($defaultName1),
-            _Input('auth-your-last-name')->name('last_name')->default($defaultName2),
-        ) : _Input('auth-your-name')->name('name')->default($defaultName1);
-    }
-}
-
-if (!function_exists('_InputRegisterPasswords')) {
-    function _InputRegisterPasswords()
-    {
-        return _Rows(
-            _Password('auth-my-password')->name('password'),
-            _Password('auth-my-password-confirmation')->name('password_confirmation', false),
-        );
-    }
-}
-
-if (!function_exists('_CheckboxTerms')) {
-    function _CheckboxTerms()
-    {
-        static $termsHtml = null;
-        
-        if ($termsHtml === null) {
-            $termsHtml = __('auth-register-i-agree-to') . ' ' . 
-                        '<a href="' . url('privacy') . '" class="underline" target="_blank">' . 
-                        __('register.the-terms') . '</a>';
-        }
-        
-        return _Checkbox($termsHtml)->name('terms', false);
-    }
-}
-
-/**
- * Profile image functions with caching
- */
-if (!function_exists('_ProfileImg')) {
-    function _ProfileImg($user, $sizeClass = 'h-8 w-8')
-    {
-        if (!$user?->profile_photo_url) {
-            return null;
-        }
-
-        return _Img($user->profile_photo_url)
-            ->class($sizeClass)
-            ->class('rounded-full object-cover border');
-    }
-}
-
-/**
  * Optimize memory by using more efficient caching for frequently called functions
  */
 if (!function_exists('currentTeamRoleId')) {

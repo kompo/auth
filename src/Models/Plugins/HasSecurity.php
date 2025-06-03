@@ -616,7 +616,7 @@ class HasSecurity extends ModelPlugin
             $builder->when($hasUserOwnedRecordsScope, function ($q) {
                 $q->userOwnedRecords();
             })->when(!$hasUserOwnedRecordsScope, function ($q) {
-                if (Schema::hasColumn((new ($this->modelClass))->getTable(), 'user_id')) {
+                if (hasColumnCached((new ($this->modelClass))->getTable(), 'user_id')) {
                     $q->where('user_id', auth()->user()?->id);
                 }
             });
@@ -642,7 +642,7 @@ class HasSecurity extends ModelPlugin
                     $sq->userOwnedRecords();
                 });
             } else {
-                if (Schema::hasColumn((new ($this->modelClass))->getTable(), 'user_id')) {
+                if (hasColumnCached((new ($this->modelClass))->getTable(), 'user_id')) {
                     $q->orWhere('user_id', auth()->user()?->id);
                 }
             }
@@ -804,7 +804,7 @@ class HasSecurity extends ModelPlugin
             $column = getPrivateProperty(new ($this->modelClass), 'TEAM_ID_COLUMN');
         }
 
-        if (Schema::hasColumn((new ($this->modelClass))->getTable(), $column)) {
+        if (hasColumnCached((new ($this->modelClass))->getTable(), $column)) {
             return $column;
         }
 

@@ -51,7 +51,7 @@ class MonitorPermissionPerformance
         });
 
         // Log if performance thresholds exceeded
-        if ($executionTime > 1000 || $memoryUsed > 50 * 1024 * 1024 || count($permissionQueries) > 20) {
+        if ($executionTime > 2000 || $memoryUsed > 50 * 1024 * 1024 || count($permissionQueries) > 20) {
             Log::warning('Permission performance threshold exceeded', [
                 'url' => $request->url(),
                 'user_id' => auth()->id(),

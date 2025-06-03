@@ -103,15 +103,11 @@ trait HasTeamPermissions
         string $permissionKey, 
         PermissionTypeEnum $type = PermissionTypeEnum::ALL
     ): Collection {
-        $cacheKey = "teams_with_permission_{$permissionKey}_{$type->value}";
-        
-        return $this->getPermissionRequestCache($cacheKey, function() use ($permissionKey, $type) {
-            return $this->getPermissionResolver()->getTeamsWithPermissionForUser(
-                $this->id,
-                $permissionKey,
-                $type
-            );
-        });
+        return $this->getPermissionResolver()->getTeamsWithPermissionForUser(
+            $this->id,
+            $permissionKey,
+            $type
+        );
     }
 
     /**
@@ -119,24 +115,22 @@ trait HasTeamPermissions
      */
     public function getAllAccessibleTeamIds(): Collection
     {
-        return $this->getPermissionRequestCache('all_accessible_teams', function() {
-            return Cache::rememberWithTags(
-                ['permissions-v2'],
-                "user_all_accessible_teams.{$this->id}",
-                900,
-                function() {
-                    $accessibleTeams = collect();
-                    $teamRoles = $this->getActiveTeamRolesOptimized();
-                    
-                    foreach ($teamRoles as $teamRole) {
-                        $teams = $teamRole->getAccessibleTeamsOptimized();
-                        $accessibleTeams = $accessibleTeams->concat($teams);
-                    }
-                    
-                    return $accessibleTeams->unique()->values();
+        return Cache::rememberWithTags(
+            ['permissions-v2'],
+            "user_all_accessible_teams.{$this->id}",
+            900,
+            function() {
+                $accessibleTeams = collect();
+                $teamRoles = $this->getActiveTeamRolesOptimized();
+                
+                foreach ($teamRoles as $teamRole) {
+                    $teams = $teamRole->getAccessibleTeamsOptimized();
+                    $accessibleTeams = $accessibleTeams->concat($teams);
                 }
-            );
-        });
+                
+                return $accessibleTeams->unique()->values();
+            }
+        );
     }
 
     /**
@@ -164,16 +158,12 @@ trait HasTeamPermissions
             return $this->getAllTeamIdsWithRoles($profile, $search);
         }
 
-        $cacheKey = "all_teams_with_roles_{$profile}";
-        
-        return $this->getPermissionRequestCache($cacheKey, function() use ($profile) {
-            return Cache::rememberWithTags(
-                ['permissions-v2'],
-                "allTeamIdsWithRoles.{$this->id}.{$profile}",
-                180,
-                fn() => $this->getAllTeamIdsWithRoles($profile, '')
-            );
-        });
+        return Cache::rememberWithTags(
+            ['permissions-v2'],
+            "allTeamIdsWithRoles.{$this->id}.{$profile}",
+            180,
+            fn() => $this->getAllTeamIdsWithRoles($profile, '')
+        );
     }
 
     /**

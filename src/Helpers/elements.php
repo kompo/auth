@@ -64,3 +64,59 @@ function _CheckboxSectionMultipleStates($name, $values = [], $colors = [], $defa
             cleanLinkGroupNullOption("'. $name .'");
         }'));
 }
+
+if (!function_exists('_ProfileImg')) {
+    function _ProfileImg($user, $sizeClass = 'h-8 w-8')
+    {
+        if (!$user?->profile_photo_url) {
+            return null;
+        }
+
+        return _Img($user?->profile_photo_url)
+            ->class($sizeClass)
+            ->class('rounded-full object-cover border');
+    }
+}
+
+if (!function_exists('_UserImgDate')) {
+    function _UserImgDate($user, $date)
+    {
+        return _Flex(
+            _ProfileImg($user),
+            _Rows(
+                _Html($user?->name),
+                _DiffDate($date),
+            )->class('text-xs text-gray-600')
+        )->class('space-x-2');
+    }
+}
+
+/* FIELDS */
+if (!function_exists('_InputRegisterNames')) {
+    function _InputRegisterNames($defaultName1 = null, $defaultName2 = null)
+    {
+        return config('kompo-auth.register_with_first_last_name') ? _Rows(
+            _Input('auth-your-first-name1')->name('first_name')->default($defaultName1),
+            _Input('auth-your-last-name')->name('last_name')->default($defaultName2),
+        ) : 
+        _Input('auth-your-name')->name('name')->default($defaultName1);
+    }
+}
+
+if (!function_exists('_InputRegisterPasswords')) {
+    function _InputRegisterPasswords()
+    {
+        return _Rows(
+            _Password('auth-my-password')->name('password'),
+            _Password('auth-my-password-confirmation')->name('password_confirmation', false),
+        );
+    }
+}
+
+if (!function_exists('_CheckboxTerms')) {
+    function _CheckboxTerms()
+    {
+        return _Checkbox(__('auth-register-i-agree-to').' '.'<a href="'.url('privacy').'" class="underline" target="_blank">'.__('register.the-terms').'</a>')
+            ->name('terms', false);
+    }
+}

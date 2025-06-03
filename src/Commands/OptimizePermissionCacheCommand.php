@@ -3,7 +3,7 @@
 namespace Kompo\Auth\Commands;
 
 use Illuminate\Console\Command;
-use Kompo\Auth\Models\Teams\PermissionCacheManager;
+use Kompo\Auth\Teams\PermissionCacheManager;
 
 class OptimizePermissionCacheCommand extends Command
 {

@@ -74,26 +74,15 @@ if (!function_exists('currentTeamRole')) {
             return null;
         }
 
-        static $currentTeamRole = null;
-        static $lastUserId = null;
-
-        // Reset cache if user changed
-        if ($lastUserId !== auth()->id()) {
-            $currentTeamRole = null;
-            $lastUserId = auth()->id();
+        if (!auth()->user()->current_team_role_id) {
+            auth()->user()->switchToFirstTeamRole();
         }
 
-        if ($currentTeamRole === null) {
-            if (!auth()->user()->current_team_role_id) {
-                auth()->user()->switchToFirstTeamRole();
-            }
-
-            $currentTeamRole = \Cache::remember(
-                'currentTeamRole' . auth()->id(),
-                900, // 15 minutes
-                fn() => auth()->user()->currentTeamRole
-            );
-        }
+        $currentTeamRole = \Cache::remember(
+            'currentTeamRole' . auth()->id(),
+            900, // 15 minutes
+            fn() => auth()->user()->currentTeamRole
+        );
 
         return $currentTeamRole;
     }
@@ -109,22 +98,11 @@ if (!function_exists('currentTeam')) {
             return null;
         }
 
-        static $currentTeam = null;
-        static $lastUserId = null;
-
-        // Reset cache if user changed
-        if ($lastUserId !== auth()->id()) {
-            $currentTeam = null;
-            $lastUserId = auth()->id();
-        }
-
-        if ($currentTeam === null) {
-            $currentTeam = \Cache::remember(
-                'currentTeam' . auth()->id(),
-                900,
-                fn() => currentTeamRole()?->team
-            );
-        }
+        $currentTeam = \Cache::remember(
+            'currentTeam' . auth()->id(),
+            900,
+            fn() => currentTeamRole()?->team
+        );
 
         return $currentTeam;
     }
@@ -150,22 +128,11 @@ if (!function_exists('isAppSuperAdmin')) {
             return false;
         }
 
-        static $isSuperAdmin = null;
-        static $lastUserId = null;
-
-        // Reset cache if user changed
-        if ($lastUserId !== auth()->id()) {
-            $isSuperAdmin = null;
-            $lastUserId = auth()->id();
-        }
-
-        if ($isSuperAdmin === null) {
-            $isSuperAdmin = \Cache::remember(
-                'isSuperAdmin' . auth()->id(),
-                3600, // 1 hour
-                fn() => auth()->user()->hasAccessToTeam(1, 'super-admin')
-            );
-        }
+        $isSuperAdmin = \Cache::remember(
+            'isSuperAdmin' . auth()->id(),
+            3600, // 1 hour
+            fn() => isSuperAdmin() || auth()->user()->isSuperAdmin()
+        );
 
         return $isSuperAdmin;
     }
@@ -295,16 +262,7 @@ Field::macro('hashAndReadOnlyIfNotAuth', function ($id, $specificTeamId = null, 
 if (!function_exists('authUser')) {
     function authUser()
     {
-        static $user = null;
-        static $lastCheck = null;
-
-        // Only cache for current request to avoid stale data
-        if ($lastCheck !== request()) {
-            $user = auth()->user();
-            $lastCheck = request();
-        }
-
-        return $user;
+        return auth()->user();
     }
 }
 
@@ -321,38 +279,14 @@ if (!function_exists('authId')) {
 if (!function_exists('isTeamOwner')) {
     function isTeamOwner(): bool
     {
-        static $isOwner = null;
-        static $lastUserId = null;
-
-        if ($lastUserId !== auth()->id()) {
-            $isOwner = null;
-            $lastUserId = auth()->id();
-        }
-
-        if ($isOwner === null) {
-            $isOwner = authUser()?->isTeamOwner() ?? false;
-        }
-
-        return $isOwner;
+        return authUser()?->isTeamOwner() ?? false;
     }
 }
 
 if (!function_exists('isSuperAdmin')) {
     function isSuperAdmin(): bool
     {
-        static $isSuperAdmin = null;
-        static $lastUserId = null;
-
-        if ($lastUserId !== auth()->id()) {
-            $isSuperAdmin = null;
-            $lastUserId = auth()->id();
-        }
-
-        if ($isSuperAdmin === null) {
-            $isSuperAdmin = authUser()?->isSuperAdmin() ?? false;
-        }
-
-        return $isSuperAdmin;
+        return authUser()?->isSuperAdmin() ?? false;
     }
 }
 
@@ -399,51 +333,35 @@ if (!function_exists('endPermissionTimer')) {
 if (!function_exists('registerRules')) {
     function registerRules(): array
     {
-        static $rules = null;
-
-        if ($rules === null) {
-            $rules = array_merge(namesRules(), [
+        return array_merge(namesRules(), [
                 'password' => passwordRules(),
                 'terms' => ['required', 'accepted'],
-            ]);
-        }
-
-        return $rules;
+        ]);
     }
 }
 
 if (!function_exists('namesRules')) {
     function namesRules(): array
     {
-        static $rules = null;
-
-        if ($rules === null) {
-            $rules = config('kompo-auth.register_with_first_last_name') ? [
-                'first_name' => ['required', 'string', 'max:255'],
-                'last_name' => ['required', 'string', 'max:255'],
-            ] : [
-                'name' => ['required', 'string', 'max:255'],
-            ];
-        }
-
-        return $rules;
+        return config('kompo-auth.register_with_first_last_name') ? [
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+        ] : [
+            'name' => ['required', 'string', 'max:255'],
+        ];
     }
 }
 
 if (!function_exists('passwordRules')) {
     function passwordRules(): array
     {
-        static $rules = null;
-
-        if ($rules === null) {
-            $passwordRules = new \Laravel\Fortify\Rules\Password();
-            $rules = [
-                'required',
-                'string',
-                $passwordRules->requireUppercase()->requireNumeric()->requireSpecialCharacter(),
-                'confirmed'
-            ];
-        }
+        $passwordRules = new \Laravel\Fortify\Rules\Password();
+        $rules = [
+            'required',
+            'string',
+            $passwordRules->requireUppercase()->requireNumeric()->requireSpecialCharacter(),
+            'confirmed'
+        ];
 
         return $rules;
     }
@@ -452,13 +370,7 @@ if (!function_exists('passwordRules')) {
 if (!function_exists('baseEmailRules')) {
     function baseEmailRules(): array
     {
-        static $rules = null;
-
-        if ($rules === null) {
-            $rules = ['required', 'string', 'email', 'max:255'];
-        }
-
-        return $rules;
+        return ['required', 'string', 'email', 'max:255'];
     }
 }
 

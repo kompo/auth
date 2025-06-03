@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Kompo\Auth\Models\User as ModelsUser;
 use Kompo\Tests\Models\User;
 
 class CheckRolesIntegrityCommand extends Command
@@ -33,7 +34,7 @@ class CheckRolesIntegrityCommand extends Command
 
     protected function checkCurrentTeamAndRoleAreOk()
     {
-        User::with('teams', 'teamRoles')->get()->each(function ($user) {
+        ModelsUser::with('teams', 'teamRoles')->get()->each(function ($user) {
             if (!$user->teams->count()) {
                 \Log::critical('User id ' . $user->id . ' has no associated teams!');
             }

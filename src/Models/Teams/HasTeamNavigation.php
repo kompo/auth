@@ -89,7 +89,7 @@ trait HasTeamNavigation
      */
     public function getAvailableTeamsForSwitching($profile = 1, $search = ''): \Illuminate\Support\Collection
     {
-        return $this->getAllTeamIdsWithRolesCached($profile, $search);
+        return collect($this->getAllTeamIdsWithRolesCached($profile, $search));
     }
 
     /**

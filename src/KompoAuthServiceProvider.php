@@ -35,22 +35,22 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->loadHelpers();
         $this->registerPolicies();
         $this->extendRouting();
-        
-        $this->loadJSONTranslationsFrom(__DIR__.'/../resources/lang');
-        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
-        $this->loadViewsFrom(__DIR__.'/../resources/views', 'kompo-auth');
+
+        $this->loadJSONTranslationsFrom(__DIR__ . '/../resources/lang');
+        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+        $this->loadViewsFrom(__DIR__ . '/../resources/views', 'kompo-auth');
 
         $this->publishes([
-            __DIR__.'/../../config/kompo.php' => config_path('kompo.php'),
+            __DIR__ . '/../../config/kompo.php' => config_path('kompo.php'),
             __DIR__ . '/../resources/js' => resource_path('js/vendor/kompo'),
         ]);
 
         $this->publishes([
-            __DIR__.'/../resources/icons' => public_path('icons'),
+            __DIR__ . '/../resources/icons' => public_path('icons'),
         ], 'files-icons');
 
         $this->publishes([
-            __DIR__.'/../config/kompo-auth.php' => config_path('kompo-auth.php'),
+            __DIR__ . '/../config/kompo-auth.php' => config_path('kompo-auth.php'),
         ], 'kompo-auth-config');
 
         $this->loadConfig();
@@ -92,10 +92,10 @@ class KompoAuthServiceProvider extends ServiceProvider
         // Register core services in correct order
         $this->registerCoreServices();
         $this->registerOptimizedPermissionServices();
-        
+
         // Register route loading
         $this->booted(function () {
-            \Route::middleware('web')->group(__DIR__.'/../routes/web.php');
+            \Route::middleware('web')->group(__DIR__ . '/../routes/web.php');
         });
     }
 
@@ -106,7 +106,7 @@ class KompoAuthServiceProvider extends ServiceProvider
     {
         // Security bypass service (highest priority)
         $this->app->singleton('kompo-auth.security-bypass', function ($app) {
-            return function() {
+            return function () {
                 if (app()->runningInConsole()) {
                     return true;
                 }
@@ -114,7 +114,7 @@ class KompoAuthServiceProvider extends ServiceProvider
                 if (auth()->user()?->isSuperAdmin()) {
                     return true;
                 }
-                
+
                 return config('kompo-auth.security.bypass-security', false);
             };
         });
@@ -142,23 +142,23 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->app->singleton(TeamHierarchyService::class, function ($app) {
             return new TeamHierarchyService();
         });
-        
+
         // Permission resolver (depends on TeamHierarchyService)
         $this->app->singleton(PermissionResolver::class, function ($app) {
             return new PermissionResolver($app->make(TeamHierarchyService::class));
         });
-        
+
         // Permission cache manager (depends on PermissionResolver)
         $this->app->singleton(PermissionCacheManager::class, function ($app) {
             return new PermissionCacheManager($app->make(PermissionResolver::class));
         });
-        
+
         // Performance monitoring service
         $this->app->singleton('permission-performance-monitor', function () {
             return new class {
                 private array $metrics = [];
                 private array $queryLog = [];
-                
+
                 public function startTimer(string $operation): void
                 {
                     $this->metrics[$operation] = [
@@ -167,35 +167,35 @@ class KompoAuthServiceProvider extends ServiceProvider
                         'query_count_start' => count(\DB::getQueryLog())
                     ];
                 }
-                
+
                 public function endTimer(string $operation): array
                 {
                     if (!isset($this->metrics[$operation])) {
                         return [];
                     }
-                    
+
                     $start = $this->metrics[$operation];
                     $currentQueries = \DB::getQueryLog();
                     $newQueries = array_slice($currentQueries, $start['query_count_start']);
-                    
+
                     $result = [
                         'execution_time_ms' => (microtime(true) - $start['start_time']) * 1000,
                         'memory_used_bytes' => memory_get_usage(true) - $start['start_memory'],
                         'queries_count' => count($newQueries),
                         'slow_queries' => array_filter($newQueries, fn($q) => $q['time'] > 100)
                     ];
-                    
+
                     // Clean up
                     unset($this->metrics[$operation]);
-                    
+
                     return $result;
                 }
-                
+
                 public function getMetrics(): array
                 {
                     return $this->metrics;
                 }
-                
+
                 public function logSlowOperation(string $operation, array $metrics): void
                 {
                     if ($metrics['execution_time_ms'] > 500 || $metrics['queries_count'] > 10) {
@@ -262,18 +262,18 @@ class KompoAuthServiceProvider extends ServiceProvider
                 return false;
             }
         });
-        
+
         // Intelligent cache warming with failure tolerance
         Cache::macro('warmIfMissing', function ($key, $ttl, $callback, $tags = []) {
             try {
                 $store = Cache::supportsTags() && !empty($tags) ? Cache::tags($tags) : Cache::store();
-                
+
                 if ($store->missing($key)) {
                     $value = $callback();
                     $store->put($key, $value, $ttl);
                     return $value;
                 }
-                
+
                 return $store->get($key);
             } catch (\Exception $e) {
                 \Log::warning('Cache warm operation failed, executing callback', [
@@ -288,7 +288,7 @@ class KompoAuthServiceProvider extends ServiceProvider
         Cache::macro('putMany', function ($items, $ttl, $tags = []) {
             $store = Cache::supportsTags() && !empty($tags) ? Cache::tags($tags) : Cache::store();
             $failed = [];
-            
+
             foreach ($items as $key => $value) {
                 try {
                     $store->put($key, $value, $ttl);
@@ -297,7 +297,7 @@ class KompoAuthServiceProvider extends ServiceProvider
                     \Log::warning("Failed to cache item: {$key}", ['error' => $e->getMessage()]);
                 }
             }
-            
+
             return $failed;
         });
     }
@@ -315,11 +315,11 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->app['router']->pushMiddlewareToGroup('web', MonitorPermissionPerformance::class);
 
         // Setup memory threshold monitoring with configurable limits
-        register_shutdown_function(function() {
+        register_shutdown_function(function () {
             $memoryUsage = memory_get_peak_usage(true);
             $memoryLimit = $this->parseMemoryLimit(ini_get('memory_limit'));
             $threshold = config('kompo-auth.performance.memory_threshold', 0.9);
-            
+
             if ($memoryUsage > ($memoryLimit * $threshold)) {
                 Log::warning('High memory usage detected', [
                     'memory_used' => $this->formatBytes($memoryUsage),
@@ -338,9 +338,9 @@ class KompoAuthServiceProvider extends ServiceProvider
             \DB::listen(function ($query) {
                 if ($query->time > config('kompo-auth.performance.slow_query_threshold', 1000)) {
                     $isPermissionQuery = str_contains($query->sql, 'permission') ||
-                                       str_contains($query->sql, 'team_role') ||
-                                       str_contains($query->sql, 'role');
-                    
+                        str_contains($query->sql, 'team_role') ||
+                        str_contains($query->sql, 'role');
+
                     if ($isPermissionQuery) {
                         Log::warning('Slow permission query detected', [
                             'sql' => $query->sql,
@@ -383,7 +383,7 @@ class KompoAuthServiceProvider extends ServiceProvider
     {
         $this->app->booted(function () {
             $schedule = $this->app->make(Schedule::class);
-            
+
             // Cache warming for critical users (with error handling)
             $schedule->command('permissions:optimize-cache --warm')
                 ->hourly()
@@ -392,7 +392,7 @@ class KompoAuthServiceProvider extends ServiceProvider
                 ->onFailure(function () {
                     Log::error('Failed to run permission cache warming');
                 });
-            
+
             // Team hierarchy cache warming
             $schedule->command('teams:warm-hierarchy-cache')
                 ->dailyAt('02:00')
@@ -410,12 +410,12 @@ class KompoAuthServiceProvider extends ServiceProvider
                 ->onFailure(function () {
                     Log::error('Failed to run team hierarchy cache warming');
                 });
-            
+
             // Clear old cache statistics and cleanup
             $schedule->call(function () {
                 try {
                     app(PermissionCacheManager::class)->clearAllCache();
-                    
+
                     // Clear any orphaned cache keys
                     if (Cache::supportsTags()) {
                         Cache::tags(['permissions-v2-temp'])->flush();
@@ -433,8 +433,8 @@ class KompoAuthServiceProvider extends ServiceProvider
     protected function loadConfig(): void
     {
         $configs = [
-            'kompo-auth' => __DIR__.'/../config/kompo-auth.php',
-            'kompo' => __DIR__. '/../config/kompo.php'
+            'kompo-auth' => __DIR__ . '/../config/kompo-auth.php',
+            'kompo' => __DIR__ . '/../config/kompo.php'
         ];
 
         foreach ($configs as $key => $path) {
@@ -445,7 +445,7 @@ class KompoAuthServiceProvider extends ServiceProvider
             }
         }
     }
-    
+
     /**
      * Load relations morph map
      */
@@ -469,7 +469,7 @@ class KompoAuthServiceProvider extends ServiceProvider
         // Auth events
         Event::listen(\Illuminate\Auth\Events\Login::class, \Kompo\Auth\Listeners\RecordSuccessLoginAttempt::class);
         Event::listen(\Illuminate\Auth\Events\Failed::class, \Kompo\Auth\Listeners\RecordFailedLoginAttempt::class);
-        
+
         // Optimized permission cache invalidation listeners
         Event::listen('eloquent.saved: ' . TeamRole::class, function ($teamRole) {
             try {
@@ -483,7 +483,7 @@ class KompoAuthServiceProvider extends ServiceProvider
                 ]);
             }
         });
-        
+
         Event::listen('eloquent.deleted: ' . TeamRole::class, function ($teamRole) {
             try {
                 app(PermissionCacheManager::class)->invalidateByChange('team_role_changed', [
@@ -570,14 +570,14 @@ class KompoAuthServiceProvider extends ServiceProvider
      */
     protected function loadHelpers(): void
     {
-        $helpersDir = __DIR__.'/Helpers';
-        
+        $helpersDir = __DIR__ . '/Helpers';
+
         if (!is_dir($helpersDir)) {
             return;
         }
 
         $autoloadedHelpers = collect(\File::allFiles($helpersDir))->map(fn($file) => $file->getRealPath());
-        
+
         $autoloadedHelpers->each(function ($path) {
             if (file_exists($path)) {
                 require_once $path;
@@ -596,8 +596,8 @@ class KompoAuthServiceProvider extends ServiceProvider
 
         $unit = strtolower(substr($limit, -1));
         $amount = (int) substr($limit, 0, -1);
-        
-        return match($unit) {
+
+        return match ($unit) {
             'g' => $amount * 1024 * 1024 * 1024,
             'm' => $amount * 1024 * 1024,
             'k' => $amount * 1024,
@@ -612,12 +612,12 @@ class KompoAuthServiceProvider extends ServiceProvider
     {
         $units = ['B', 'KB', 'MB', 'GB'];
         $index = 0;
-        
+
         while ($bytes >= 1024 && $index < count($units) - 1) {
             $bytes /= 1024;
             $index++;
         }
-        
+
         return number_format($bytes, 2) . ' ' . $units[$index];
     }
 }

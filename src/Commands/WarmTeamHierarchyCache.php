@@ -14,7 +14,7 @@ class WarmTeamHierarchyCache extends Command
     public function handle(TeamHierarchyService $service)
     {
         $teamIds = $this->option('team-id');
-        
+
         if (empty($teamIds)) {
             $teamIds = TeamModel::pluck('id');
             $this->info('Warming cache for all teams...');
@@ -22,12 +22,13 @@ class WarmTeamHierarchyCache extends Command
             $this->info('Warming cache for specific teams: ' . implode(', ', $teamIds));
         }
 
-        $progressBar = $this->output->createProgressBar(count($teamIds));        foreach ($teamIds as $teamId) {
+        $progressBar = $this->output->createProgressBar(count($teamIds));
+        foreach ($teamIds as $teamId) {
             // Pre-calculate the most common queries
             $service->getDescendantTeamIds($teamId);
             $service->getAncestorTeamIds($teamId);
             $service->getSiblingTeamIds($teamId);
-            
+
             $progressBar->advance();
         }
 

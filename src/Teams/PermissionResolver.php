@@ -85,7 +85,7 @@ class PermissionResolver
     /**
      * Get all teams the user has any access to
      */
-    public function getAllAccessibleTeamsForUser(int $userId): Collection
+    public function getAllAccessibleTeamsForUser(int $userId)
     {
         $cacheKey = "user_all_accessible_teams.{$userId}";
         
@@ -102,7 +102,7 @@ class PermissionResolver
                     $accessibleTeams = $accessibleTeams->concat($teams);
                 }
                 
-                return $accessibleTeams->unique()->values();
+                return $accessibleTeams->unique()->values()->all();
             });
         });
     }
@@ -127,7 +127,7 @@ class PermissionResolver
     /**
      * Core permission resolution logic
      */
-    private function resolveUserPermissions(int $userId, $teamIds = null): Collection
+    private function resolveUserPermissions(int $userId, $teamIds = null)
     {
         // Get user's active team roles with optimized loading
         $teamRoles = $this->getUserActiveTeamRoles($userId, $teamIds);
@@ -248,13 +248,13 @@ class PermissionResolver
     /**
      * Build the complete permission set for a user
      */
-    private function buildUserPermissionSet(Collection $teamRoles, $teamIds = null): Collection
+    private function buildUserPermissionSet(Collection $teamRoles, $teamIds = null)
     {
         $permissions = collect();
 
         foreach ($teamRoles as $teamRole) {
             // Get teams this role has access to
-            $accessibleTeams = $this->getTeamRoleAccessibleTeams($teamRole);
+            $accessibleTeams = collect($this->getTeamRoleAccessibleTeams($teamRole));
             
             // Filter by target teams if specified
             if ($teamIds !== null) {
@@ -275,13 +275,13 @@ class PermissionResolver
             $permissions = $permissions->concat($directPermissions);
         }
         
-        return $permissions->unique();
+        return $permissions->unique()->all();
     }
     
     /**
      * Get teams accessible through a team role (considering hierarchy)
      */
-    private function getTeamRoleAccessibleTeams(TeamRole $teamRole): Collection
+    private function getTeamRoleAccessibleTeams(TeamRole $teamRole)
     {
         $cacheKey = "team_role_access.{$teamRole->id}";
         
@@ -299,7 +299,7 @@ class PermissionResolver
                     $teams = $teams->concat($siblings);
                 }
                 
-                return $teams->unique();
+                return $teams->unique()->all();
             });
         });
     }
@@ -307,10 +307,10 @@ class PermissionResolver
     /**
      * Get permissions from role with efficient query
      */
-    private function getRolePermissions($role): Collection
+    private function getRolePermissions($role)
     {
         if (!$role) {
-            return collect();
+            return [];
         }
         
         $cacheKey = "role_permissions.{$role->id}";
@@ -320,23 +320,18 @@ class PermissionResolver
             $permissions = $this->requestCache[$cacheKey];
         } else {
             $permissions = Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL, function() use ($role) {
-                return $role->permissions()->get();
+                return $role->permissions()->selectRaw(constructComplexPermissionKeySql('permission_team_role'))
+                    ->get()->all();
             });
         }
         
-        return $permissions->map(function($permission) {
-            return [
-                'key' => $permission->permission_key,
-                'type' => PermissionTypeEnum::from($permission->pivot->permission_type ?? $permission->permission_type),
-                'source' => 'role'
-            ];
-        });
+        return $permissions;
     }
     
     /**
      * Get direct team role permissions
      */
-    private function getTeamRolePermissions(TeamRole $teamRole): Collection
+    private function getTeamRolePermissions(TeamRole $teamRole)
     {
         $cacheKey = "team_role_permissions.{$teamRole->id}";
         
@@ -345,17 +340,13 @@ class PermissionResolver
             $permissions = $this->requestCache[$cacheKey];
         } else {
             $permissions = Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL, function() use ($teamRole) {
-                return $teamRole->permissions()->get();
+                return $teamRole->permissions()
+                    ->selectRaw(constructComplexPermissionKeySql('permission_team_role'))
+                    ->get()->all();
             });
         }
         
-        return $permissions->map(function($permission) {
-            return [
-                'key' => $permission->permission_key,
-                'type' => PermissionTypeEnum::from($permission->pivot->permission_type ?? $permission->permission_type),
-                'source' => 'team_role'
-            ];
-        });
+        return $permissions->all();
     }
 
     /**
@@ -389,9 +380,9 @@ class PermissionResolver
             $rolePermissions = $this->getRolePermissions($teamRole->roleRelation);
             
             foreach ($rolePermissions as $permission) {
-                if ($permission['key'] === $permissionKey && 
-                    $permission['type'] !== PermissionTypeEnum::DENY &&
-                    PermissionTypeEnum::hasPermission($permission['type'], $type)) {
+                if (getPermissionKey($permission) === $permissionKey && 
+                    getPermissionType($permission['type']) !== PermissionTypeEnum::DENY &&
+                    PermissionTypeEnum::hasPermission(getPermissionType($permission['type']), $type)) {
                     return true;
                 }
             }
@@ -401,9 +392,9 @@ class PermissionResolver
         $directPermissions = $this->getTeamRolePermissions($teamRole);
         
         foreach ($directPermissions as $permission) {
-            if ($permission['key'] === $permissionKey && 
-                $permission['type'] !== PermissionTypeEnum::DENY &&
-                PermissionTypeEnum::hasPermission($permission['type'], $type)) {
+            if (getPermissionKey($permission) === $permissionKey && 
+                getPermissionType($permission['type']) !== PermissionTypeEnum::DENY &&
+                PermissionTypeEnum::hasPermission(getPermissionType($permission['type']), $type)) {
                 return true;
             }
         }
@@ -416,10 +407,10 @@ class PermissionResolver
      */
     private function hasExplicitDeny(Collection $permissions, string $permissionKey): bool
     {
-        return $permissions
-            ->where('key', $permissionKey)
-            ->where('type', PermissionTypeEnum::DENY)
-            ->isNotEmpty();
+        return $permissions->contains(function($permission) use ($permissionKey) {
+            return getPermissionKey($permission) === $permissionKey && 
+                   getPermissionType($permission['type']) === PermissionTypeEnum::DENY;
+        });
     }
     
     /**
@@ -430,10 +421,12 @@ class PermissionResolver
         string $permissionKey, 
         PermissionTypeEnum $requiredType
     ): bool {
-        $userPermissions = $permissions->where('key', $permissionKey);
+        $userPermissions = $permissions->filter(function($permission) use ($permissionKey) {
+            return getPermissionKey($permission) === $permissionKey;
+        })->all();
         
         foreach ($userPermissions as $permission) {
-            if (PermissionTypeEnum::hasPermission($permission['type'], $requiredType)) {
+            if (PermissionTypeEnum::hasPermission(getPermissionType($permission), $requiredType)) {
                 return true;
             }
         }

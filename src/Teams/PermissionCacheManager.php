@@ -39,11 +39,6 @@ class PermissionCacheManager
      */
     public function warmUserCache(int $userId): void
     {
-        $resolver = app(PermissionResolver::class);
-        
-        // Pre-load user's basic permissions
-        $resolver->getUserPermissionsOptimized($userId);
-        
         // Pre-load team access info
         $user = \App\Models\User::find($userId);
         if ($user) {

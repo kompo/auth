@@ -74,16 +74,16 @@ class HasSecurity extends ModelPlugin
 
         // Apply READ security
         $this->setupReadSecurity($modelClass);
-        
+
         // Apply WRITE security
         $this->setupWriteSecurity($modelClass);
-        
+
         // Apply DELETE security
         $this->setupDeleteSecurity($modelClass);
-        
+
         // Apply FIELD PROTECTION (with recursion prevention)
         $this->setupFieldProtectionSafe($modelClass);
-        
+
         // Setup cleanup events
         $this->setupCleanupEvents($modelClass);
     }
@@ -113,7 +113,7 @@ class HasSecurity extends ModelPlugin
 
         // Clear tracking when request ends
         if (function_exists('register_shutdown_function')) {
-            register_shutdown_function(function() {
+            register_shutdown_function(function () {
                 static::$fieldProtectionInProgress = [];
                 static::$inBypassContext = false;
                 static::$permissionCheckCache = [];
@@ -162,7 +162,7 @@ class HasSecurity extends ModelPlugin
     protected function processFieldProtection($model)
     {
         $sensibleColumnsKey = $this->getPermissionKey() . '.sensibleColumns';
-        
+
         // Early exit if no sensible columns permission exists
         if (!$this->permissionExists($sensibleColumnsKey)) {
             return;
@@ -215,7 +215,6 @@ class HasSecurity extends ModelPlugin
             }
 
             return false;
-
         } finally {
             // Always exit bypass context
             static::$inBypassContext = false;
@@ -273,7 +272,7 @@ class HasSecurity extends ModelPlugin
     protected function permissionExists($permissionKey)
     {
         $cacheKey = "permission_exists_{$permissionKey}";
-        
+
         if (!isset(static::$permissionCheckCache[$cacheKey])) {
             try {
                 static::$permissionCheckCache[$cacheKey] = Permission::findByKey($permissionKey) !== false;
@@ -309,12 +308,12 @@ class HasSecurity extends ModelPlugin
 
         // Check permission with caching
         $permissionCacheKey = "user_permission_{$sensibleColumnsKey}_" . auth()->id() . '_' . md5(serialize($teamsIdsRelated));
-        
+
         if (!isset(static::$permissionCheckCache[$permissionCacheKey])) {
             try {
                 static::$permissionCheckCache[$permissionCacheKey] = auth()->user()?->hasPermission(
-                    $sensibleColumnsKey, 
-                    PermissionTypeEnum::READ, 
+                    $sensibleColumnsKey,
+                    PermissionTypeEnum::READ,
                     $teamsIdsRelated
                 ) ?? false;
             } catch (\Throwable $e) {
@@ -363,14 +362,14 @@ class HasSecurity extends ModelPlugin
             // Use cached result if available for this model instance
             $modelKey = $this->getModelKey($model);
             $cacheKey = "team_owners_{$modelKey}";
-            
+
             if (isset(static::$permissionCheckCache[$cacheKey])) {
                 return static::$permissionCheckCache[$cacheKey];
             }
 
             $result = $this->calculateTeamOwnersIds($model);
             static::$permissionCheckCache[$cacheKey] = $result;
-            
+
             return $result;
         } catch (\Throwable $e) {
             Log::warning('Failed to get team owners IDs safely', [
@@ -416,7 +415,6 @@ class HasSecurity extends ModelPlugin
 
             // Strategy 5: Fallback
             return null;
-
         } finally {
             // Restore previous bypass context state
             static::$inBypassContext = $wasInBypassContext;
@@ -472,7 +470,7 @@ class HasSecurity extends ModelPlugin
                 return false;
             }
         }
-        
+
         return false;
     }
 
@@ -484,7 +482,7 @@ class HasSecurity extends ModelPlugin
         if ($model->getAttribute('user_id') && auth()->user()) {
             return $model->getAttribute('user_id') === auth()->user()->id;
         }
-        
+
         return false;
     }
 
@@ -493,8 +491,8 @@ class HasSecurity extends ModelPlugin
      */
     protected function hasBypassByFlag($model)
     {
-        return $model->getAttribute('_bypassSecurity') === true || 
-               (static::$bypassedModels[spl_object_hash($model)] ?? false);
+        return $model->getAttribute('_bypassSecurity') === true ||
+            (static::$bypassedModels[spl_object_hash($model)] ?? false);
     }
 
     /**
@@ -518,16 +516,16 @@ class HasSecurity extends ModelPlugin
     {
         $modelKey = $this->getModelKey($model);
         $objectHash = spl_object_hash($model);
-        
+
         // Clean up all tracking arrays
         unset(static::$bypassedModels[$objectHash]);
         unset(static::$fieldProtectionInProgress[$modelKey]);
-        
+
         // Clean up permission cache for this model
-        $keysToRemove = array_filter(array_keys(static::$permissionCheckCache), function($key) use ($modelKey) {
+        $keysToRemove = array_filter(array_keys(static::$permissionCheckCache), function ($key) use ($modelKey) {
             return str_contains($key, $modelKey);
         });
-        
+
         foreach ($keysToRemove as $key) {
             unset(static::$permissionCheckCache[$key]);
         }
@@ -584,9 +582,9 @@ class HasSecurity extends ModelPlugin
     }
 
     // ... [Include all other original methods from HasSecurity] ...
-    
+
     protected function isSecurityGloballyBypassed()
-    {   
+    {
         return globalSecurityBypass();
     }
 
@@ -623,22 +621,22 @@ class HasSecurity extends ModelPlugin
         }
     }
 
-    protected function applyTeamReadSecurity($builder, $hasUserOwnedRecordsScope) 
+    protected function applyTeamReadSecurity($builder, $hasUserOwnedRecordsScope)
     {
         $teamIds = auth()->user()?->getTeamsIdsWithPermission(
-            $this->getPermissionKey(), 
+            $this->getPermissionKey(),
             PermissionTypeEnum::READ
         );
 
-        $builder->where(function($q) use ($teamIds, $hasUserOwnedRecordsScope) {
+        $builder->where(function ($q) use ($teamIds, $hasUserOwnedRecordsScope) {
             if ($this->modelHasMethod('scopeSecurityForTeams')) {
                 $q->securityForTeams($teamIds);
-            } else if($teamIdCol = $this->getTeamIdColumn()) {
+            } else if ($teamIdCol = $this->getTeamIdColumn()) {
                 $q->whereIn($teamIdCol, $teamIds);
             }
 
             if ($hasUserOwnedRecordsScope) {
-                $q->orWhere(function($sq) {
+                $q->orWhere(function ($sq) {
                     $sq->userOwnedRecords();
                 });
             } else {
@@ -715,16 +713,20 @@ class HasSecurity extends ModelPlugin
             return true;
         }
 
-        if (!$this->individualRestrictByTeam($model) && 
-            !auth()->user()?->hasPermission($this->getPermissionKey(), PermissionTypeEnum::WRITE)) {
+        if (
+            !$this->individualRestrictByTeam($model) &&
+            !auth()->user()?->hasPermission($this->getPermissionKey(), PermissionTypeEnum::WRITE)
+        ) {
             throw new PermissionException(__('permissions-you-do-not-have-write-permissions'));
         }
 
-        if ($this->individualRestrictByTeam($model) && 
-            !auth()->user()?->hasPermission($this->getPermissionKey(), PermissionTypeEnum::WRITE, $this->getTeamOwnersIdsSafe($model))) {
+        if (
+            $this->individualRestrictByTeam($model) &&
+            !auth()->user()?->hasPermission($this->getPermissionKey(), PermissionTypeEnum::WRITE, $this->getTeamOwnersIdsSafe($model))
+        ) {
             throw new PermissionException(__('permissions-you-do-not-have-write-permissions'));
         }
-        
+
         return true;
     }
 

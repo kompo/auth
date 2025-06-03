@@ -173,7 +173,7 @@ trait HasTeamsTrait
                     ];
                 })
                 ->toArray(),
-            'accessible_teams_count' => $this->getAllAccessibleTeamIds()->count(),
+            'accessible_teams_count' => collect($this->getAllAccessibleTeamIds())->count(),
             'validation' => $this->validateTeamSetup(),
             'memory_usage' => $this->getTeamMemoryUsage()
         ];

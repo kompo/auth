@@ -47,7 +47,7 @@ class PermissionResolver
         }
 
         // Get user's permission cache
-        $userPermissions = $this->getUserPermissionsOptimized($userId, $teamIds);
+        $userPermissions = collect($this->getUserPermissionsOptimized($userId, $teamIds));
 
         // Check for explicit DENY first (highest priority)
         if ($this->hasExplicitDeny($userPermissions, $permissionKey)) {
@@ -110,7 +110,7 @@ class PermissionResolver
     /**
      * Optimized user permissions retrieval with smart caching
      */
-    public function getUserPermissionsOptimized(int $userId, $teamIds = null): Collection
+    public function getUserPermissionsOptimized(int $userId, $teamIds = null)
     {
         $cacheKey = $this->buildPermissionCacheKey($userId, $teamIds);
         
@@ -133,7 +133,7 @@ class PermissionResolver
         $teamRoles = $this->getUserActiveTeamRoles($userId, $teamIds);
         
         if ($teamRoles->isEmpty()) {
-            return collect();
+            return [];
         }
 
         // Batch load all related data
@@ -211,17 +211,13 @@ class PermissionResolver
             $rolePermissions = DB::table('permission_role')
                 ->join('permissions', 'permissions.id', '=', 'permission_role.permission_id')
                 ->whereIn('permission_role.role', $roleIds)
-                ->select([
-                    'permission_role.role',
-                    'permissions.permission_key',
-                    'permission_role.permission_type'
-                ])
+                ->selectRaw(constructComplexPermissionKeySql('permission_role'). ', permission_role.role as role')
                 ->get()
                 ->groupBy('role');
 
             // Cache role permissions for this request
             foreach ($rolePermissions as $roleId => $permissions) {
-                $this->requestCache["role_permissions.{$roleId}"] = $permissions;
+                $this->requestCache["role_permissions.{$roleId}"] = collect($permissions)->pluck('complex_permission_key')->all();
             }
         }
 
@@ -230,17 +226,13 @@ class PermissionResolver
             $teamRolePermissions = DB::table('permission_team_role')
                 ->join('permissions', 'permissions.id', '=', 'permission_team_role.permission_id')
                 ->whereIn('permission_team_role.team_role_id', $teamRoleIds)
-                ->select([
-                    'permission_team_role.team_role_id',
-                    'permissions.permission_key',
-                    'permission_team_role.permission_type'
-                ])
+                ->selectRaw(constructComplexPermissionKeySql('permission_team_role'). ', permission_team_role.team_role_id as team_role_id')
                 ->get()
                 ->groupBy('team_role_id');
                 
             // Cache team role permissions for this request
             foreach ($teamRolePermissions as $teamRoleId => $permissions) {
-                $this->requestCache["team_role_permissions.{$teamRoleId}"] = $permissions;
+                $this->requestCache["team_role_permissions.{$teamRoleId}"] = collect($permissions)->pluck('complex_permission_key')->all();
             }
         }
     }
@@ -320,7 +312,7 @@ class PermissionResolver
             $permissions = $this->requestCache[$cacheKey];
         } else {
             $permissions = Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL, function() use ($role) {
-                return $role->permissions()->selectRaw(constructComplexPermissionKeySql('permission_team_role'))
+                return $role->permissions()->selectRaw(constructComplexPermissionKeySql('permission_role'))
                     ->get()->all();
             });
         }
@@ -346,7 +338,7 @@ class PermissionResolver
             });
         }
         
-        return $permissions->all();
+        return $permissions;
     }
 
     /**
@@ -409,7 +401,7 @@ class PermissionResolver
     {
         return $permissions->contains(function($permission) use ($permissionKey) {
             return getPermissionKey($permission) === $permissionKey && 
-                   getPermissionType($permission['type']) === PermissionTypeEnum::DENY;
+                   getPermissionType($permission) === PermissionTypeEnum::DENY;
         });
     }
     

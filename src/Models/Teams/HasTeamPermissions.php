@@ -296,6 +296,7 @@ trait HasTeamPermissions
                 // Pre-warm critical caches
                 Cache::put('currentTeamRole' . $this->id, $currentTeamRole, 900);
                 Cache::put('currentTeam' . $this->id, $currentTeamRole->team, 900);
+                Cache::put('isSuperAdmin' . $this->id, $this->isSuperAdmin(), 900);
 
                 // Pre-load permissions asynchronously if possible
                 if (config('queue.default') !== 'sync') {

@@ -3,8 +3,8 @@
 namespace Kompo\Auth\Models\Teams;
 
 use Illuminate\Support\Carbon;
-use Kompo\Auth\Models\ModelBase;
 use App\Models\User;
+use Condoedge\Utils\Models\ModelBase;
 
 class EmailRequest extends ModelBase
 {

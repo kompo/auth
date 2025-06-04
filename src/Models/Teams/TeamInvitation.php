@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Models\Teams;
 
-use Kompo\Auth\Models\ModelBase;
+use Condoedge\Utils\Models\ModelBase;
 
 class TeamInvitation extends ModelBase
 {

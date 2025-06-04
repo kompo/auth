@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Models\Phone;
 
-use Kompo\Auth\Models\Model;
+use Condoedge\Utils\Models\Model;
 
 class Phone extends Model
 {

@@ -6,6 +6,7 @@ use Kompo\Auth\Facades\RoleModel;
 use Condoedge\Utils\Models\Model;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\Roles\Role;
+use Kompo\Auth\Teams\PermissionCacheManager;
 use Kompo\Auth\Teams\TeamHierarchyService;
 
 class TeamRole extends Model
@@ -28,6 +29,22 @@ class TeamRole extends Model
         static::addGlobalScope('withoutSuspended', function ($builder) {
             $builder->whereNull('suspended_at');
         });
+        
+        static::saved(function ($teamRole) {
+            $teamRole->clearCache();
+        });
+
+        static::deleted(function ($teamRole) {
+            $teamRole->clearCache();
+        });
+    }
+
+    protected function clearCache()
+    {
+        // Invalidate permissions cache
+        app(PermissionCacheManager::class)->invalidateByChange('team_role_changed', [
+            'user_ids' => [$this->user_id]
+        ]);
     }
 
     /* RELATIONS */

@@ -469,63 +469,6 @@ class KompoAuthServiceProvider extends ServiceProvider
         // Auth events
         Event::listen(\Illuminate\Auth\Events\Login::class, \Kompo\Auth\Listeners\RecordSuccessLoginAttempt::class);
         Event::listen(\Illuminate\Auth\Events\Failed::class, \Kompo\Auth\Listeners\RecordFailedLoginAttempt::class);
-
-        // Optimized permission cache invalidation listeners
-        Event::listen('eloquent.saved: ' . TeamRole::class, function ($teamRole) {
-            try {
-                app(PermissionCacheManager::class)->invalidateByChange('team_role_changed', [
-                    'user_ids' => [$teamRole->user_id]
-                ]);
-            } catch (\Exception $e) {
-                Log::warning('Failed to invalidate cache on team role save', [
-                    'team_role_id' => $teamRole->id,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        });
-
-        Event::listen('eloquent.deleted: ' . TeamRole::class, function ($teamRole) {
-            try {
-                app(PermissionCacheManager::class)->invalidateByChange('team_role_changed', [
-                    'user_ids' => [$teamRole->user_id]
-                ]);
-            } catch (\Exception $e) {
-                Log::warning('Failed to invalidate cache on team role delete', [
-                    'team_role_id' => $teamRole->id,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        });
-
-        // Role permission changes
-        Event::listen('eloquent.saved: ' . \Kompo\Auth\Models\Teams\Roles\Role::class, function ($role) {
-            try {
-                app(PermissionCacheManager::class)->invalidateByChange('role_permissions_changed', [
-                    'role_ids' => [$role->id]
-                ]);
-            } catch (\Exception $e) {
-                Log::warning('Failed to invalidate cache on role save', [
-                    'role_id' => $role->id,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        });
-
-        // Team hierarchy changes
-        Event::listen('eloquent.saved: ' . config('kompo-auth.team-model-namespace'), function ($team) {
-            if ($team->isDirty('parent_team_id')) {
-                try {
-                    app(PermissionCacheManager::class)->invalidateByChange('team_hierarchy_changed', [
-                        'team_ids' => array_filter([$team->id, $team->parent_team_id, $team->getOriginal('parent_team_id')])
-                    ]);
-                } catch (\Exception $e) {
-                    Log::warning('Failed to invalidate cache on team hierarchy change', [
-                        'team_id' => $team->id,
-                        'error' => $e->getMessage()
-                    ]);
-                }
-            }
-        });
     }
 
     /**

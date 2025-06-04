@@ -7,6 +7,7 @@ use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Models\Traits\BelongsToManyPivotlessTrait;
+use Kompo\Auth\Teams\PermissionCacheManager;
 
 class Role extends Model
 {
@@ -20,10 +21,25 @@ class Role extends Model
     // It's impossible to set this kind of restriction because we read the role to get the permissions it would be getting a infinite loop.
     protected $readSecurityRestrictions = false;
 
-    public function save(array $options = [])
+    public static function booted()
     {
-        parent::save($options);
+        parent::booted();
 
+        static::saved(function ($role) {
+            $role->clearCache();
+        });
+
+        static::deleted(function ($role) {
+            $role->clearCache();
+        });
+    }
+
+    protected function clearCache()
+    {
+        app(PermissionCacheManager::class)->invalidateByChange('role_permissions_changed', [
+            'role_ids' => [$this->id]
+        ]);
+            
         \Cache::forget('roles');
     }
 

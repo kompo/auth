@@ -5,6 +5,7 @@ namespace Kompo\Auth\Models\Teams;
 use Condoedge\Utils\Models\Model;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Kompo\Auth\Teams\PermissionCacheManager;
 use Kompo\Auth\Teams\TeamHierarchyService;
 
 class Team extends Model
@@ -20,18 +21,21 @@ class Team extends Model
         parent::booted();
 
         static::saved(function ($team) {
-            app(TeamHierarchyService::class)->clearCache($team->id);
-            if ($team->isDirty('parent_team_id')) {
-                app(TeamHierarchyService::class)->clearCache($team->getOriginal('parent_team_id'));
-            }
+            $team->clearCache();
         });
 
         static::deleted(function ($team) {
-            app(TeamHierarchyService::class)->clearCache($team->id);
-            if ($team->parent_team_id) {
-                app(TeamHierarchyService::class)->clearCache($team->parent_team_id);
-            }
+            $team->clearCache();
         });
+    }
+
+    protected function clearCache()
+    {
+        if ($this->isDirty('parent_team_id')) {
+            app(PermissionCacheManager::class)->invalidateByChange('team_hierarchy_changed', [
+                'team_ids' => array_filter([$this->id, $this->parent_team_id, $this->getOriginal('parent_team_id')])
+            ]);
+        }
     }
 
     /* RELATIONS */

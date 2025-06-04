@@ -4,6 +4,7 @@ namespace Kompo\Auth\Teams;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
+use Kompo\Auth\Models\Teams\TeamRole;
 
 /**
  * Centralized cache management for permissions
@@ -52,11 +53,14 @@ class PermissionCacheManager
     private function getCriticalUsers(): array
     {
         return Cache::remember('critical_users_list', 3600, function() {
-            // Get most active users from last 24 hours
-            return \App\Models\User::where('updated_at', '>', now()->subDay())
+            // Get users with more team roles (more complex permissions)
+            return \App\Models\User::join('team_roles', 'users.id', '=', 'team_roles.user_id')
+                ->select('users.id')
+                ->groupBy('users.id')
+                ->orderByRaw('COUNT(team_roles.id) DESC')
                 ->limit(100)
                 ->pluck('id')
-                ->toArray();
+                ->all();
         });
     }
     
@@ -113,6 +117,7 @@ class PermissionCacheManager
     private function invalidateUsersWithRole(array $roleIds): void
     {
         $userIds = TeamRole::whereIn('role', $roleIds)
+            ->withoutGlobalScope('authUserHasPermissions')
             ->distinct()
             ->pluck('user_id')
             ->toArray();

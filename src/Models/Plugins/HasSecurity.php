@@ -632,8 +632,8 @@ class HasSecurity extends ModelPlugin
                 $q->userOwnedRecords();
                 static::exitBypassContext();
             })->when(!$hasUserOwnedRecordsScope, function ($q) {
-                if (hasColumnCached((new ($this->modelClass))->getTable(), 'user_id')) {
-                    $q->where('user_id', auth()->user()?->id);
+                if (hasColumnCached($this->getModelTable(), 'user_id')) {
+                    $q->where($this->getModelTable() . '.user_id', auth()->user()?->id);
                 }
             });
         }
@@ -650,7 +650,7 @@ class HasSecurity extends ModelPlugin
             if ($this->modelHasMethod('scopeSecurityForTeams')) {
                 $q->securityForTeams($teamIds);
             } else if ($teamIdCol = $this->getTeamIdColumn()) {
-                $q->whereIn($teamIdCol, $teamIds);
+                $q->whereIn($this->getModelTable() . '.' . $teamIdCol, $teamIds);
             }
 
             if ($hasUserOwnedRecordsScope) {
@@ -660,8 +660,8 @@ class HasSecurity extends ModelPlugin
                     static::exitBypassContext();
                 });
             } else {
-                if (hasColumnCached((new ($this->modelClass))->getTable(), 'user_id')) {
-                    $q->orWhere('user_id', auth()->user()?->id);
+                if (hasColumnCached($this->getModelTable(), 'user_id')) {
+                    $q->orWhere($this->getModelTable() . '.user_id', auth()->user()?->id);
                 }
             }
         });
@@ -826,11 +826,16 @@ class HasSecurity extends ModelPlugin
             $column = getPrivateProperty(new ($this->modelClass), 'TEAM_ID_COLUMN');
         }
 
-        if (hasColumnCached((new ($this->modelClass))->getTable(), $column)) {
+        if (hasColumnCached($this->getModelTable(), $column)) {
             return $column;
         }
 
         return null;
+    }
+
+    protected function getModelTable()
+    {
+        return (new ($this->modelClass))->getTable();
     }
 
     public function systemSave($model)

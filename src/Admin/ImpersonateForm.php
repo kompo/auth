@@ -21,13 +21,13 @@ class ImpersonateForm extends Form
 
 		return _Select()->name('impersonate')->placeholder('admin.menu-impersonation')
         	->class('px-3 text-gray-900 select-with-link-options')
-        	->searchOptions(0, 'searchUsers', 'retrieveUsers');
+        	->searchOptions(3, 'searchUsers', 'retrieveUsers');
 	}
 
 	public function searchUsers($search)
 	{
 		return User::where('id', '<>', authId())->hasNameLike($search)
-			->with('currentTeamRole.team')->orderBy('name')->get()
+			->with('currentTeamRole.team')->orderBy('name')->take(100)->get()
 			->mapWithKeys(fn($user) => [
 				$user->id => $this->getUserOptionLink($user)
 			]);

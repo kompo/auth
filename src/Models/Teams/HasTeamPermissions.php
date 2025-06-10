@@ -9,6 +9,7 @@ use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\PermissionTeamRole;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Teams\PermissionResolver;
+use Kompo\Auth\Teams\TeamHierarchyService;
 
 /**
  * Unified permissions trait that handles all permission logic
@@ -170,7 +171,8 @@ trait HasTeamPermissions
     }
 
     /**
-     * Get team IDs with roles (base implementation)
+     * Get team IDs with roles using optimized batch processing
+     * Groups team roles by hierarchy type and processes each group efficiently
      */
     public function getAllTeamIdsWithRoles($profile = 1, $search = '', $limit = null)
     {
@@ -179,36 +181,211 @@ trait HasTeamPermissions
             ->whereHas('roleRelation', fn($q) => $q->where('profile', $profile))
             ->get();
 
+        if ($teamRoles->isEmpty()) {
+            return [];
+        }
+
         $result = collect();
-
         $quantityLeft = $limit;
+        $hierarchyService = app(TeamHierarchyService::class);
 
-        foreach ($teamRoles as $teamRole) {
+        // Group team roles by hierarchy type for batch processing
+        $groupedTeamRoles = $this->groupTeamRolesByHierarchy($teamRoles);
+
+        // Process each hierarchy group with batch operations
+        foreach ($groupedTeamRoles as $hierarchyType => $roleGroup) {
             if ($quantityLeft !== null && $quantityLeft <= 0) {
-                break; // Stop if we reached the limit
+                break; // Early termination when limit reached
             }
 
-            $hierarchyTeams = $teamRole->getAllHierarchyTeamsIds($search, $quantityLeft);
+            $batchResults = $this->processBatchHierarchyGroup(
+                $hierarchyType, 
+                $roleGroup, 
+                $search, 
+                $quantityLeft,
+                $hierarchyService
+            );
 
-            // Merge the hierarchy teams, grouping roles by team_id
-            foreach ($hierarchyTeams as $teamId => $role) {
-                if ($result->has($teamId)) {
-                    // If team already exists, add the role to the array
-                    $existingRoles = $result->get($teamId);
-                    if (!in_array($role, $existingRoles)) {
-                        $existingRoles[] = $role;
-                        $result->put($teamId, $existingRoles);
-                    }
-                } else {
-                    // If team doesn't exist, create new entry with role array
-                    $result->put($teamId, [$role]);
-                }
+            // Merge batch results into final result
+            $result = $this->mergeBatchResults($result, $batchResults);
+
+            if ($quantityLeft !== null) {
+                $quantityLeft -= count($batchResults);
             }
-
-            $quantityLeft -= count($hierarchyTeams);
         }
 
         return $result->all();
+    }
+
+    /**
+     * Group team roles by their hierarchy access patterns
+     * This enables efficient batch processing of similar hierarchy types
+     */
+    private function groupTeamRolesByHierarchy(Collection $teamRoles): array
+    {
+        $grouped = [
+            'direct' => [],
+            'below' => [],
+            'neighbors' => [],
+            'below_and_neighbors' => []
+        ];
+
+        foreach ($teamRoles as $teamRole) {
+            $hasBelow = $teamRole->getRoleHierarchyAccessBelow();
+            $hasNeighbors = $teamRole->getRoleHierarchyAccessNeighbors();
+
+            if ($hasBelow && $hasNeighbors) {
+                $grouped['below_and_neighbors'][] = $teamRole;
+            } elseif ($hasBelow) {
+                $grouped['below'][] = $teamRole;
+            } elseif ($hasNeighbors) {
+                $grouped['neighbors'][] = $teamRole;
+            } else {
+                $grouped['direct'][] = $teamRole;
+            }
+        }
+
+        // Remove empty groups to avoid unnecessary processing
+        return array_filter($grouped, fn($group) => !empty($group));
+    }
+
+    /**
+     * Process a batch of team roles with the same hierarchy type
+     * Uses efficient batch queries instead of individual lookups
+     */
+    private function processBatchHierarchyGroup(
+        string $hierarchyType, 
+        array $teamRoles, 
+        string $search, 
+        ?int $limit,
+        TeamHierarchyService $hierarchyService
+    ): Collection {
+        $batchResults = collect();
+
+        // Always include direct access (the team itself)
+        $directTeams = $this->getDirectTeamAccess($teamRoles, $search);
+        $batchResults = $batchResults->union($directTeams);
+
+        // Apply hierarchy-specific batch operations
+        switch ($hierarchyType) {
+            case 'direct':
+                // Only direct access, already handled above
+                break;
+
+            case 'below':
+                $belowTeams = $this->getBatchDescendantAccess($teamRoles, $search, $limit, $hierarchyService);
+                $batchResults = $batchResults->union($belowTeams);
+                break;
+
+            case 'neighbors':
+                $neighborTeams = $this->getBatchNeighborAccess($teamRoles, $search, $limit, $hierarchyService);
+                $batchResults = $batchResults->union($neighborTeams);
+                break;
+
+            case 'below_and_neighbors':
+                $belowTeams = $this->getBatchDescendantAccess($teamRoles, $search, $limit, $hierarchyService);
+                $neighborTeams = $this->getBatchNeighborAccess($teamRoles, $search, $limit, $hierarchyService);
+                $batchResults = $batchResults->union($belowTeams)->union($neighborTeams);
+                break;
+        }
+
+        return $batchResults->take($limit ?? PHP_INT_MAX);
+    }
+
+    /**
+     * Get direct team access (the teams the roles are directly assigned to)
+     */
+    private function getDirectTeamAccess(array $teamRoles, string $search): Collection
+    {
+        $directTeams = collect();
+
+        foreach ($teamRoles as $teamRole) {
+            // Apply search filter if specified
+            if ($search && !str_contains(strtolower($teamRole->team->team_name), strtolower($search))) {
+                continue;
+            }
+
+            $teamId = $teamRole->team->id;
+            $role = $teamRole->role;
+
+            // Use the same merging logic as the original method
+            if ($directTeams->has($teamId)) {
+                $existingRoles = $directTeams->get($teamId);
+                if (!in_array($role, $existingRoles)) {
+                    $existingRoles[] = $role;
+                    $directTeams->put($teamId, $existingRoles);
+                }
+            } else {
+                $directTeams->put($teamId, [$role]);
+            }
+        }
+
+        return $directTeams;
+    }
+
+    /**
+     * Get descendant team access using batch operations
+     */
+    private function getBatchDescendantAccess(
+        array $teamRoles, 
+        string $search, 
+        ?int $limit,
+        TeamHierarchyService $hierarchyService
+    ): Collection {
+        // Prepare batch input: team_id => role mapping
+        $teamIdsWithRoles = [];
+        foreach ($teamRoles as $teamRole) {
+            $teamIdsWithRoles[$teamRole->team->id] = $teamRole->role;
+        }
+
+        return $hierarchyService->getBatchDescendantTeamsWithRoles($teamIdsWithRoles, $search, $limit);
+    }
+
+    /**
+     * Get neighbor team access using batch operations
+     */
+    private function getBatchNeighborAccess(
+        array $teamRoles, 
+        string $search, 
+        ?int $limit,
+        TeamHierarchyService $hierarchyService
+    ): Collection {
+        // Prepare batch input: team_id => role mapping
+        $teamIdsWithRoles = [];
+        foreach ($teamRoles as $teamRole) {
+            $teamIdsWithRoles[$teamRole->team->id] = $teamRole->role;
+        }
+
+        return $hierarchyService->getBatchSiblingTeamsWithRoles($teamIdsWithRoles, $search, $limit);
+    }
+
+    /**
+     * Merge batch results into the final result collection
+     * Maintains the same logic as the original method for handling duplicate teams
+     */
+    private function mergeBatchResults(Collection $result, Collection $batchResults): Collection
+    {
+        foreach ($batchResults as $teamId => $roles) {
+            if ($result->has($teamId)) {
+                $existingRoles = $result->get($teamId);
+                // Ensure we only add unique roles
+                if (is_array($roles)) {
+                    $newRoles = array_diff($roles, $existingRoles);
+                    if (!empty($newRoles)) {
+                        $result->put($teamId, array_merge($existingRoles, $newRoles));
+                    }
+                } else {
+                    if (!in_array($roles, $existingRoles)) {
+                        $existingRoles[] = $roles;
+                        $result->put($teamId, $existingRoles);
+                    }
+                }
+            } else {
+                $result->put($teamId, is_array($roles) ? $roles : [$roles]);
+            }
+        }
+
+        return $result;
     }
 
     /**

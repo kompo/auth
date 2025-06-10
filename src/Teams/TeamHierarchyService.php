@@ -255,12 +255,7 @@ class TeamHierarchyService
             return collect();
         }
 
-        $teamIds = array_keys($teamIdsWithRoles);
-        $cacheKey = "batch_descendants." . md5(serialize($teamIds)) . "." . md5($search) . ($limit ? ".{$limit}" : '');
-
-        return Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL / 2, function () use ($teamIdsWithRoles, $search, $limit) {
-            return $this->executeBatchDescendantsWithRolesQuery($teamIdsWithRoles, $search, $limit);
-        });
+        return $this->executeBatchDescendantsWithRolesQuery($teamIdsWithRoles, $search, $limit);
     }
 
     /**
@@ -272,12 +267,7 @@ class TeamHierarchyService
             return collect();
         }
 
-        $teamIds = array_keys($teamIdsWithRoles);
-        $cacheKey = "batch_siblings." . md5(serialize($teamIds)) . "." . md5($search) . ($limit ? ".{$limit}" : '');
-
-        return Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL / 2, function () use ($teamIdsWithRoles, $search, $limit) {
-            return $this->executeBatchSiblingsWithRolesQuery($teamIdsWithRoles, $search, $limit);
-        });
+        return $this->executeBatchSiblingsWithRolesQuery($teamIdsWithRoles, $search, $limit);
     }
 
     /**
@@ -285,19 +275,19 @@ class TeamHierarchyService
      */
     private function executeBatchDescendantsWithRolesQuery(array $teamIdsWithRoles, ?string $search = '', $limit = null): Collection
     {
-        $searchCondition = $search ? 'AND t.team_name LIKE ?' : '';
+        $searchUnionCondition = $search ? 'AND t.team_name LIKE ?' : '';
         $limitQuery = $limit ? "LIMIT ?" : '';
         
         // Create placeholders for IN clause
         $teamIdPlaceholders = str_repeat('?,', count($teamIdsWithRoles) - 1) . '?';
         $teamIds = array_keys($teamIdsWithRoles);
-        
+
         $sql = "
             WITH RECURSIVE team_hierarchy AS (
                 -- Base case: all root teams we're interested in
                 SELECT id, parent_team_id, team_name, id as root_team_id, 0 as depth
                 FROM teams 
-                WHERE id IN ({$teamIdPlaceholders})
+                WHERE id IN ({$teamIdPlaceholders}) 
                 
                 UNION ALL
                 
@@ -307,7 +297,7 @@ class TeamHierarchyService
                 INNER JOIN team_hierarchy th ON t.parent_team_id = th.id
                 WHERE th.depth < 50
                 AND t.deleted_at IS NULL
-                {$searchCondition}
+                {$searchUnionCondition}
             )
             SELECT th.id, th.root_team_id
             FROM team_hierarchy th 
@@ -315,7 +305,8 @@ class TeamHierarchyService
             {$limitQuery}
         ";
 
-        $params = array_merge($teamIds, $search ? [$search] : [], $limit ? [$limit] : []);
+        $searchParam = $search ? [wildcardSpace($search)] : [];
+        $params = array_values(array_filter(array_merge($teamIds, $searchParam, $limit ? [$limit] : [])));
         $results = collect(DB::select($sql, $params));
 
         // Map results back to team_id => role format
@@ -348,7 +339,8 @@ class TeamHierarchyService
             {$limitQuery}
         ";
 
-        $params = array_merge($teamIds, $teamIds, $search ? [$search] : [], $limit ? [$limit] : []);
+        $searchParam = $search ? [wildcardSpace($search)] : [];
+        $params = array_values(array_filter(array_merge($teamIds, $teamIds, $searchParam, $limit ? [$limit] : [])));
         $results = collect(DB::select($sql, $params));
 
         // Map results back to team_id => role format

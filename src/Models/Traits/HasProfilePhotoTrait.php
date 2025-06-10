@@ -29,7 +29,7 @@ trait HasProfilePhotoTrait
     /* CALCULATED FIELDS */
     protected function defaultProfilePhotoUrl()
     {
-        return 'https://ui-avatars.com/api/?name='.urlencode($this->{static::SEARCHABLE_NAME_ATTRIBUTE}).'&color=7F9CF5&background=EBF4FF';
+        return avatarFromText($this->{static::SEARCHABLE_NAME_ATTRIBUTE});
     }
 
     /* ELEMENTS */

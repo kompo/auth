@@ -30,12 +30,12 @@ class TeamHierarchyService
     /**
      * Gets descendants with assigned roles (for role switcher)
      */
-    public function getDescendantTeamsWithRole(int $teamId, string $role, ?string $search = ''): Collection
+    public function getDescendantTeamsWithRole(int $teamId, string $role, ?string $search = '', $limit = null): Collection
     {
-        $cacheKey = "descendants_with_role.{$teamId}.{$role}." . md5($search);
+        $cacheKey = "descendants_with_role.{$teamId}.{$role}." . md5($search) . ($limit ? ".{$limit}" : '');
 
-        return Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL / 2, function () use ($teamId, $role, $search) {
-            return $this->executeDescendantsWithRoleQuery($teamId, $role, $search);
+        return Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL / 2, function () use ($teamId, $role, $search, $limit) {
+            return $this->executeDescendantsWithRoleQuery($teamId, $role, $search, $limit);
         });
     }
 
@@ -70,12 +70,12 @@ class TeamHierarchyService
     /**
      * Gets teams from the same level (siblings)
      */
-    public function getSiblingTeamIds(int $teamId, ?string $search = ''): Collection
+    public function getSiblingTeamIds(int $teamId, ?string $search = '', $limit = null): Collection
     {
-        $cacheKey = "siblings.{$teamId}";
+        $cacheKey = "siblings.{$teamId}." . md5($search) . ($limit ? ".{$limit}" : '');
 
-        return Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL, function () use ($teamId, $search) {
-            return $this->executeSiblingsQuery($teamId, $search);
+        return Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL, function () use ($teamId, $search, $limit) {
+            return $this->executeSiblingsQuery($teamId, $search, $limit);
         });
     }
 
@@ -136,19 +136,20 @@ class TeamHierarchyService
     /**
      * Optimized query for descendants with specific role
      */
-    private function executeDescendantsWithRoleQuery(int $teamId, string $role, ?string $search = ''): Collection
+    private function executeDescendantsWithRoleQuery(int $teamId, string $role, ?string $search = '', $limit = null): Collection
     {
-        $searchCondition = $search ? "AND t.team_name LIKE ?" : '';
-        $params = [$teamId, $role];
-        if ($search) {
-            $params[] = "%{$search}%";
-        }
+        $searchUnionCondition = $search ? "AND t.team_name LIKE ?" : '';
+        $searchTeamsCondition = $search ? 'AND teams.team_name LIKE ?' : '';
+
+        $limitQuery = $limit ? "LIMIT ?" : '';
+        $searchParam = $search ? "%{$search}%" : null;
+        $params = array_values(array_filter([$teamId, $searchParam, $searchParam, $role, $limit]));
 
         $sql = "
             WITH RECURSIVE team_hierarchy AS (
                 SELECT id, parent_team_id, team_name, 0 as depth
                 FROM teams 
-                WHERE id = ?
+                WHERE id = ? {$searchTeamsCondition}
                 
                 UNION ALL
                 
@@ -157,10 +158,11 @@ class TeamHierarchyService
                 INNER JOIN team_hierarchy th ON t.parent_team_id = th.id
                 WHERE th.depth < 50
                   AND t.deleted_at IS NULL
-                  {$searchCondition}
+                  {$searchUnionCondition}
             )
             SELECT th.id, ? as role
-            FROM team_hierarchy th
+            FROM team_hierarchy th 
+            {$limitQuery}
         ";
 
         return collect(DB::select($sql, $params))->mapWithKeys(fn($row) => [$row->id => $row->role]);
@@ -218,9 +220,10 @@ class TeamHierarchyService
     /**
      * Query to get siblings (same parent_team_id)
      */
-    private function executeSiblingsQuery(int $teamId, ?string $search = ''): Collection
+    private function executeSiblingsQuery(int $teamId, ?string $search = '', $limit = null): Collection
     {
-        $searchCondition = $search ? 'AND team_name LIKE %{$search}% ' : '';
+        $searchCondition = $search ? 'AND team_name LIKE ? ' : '';
+        $limitCondition = $limit ? "LIMIT {$limit}" : '';
 
         $sql = "
             SELECT t2.id
@@ -229,8 +232,11 @@ class TeamHierarchyService
             WHERE t1.id = ? 
               AND t2.id != ? {$searchCondition}
               AND t2.deleted_at IS NULL
+            {$limitCondition}
         ";
 
-        return collect(DB::select($sql, [$teamId, $teamId]))->pluck('id');
+        $params = array_values(array_filter([$teamId, $teamId, $search ? $search : null, $limit]));
+
+        return collect(DB::select($sql, $params))->pluck('id');
     }
 }

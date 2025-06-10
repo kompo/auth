@@ -280,7 +280,7 @@ class TeamRole extends Model
         return $teams;
     }
 
-    public function getAllHierarchyTeamsIds($search = '')
+    public function getAllHierarchyTeamsIds($search = '', $limit = null)
     {
         $hierarchyService = app(TeamHierarchyService::class);
         $teams = collect([$this->team->id => $this->role]);
@@ -293,14 +293,19 @@ class TeamRole extends Model
             $descendantsWithRole = $hierarchyService->getDescendantTeamsWithRole(
                 $this->team->id,
                 $this->role,
-                $search
+                $search,
+                $limit,
             );
 
             $teams = $teams->union($descendantsWithRole);
         }
 
+        if ($limit && $teams->count() >= $limit) {
+            return $teams;
+        }
+
         if ($this->getRoleHierarchyAccessNeighbors()) {
-            $siblings = $hierarchyService->getSiblingTeamIds($this->team->id, $search);
+            $siblings = $hierarchyService->getSiblingTeamIds($this->team->id, $search, $limit);
 
             $siblingsWithRole = $siblings->mapWithKeys(fn($id) => [$id => $this->role]);
             $teams = $teams->union($siblingsWithRole);

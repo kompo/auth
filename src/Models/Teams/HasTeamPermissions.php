@@ -154,25 +154,25 @@ trait HasTeamPermissions
     /**
      * Get all team IDs with roles (optimized for role switcher)
      */
-    public function getAllTeamIdsWithRolesCached($profile = 1, $search = '')
+    public function getAllTeamIdsWithRolesCached($profile = 1, $search = '', $limit = null)
     {
         // Don't cache searches to avoid memory bloat
         if ($search) {
-            return $this->getAllTeamIdsWithRoles($profile, $search);
+            return $this->getAllTeamIdsWithRoles($profile, $search, $limit);
         }
 
         return Cache::rememberWithTags(
             ['permissions-v2'],
-            "allTeamIdsWithRoles.{$this->id}.{$profile}",
+            "allTeamIdsWithRoles.{$this->id}.{$profile}.{$limit}",
             180,
-            fn() => $this->getAllTeamIdsWithRoles($profile, '')
+            fn() => $this->getAllTeamIdsWithRoles($profile, '', $limit)
         );
     }
 
     /**
      * Get team IDs with roles (base implementation)
      */
-    public function getAllTeamIdsWithRoles($profile = 1, $search = '')
+    public function getAllTeamIdsWithRoles($profile = 1, $search = '', $limit = null)
     {
         $teamRoles = $this->activeTeamRoles()
             ->with(['roleRelation', 'team'])
@@ -181,8 +181,14 @@ trait HasTeamPermissions
 
         $result = collect();
 
+        $quantityLeft = $limit;
+
         foreach ($teamRoles as $teamRole) {
-            $hierarchyTeams = $teamRole->getAllHierarchyTeamsIds($search);
+            if ($quantityLeft !== null && $quantityLeft <= 0) {
+                break; // Stop if we reached the limit
+            }
+
+            $hierarchyTeams = $teamRole->getAllHierarchyTeamsIds($search, $quantityLeft);
 
             // Merge the hierarchy teams, grouping roles by team_id
             foreach ($hierarchyTeams as $teamId => $role) {
@@ -198,6 +204,8 @@ trait HasTeamPermissions
                     $result->put($teamId, [$role]);
                 }
             }
+
+            $quantityLeft -= count($hierarchyTeams);
         }
 
         return $result->all();

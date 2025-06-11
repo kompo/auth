@@ -82,7 +82,7 @@ class TeamForm extends Modal
         return [
             'team_name' => 'required',
             'active_at' => 'required|date',
-            'inactive_at' => 'nullable|date',
+            'inactive_at' => 'nullable|date|after:active_at',
         ];
     }
 }

@@ -72,7 +72,7 @@ class KompoAuthServiceProvider extends ServiceProvider
 
         // Bind user model
         $this->app->bind(USER_MODEL_KEY, function () {
-            return new (config('kompo-auth.user-namespace'));
+            return new (config('kompo-auth.user-model-namespace'));
         });
     }
 

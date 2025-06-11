@@ -47,30 +47,38 @@ class AssignRoleModal extends Modal
         return _Rows(
             _Select('permissions-team')->name('team_id')
                 ->when(!$this->defaultTeamId, fn($el) => $el->searchOptions(2, 'searchTeams'))
-                ->when($this->defaultTeamId, fn($el) => $el->disabled()->value($this->defaultTeamId)
-                    ->options([$this->defaultTeamId => TeamModel::findOrFail($this->defaultTeamId)->team_name])
+                ->when(
+                    $this->defaultTeamId,
+                    fn($el) => $el->disabled()->value($this->defaultTeamId)
+                        ->options([$this->defaultTeamId => TeamModel::findOrFail($this->defaultTeamId)->team_name])
                 )
                 ->onChange(fn($e) => $e->selfGet('getSelectRolesByTeam')->inPanel('roles-select-panel'))
                 ->overModal('select-team'),
 
             _Select('permissions-user')->name('user_id')
                 ->when(!$this->defaultUserId, fn($el) => $el->searchOptions(2, 'searchUsers'))
-                ->when($this->defaultUserId, fn($el) => $el->disabled()->value($this->defaultUserId)
-                    ->options([$this->defaultUserId => User::findOrFail($this->defaultUserId)->name])
+                ->when(
+                    $this->defaultUserId,
+                    fn($el) => $el->disabled()->value($this->defaultUserId)
+                        ->options([$this->defaultUserId => User::findOrFail($this->defaultUserId)->name])
                 )
                 ->overModal('select-user'),
 
-            _Panel(
-                _Select('permissions-role')->name('role'),
-            )->id('roles-select-panel'),
+            _Panel()->id('roles-select-panel'),
 
             // hidden class will be removed by js if the selected role has accept_roll_to_child
-            _Toggle('permissions-roll-down')->name('roll_to_child', false)->class('hidden')
+            _Toggle('permissions-roll-down')->name('roll_to_child', false)
                 ->id('permissions-roll-down'),
 
             // hidden class will be removed by js if the selected role has accept_roll_to_neighbourg
-            _Toggle('permissions-roll-to-neighbour')->name('roll_to_neighbourg', false)->class('hidden')
+            _Toggle('permissions-roll-to-neighbour')->name('roll_to_neighbourg', false)
                 ->id('permissions-roll-to-neighbour'),
+
+            // Doing this instead of puttin hidden in the toggle, because they will get reloaded with that class on every change
+            _Hidden()->name('hide', false)->onLoad(fn($e) => $e->run('() => {
+                $("#permissions-roll-down").closest(".vlToggle").addClass("hidden");
+                $("#permissions-roll-to-neighbour").closest(".vlToggle").addClass("hidden");
+            }')),
 
             _Flex(
                 !$this->model->id ? null : _DeleteButton('permissions-delete-assignation')->outlined()->byKey($this->model)->class('w-full'),
@@ -82,7 +90,8 @@ class AssignRoleModal extends Modal
     public function getSelectRolesByTeam($teamId)
     {
         return _Select('permissions-role')->name('role')
-            ->options($this->getRolesByTeam($teamId)->mapWithKeys(fn($role) => [$role->id =>
+            ->options($this->getRolesByTeam($teamId)->mapWithKeys(fn($role) => [
+                $role->id =>
                 _Html($role->name)->attr([
                     // To manage with js the displaying of the toggles
                     'data-accept-roll-to-child' => $role->accept_roll_to_child,
@@ -129,5 +138,16 @@ class AssignRoleModal extends Modal
             ->take(50)
             ->get()
             ->pluck('name', 'id');
+    }
+
+    public function rules()
+    {
+        return [
+            'team_id' => 'required|exists:teams,id',
+            'user_id' => 'required|exists:users,id',
+            'role' => 'required|exists:roles,id',
+            'roll_to_child' => 'boolean',
+            'roll_to_neighbourg' => 'boolean',
+        ];
     }
 }

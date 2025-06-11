@@ -644,7 +644,7 @@ class HasSecurity extends ModelPlugin
         $teamIds = auth()->user()?->getTeamsIdsWithPermission(
             $this->getPermissionKey(),
             PermissionTypeEnum::READ
-        );
+        ) ?? [];
 
         $builder->where(function ($q) use ($teamIds, $hasUserOwnedRecordsScope) {
             if ($this->modelHasMethod('scopeSecurityForTeams')) {

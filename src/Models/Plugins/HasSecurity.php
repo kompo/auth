@@ -200,6 +200,11 @@ class HasSecurity extends ModelPlugin
             return true;
         }
 
+        if ($this->routeIsByPassed()) {
+            // If the route is bypassed, skip all security checks
+            return true;
+        }
+
         // Enter bypass context for methods that might query related models
         static::$inBypassContext = true;
 
@@ -611,6 +616,25 @@ class HasSecurity extends ModelPlugin
                 $this->applyReadSecurityScope($builder);
             });
         }
+    }
+
+    protected function routeIsByPassed()
+    {
+        $currentRoute = request()->route();
+
+        if ($currentRoute->uri() == '_kompo') {
+            $referrerRoute = request()->headers->get('referer');
+            $currentRoute = app('router')->getRoutes()->match(app('request')->create($referrerRoute));
+        }
+
+        if (!$currentRoute) {
+            return false;
+        }
+
+        return in_array(
+            'disable-automatic-security',
+            $currentRoute->middleware()
+        );
     }
 
     protected function applyReadSecurityScope($builder)

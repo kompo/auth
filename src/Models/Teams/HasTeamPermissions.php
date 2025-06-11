@@ -114,23 +114,19 @@ trait HasTeamPermissions
     /**
      * Get all team IDs user has access to
      */
-    public function getAllAccessibleTeamIds()
+    public function getAllAccessibleTeamIds($search = null, $limit = null)
     {
+        if ($search) {
+            return array_keys($this->getAllTeamIdsWithRolesCached(profile: null, search: $search, limit: $limit));
+        }
+        
         return Cache::rememberWithTags(
             ['permissions-v2'],
             "user_all_accessible_teams.{$this->id}",
             900,
-            function () {
-                $accessibleTeams = collect();
-                $teamRoles = $this->getActiveTeamRolesOptimized();
-
-                foreach ($teamRoles as $teamRole) {
-                    $teams = $teamRole->getAccessibleTeamsOptimized();
-                    $accessibleTeams = $accessibleTeams->concat($teams);
-                }
-
-                return $accessibleTeams->unique()->values()->all();
-            }
+            function () use ($limit) {
+                return array_keys($this->getAllTeamIdsWithRolesCached(profile: null, search: null, limit: $limit)); 
+            }   
         );
     }
 
@@ -178,7 +174,7 @@ trait HasTeamPermissions
     {
         $teamRoles = $this->activeTeamRoles()
             ->with(['roleRelation', 'team'])
-            ->whereHas('roleRelation', fn($q) => $q->where('profile', $profile))
+            ->whereHas('roleRelation', fn($q) => $q->when($profile, fn($q) => $q->where('profile', $profile)))
             ->get();
 
         if ($teamRoles->isEmpty()) {

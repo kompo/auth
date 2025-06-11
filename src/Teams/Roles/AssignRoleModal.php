@@ -126,9 +126,10 @@ class AssignRoleModal extends Modal
 
     public function searchTeams($search)
     {
-        return TeamModel::active()->search($search)
-            ->forTeam(currentTeamId())
-            ->get()->pluck('team_name', 'id');
+        $teamsIds = auth()->user()->getAllAccessibleTeamIds($search, 30);
+
+        return TeamModel::whereIn('id', $teamsIds)
+            ->pluck('team_name', 'id');
     }
 
     public function searchUsers($search)

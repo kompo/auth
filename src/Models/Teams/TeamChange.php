@@ -12,7 +12,7 @@ class TeamChange extends Model
     /* RELATIONSHIPS */
     public function team()
     {
-    	return $this->belongsTo(Team::class);
+        return $this->belongsTo(Team::class);
     }
 
     public function user()
@@ -36,14 +36,12 @@ class TeamChange extends Model
         $change->message = $message;
         $change->save();
 
-        $cacheKey = 'teamChange'.auth()->id();
+        $email = currentTeam()->getNotificationsEmailAddress();
 
-        if (!\Cache::get($cacheKey)) {
-            $team = currentTeam();
-            $owner = $team->owner;
-            \Mail::to($owner->email)->send(new ChangeNotificationTeamMail($change));
-            \Cache::put($cacheKey, true, 60 * 60 * 4);
+        if (!$email) {
+            return;
         }
-    }
 
+        \Mail::to($email)->send(new ChangeNotificationTeamMail($change));
+    }
 }

@@ -179,6 +179,11 @@ class Team extends Model
         return !$this->inactive_at || $this->inactive_at > now();
     }
 
+    public function getNotificationsEmailAddress()
+    {
+        return $this->owner?->email;
+    }
+
     /* SCOPES */
     public function scopeForParentTeam($query, $teamIdOrIds)
     {

@@ -107,11 +107,27 @@ class KompoAuthServiceProvider extends ServiceProvider
         // Security bypass service (highest priority)
         $this->app->singleton('kompo-auth.security-bypass', function ($app) {
             return function () {
-                if (app()->runningInConsole()) {
+                 if (app()->runningInConsole()) {
+                    return true;
+                }
+
+                if (config('kompo-auth.security.dont-check-if-not-logged-in', false) && !auth()->check()) {
+                    return true;
+                }
+
+                if (config('kompo-auth.security.dont-check-if-impersonating', false) && auth()->user()?->isImpersonating()) {
                     return true;
                 }
 
                 if (auth()->user()?->isSuperAdmin()) {
+                    return true;
+                }
+
+                if (isInBypassContext()) {
+                    return true;
+                }
+
+                if (routeIsByPassed()) {
                     return true;
                 }
 

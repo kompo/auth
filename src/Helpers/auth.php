@@ -50,6 +50,46 @@ if (!function_exists('globalSecurityBypass')) {
     }
 }
 
+if (!function_exists('permissionMustBeAuthorized')) {
+    function permissionMustBeAuthorized($permissionKey)
+    {
+        if (globalSecurityBypass()) {
+            return false;
+        }
+
+        if (!Permission::findByKey($permissionKey) && !config('kompo-auth.security.check-even-if-permission-does-not-exist', false)) {
+            return false;
+        }
+
+        return true;
+    }
+}
+
+if (!function_exists('routeIsByPassed')) {
+    function routeIsByPassed()
+    {
+        $currentRoute = request()->route();
+
+        if (!$currentRoute) {
+            return false;
+        }
+
+        if ($currentRoute->uri() == '_kompo') {
+            $referrerRoute = request()->headers->get('referer');
+            $currentRoute = app('router')->getRoutes()->match(app('request')->create($referrerRoute));
+        }
+
+        if (!$currentRoute) {
+            return false;
+        }
+
+        return in_array(
+            'disable-automatic-security',
+            $currentRoute->middleware()
+        );
+    }
+}
+
 /**
  * Bypass security for current request context
  */

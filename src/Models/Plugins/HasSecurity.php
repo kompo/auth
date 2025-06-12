@@ -7,10 +7,7 @@ use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\Roles\PermissionException;
 use Condoedge\Utils\Models\Plugins\ModelPlugin;
-use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
-use LogicException;
 
 /**
  * HasSecurity Plugin
@@ -164,7 +161,7 @@ class HasSecurity extends ModelPlugin
         $sensibleColumnsKey = $this->getPermissionKey() . '.sensibleColumns';
 
         // Early exit if no sensible columns permission exists
-        if (!$this->permissionExists($sensibleColumnsKey)) {
+        if (!permissionMustBeAuthorized($sensibleColumnsKey)) {
             return;
         }
 
@@ -182,7 +179,7 @@ class HasSecurity extends ModelPlugin
     protected function isSecurityBypassRequired($model)
     {
         // If we're in bypass context, always bypass
-        if (static::$inBypassContext) {
+        if ($this->isSecurityGloballyBypassed()) {
             return true;
         }
 
@@ -197,11 +194,6 @@ class HasSecurity extends ModelPlugin
 
         // Check custom method
         if ($this->hasBypassMethod($model)) {
-            return true;
-        }
-
-        if ($this->routeIsByPassed()) {
-            // If the route is bypassed, skip all security checks
             return true;
         }
 
@@ -606,7 +598,7 @@ class HasSecurity extends ModelPlugin
 
     protected function setupReadSecurity($modelClass)
     {
-        if ($this->hasReadSecurityRestrictions() && Permission::findByKey($this->getPermissionKey())) {
+        if ($this->hasReadSecurityRestrictions() && permissionMustBeAuthorized($this->getPermissionKey())) {
             $modelClass::addGlobalScope('authUserHasPermissions', function ($builder) {
                 if ($this->isSecurityBypassRequired(new ($this->modelClass))) {
                     // If security is bypassed, skip the read security scope
@@ -616,25 +608,6 @@ class HasSecurity extends ModelPlugin
                 $this->applyReadSecurityScope($builder);
             });
         }
-    }
-
-    protected function routeIsByPassed()
-    {
-        $currentRoute = request()->route();
-
-        if ($currentRoute->uri() == '_kompo') {
-            $referrerRoute = request()->headers->get('referer');
-            $currentRoute = app('router')->getRoutes()->match(app('request')->create($referrerRoute));
-        }
-
-        if (!$currentRoute) {
-            return false;
-        }
-
-        return in_array(
-            'disable-automatic-security',
-            $currentRoute->middleware()
-        );
     }
 
     protected function applyReadSecurityScope($builder)
@@ -753,7 +726,7 @@ class HasSecurity extends ModelPlugin
 
     public function checkWritePermissions($model = null)
     {
-        if (!Permission::findByKey($this->getPermissionKey())) {
+        if (!permissionMustBeAuthorized($this->getPermissionKey())) {
             return true;
         }
 

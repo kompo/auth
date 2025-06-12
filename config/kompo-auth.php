@@ -7,6 +7,11 @@ return [
         'default-delete-security-restrictions' => true,
         'default-save-security-restrictions' => true,
         'default-restrict-by-team' => true,
+
+        'dont-check-if-not-logged-in' => false,
+        'dont-check-if-impersonating' => false,
+
+        'check-even-if-permission-does-not-exist' => false,
     ],
 
     // Performance monitoring
@@ -52,7 +57,6 @@ return [
     'assign-role-modal-namespace' => getAppClass(App\Kompo\Teams\Roles\AssignRoleModal::class, Kompo\Auth\Teams\Roles\AssignRoleModal::class),
     'role-form-namespace' => getAppClass(App\Kompo\Teams\Roles\RoleForm::class, Kompo\Auth\Teams\Roles\RoleForm::class),
 
-    'check-if-user-has-permission' => true,
     'default-added-by-modified-by' => 1,
     'profile-enum' => getAppClass(App\Models\Teams\ProfileEnum::class, Kompo\Auth\Models\Teams\ProfileEnum::class),
 

@@ -7,54 +7,57 @@ use Laravel\Socialite\Facades\Socialite;
 //PACKAGES
 Route::impersonate();
 
-//AUTH
-Route::layout('layouts.guest')->middleware(['guest:web'])->group(function(){
+Route::middleware(['disable-automatic-security'])->group(function(){
+	//AUTH
+	Route::layout('layouts.guest')->middleware(['guest:web'])->group(function(){
 
-	Route::get('login', Kompo\Auth\Auth\BaseEmailForm::class)->name('login');
+		Route::get('login', Kompo\Auth\Auth\BaseEmailForm::class)->name('login');
 
-	Route::get('login-password/{email?}', Kompo\Auth\Auth\LoginForm::class)->name('login.password');
+		Route::get('login-password/{email?}', Kompo\Auth\Auth\LoginForm::class)->name('login.password');
 
-	Route::middleware(['sso.validate-driver'])->group(function () {
+		Route::middleware(['sso.validate-driver'])->group(function () {
+			
+			Route::get('login-sso/{service}', [Kompo\Auth\Http\Controllers\SsoController::class, 'login'])->name('login.sso');
+
+			Route::get('login-sso/{service}/callback', [Kompo\Auth\Http\Controllers\SsoController::class, 'callback']);
+
+		});
+
+		Route::middleware(['signed', 'throttle:10,1'])->group(function(){
+
+			Route::get('check-to-verify-email/{id}', Kompo\Auth\Auth\CheckToVerifyEmailForm::class)->name('check.verify.email');
+
+			Route::get('register/{email_request_id}', Kompo\Auth\Auth\RegisterForm::class)->name('register');
+
+			Route::get('email/verify/{hash}', [VerifyEmailController::class, '__invoke'])->name('verification.verify');
+
+		});
+
+		Route::get('forgot-password', Kompo\Auth\Auth\ForgotPasswordForm::class)->name('password.request');
+
+		Route::get('reset-password/{token}', Kompo\Auth\Auth\ResetPasswordForm::class)->name('password.reset');
 		
-		Route::get('login-sso/{service}', [Kompo\Auth\Http\Controllers\SsoController::class, 'login'])->name('login.sso');
-
-		Route::get('login-sso/{service}/callback', [Kompo\Auth\Http\Controllers\SsoController::class, 'callback']);
-
 	});
 
+	Route::middleware(['signed'])->group(function(){
+		Route::get('report-download/{filename}', Kompo\Auth\Http\Controllers\ReportDownloadController::class)->name('report.download');
+	});
+
+	Route::get('surl/{short_url_code}', Kompo\Auth\Http\Controllers\ShortUrlController::class)->name('short-url');
+
+	//TEAMS
 	Route::middleware(['signed', 'throttle:10,1'])->group(function(){
 
-		Route::get('check-to-verify-email/{id}', Kompo\Auth\Auth\CheckToVerifyEmailForm::class)->name('check.verify.email');
+		Route::get('accept-invitation/{id}', Kompo\Auth\Http\Controllers\TeamInvitationAcceptController::class)->name('team-invitations.accept');
 
-		Route::get('register/{email_request_id}', Kompo\Auth\Auth\RegisterForm::class)->name('register');
+		Route::layout('layouts.guest')->middleware(['guest'])->group(function(){
 
-		Route::get('email/verify/{hash}', [VerifyEmailController::class, '__invoke'])->name('verification.verify');
-
-	});
-
-	Route::get('forgot-password', Kompo\Auth\Auth\ForgotPasswordForm::class)->name('password.request');
-
-	Route::get('reset-password/{token}', Kompo\Auth\Auth\ResetPasswordForm::class)->name('password.reset');
-	
-});
-
-Route::middleware(['signed'])->group(function(){
-    Route::get('report-download/{filename}', Kompo\Auth\Http\Controllers\ReportDownloadController::class)->name('report.download');
-});
-
-Route::get('surl/{short_url_code}', Kompo\Auth\Http\Controllers\ShortUrlController::class)->name('short-url');
-
-//TEAMS
-Route::middleware(['signed', 'throttle:10,1'])->group(function(){
-
-	Route::get('accept-invitation/{id}', Kompo\Auth\Http\Controllers\TeamInvitationAcceptController::class)->name('team-invitations.accept');
-
-	Route::layout('layouts.guest')->middleware(['guest'])->group(function(){
-
-		Route::get('team-invitations/{invitation}', Kompo\Auth\Teams\TeamInvitationRegisterForm::class)->name('team-invitations.register');
-	        
+			Route::get('team-invitations/{invitation}', Kompo\Auth\Teams\TeamInvitationRegisterForm::class)->name('team-invitations.register');
+				
+		});
 	});
 });
+
 
 Route::layout('layouts.dashboard')->middleware(['auth'])->group(function(){
 

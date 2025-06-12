@@ -45,7 +45,7 @@ class AssignRoleModal extends Modal
     public function body()
     {
         return _Rows(
-            _Select('permissions-team')->name('team_id')
+            _Select('permissions-team')->name('team_id')->required()
                 ->when(!$this->defaultTeamId, fn($el) => $el->searchOptions(2, 'searchTeams'))
                 ->when(
                     $this->defaultTeamId,
@@ -55,7 +55,7 @@ class AssignRoleModal extends Modal
                 ->onChange(fn($e) => $e->selfGet('getSelectRolesByTeam')->inPanel('roles-select-panel'))
                 ->overModal('select-team'),
 
-            _Select('permissions-user')->name('user_id')
+            _Select('permissions-user')->name('user_id')->required()
                 ->when(!$this->defaultUserId, fn($el) => $el->searchOptions(2, 'searchUsers'))
                 ->when(
                     $this->defaultUserId,
@@ -89,7 +89,7 @@ class AssignRoleModal extends Modal
 
     public function getSelectRolesByTeam($teamId)
     {
-        return _Select('permissions-role')->name('role')
+        return _Select('permissions-role')->name('role')->required()
             ->options($this->getRolesByTeam($teamId)->mapWithKeys(fn($role) => [
                 $role->id =>
                 _Html($role->name)->attr([

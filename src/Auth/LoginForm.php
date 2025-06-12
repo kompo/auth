@@ -26,8 +26,8 @@ class LoginForm extends ImgFormLayout
                 _Html(session('status'))->class('mb-4 p-4 font-medium text-sm bg-green-100 text-green-600') :
                 null,
 
-			_Input('auth-email')->name('email')->default($this->email),
-			_Password('auth-password')->name('password'),
+			_Input('auth-email')->name('email')->default($this->email)->required(),
+			_Password('auth-password')->name('password')->required(),
             _Checkbox('auth-remember-me')->name('remember'),
 			_FlexEnd(
                 _Link('auth-forgot-your-password?')

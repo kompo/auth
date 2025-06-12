@@ -46,9 +46,9 @@ class TeamForm extends Modal
         return [
             _Image()->name('file')->class('mb-2'),
             _Input('team-code')->name('importcode')->class('mb-2'),
-            _Input('team-name')->name('team_name'),
+            _Input('team-name')->name('team_name')->required(),
             _CardLevel5(
-                _DateTime('team-date-from')->name('active_at')->default(now())->class('mb-2'),
+                _DateTime('team-date-from')->name('active_at')->default(now())->class('mb-2')->required(),
                 _DateTime('team-date-to')->name('inactive_at')->class('mb-2'),
             ),
         ];

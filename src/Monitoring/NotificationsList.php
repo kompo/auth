@@ -30,6 +30,7 @@ class NotificationsList extends Query
                           ->where('reminder_at', '<=', Carbon::now());
                     });
             })
+            ->whereNull('seen_at')
             ->latest();
     }
 

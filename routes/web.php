@@ -1,7 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Kompo\Auth\Facades\NotificationModel;
 use Kompo\Auth\Http\Controllers\NotificationsController;
+use Kompo\Auth\Models\Monitoring\Notification;
 use Laravel\Socialite\Facades\Socialite;
 
 //PACKAGES
@@ -47,6 +49,13 @@ Route::middleware(['disable-automatic-security'])->group(function(){
 
 	//TEAMS
 	Route::middleware(['signed', 'throttle:10,1'])->group(function(){
+
+		Route::post('mark-notification-as-seen/{id}', function (int $id) {
+			$notification = NotificationModel::findOrFail($id);
+			$notification->markSeen();
+			
+			return response()->json(['success' => true]);
+		})->name('notifications.mark-seen');
 
 		Route::get('accept-invitation/{id}', Kompo\Auth\Http\Controllers\TeamInvitationAcceptController::class)->name('team-invitations.accept');
 

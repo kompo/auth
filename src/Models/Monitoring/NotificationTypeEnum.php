@@ -17,13 +17,11 @@ enum NotificationTypeEnum: int
 
     public function getContent($notification)
     {
-
-
         return match ($this) {
             self::CUSTOM => $notification->genericNotificationCard(
-                    $notification->custom_message, 
-                    $this->getButton($notification),
-                    $notification->has_reminder_button,
+                $notification->custom_message, 
+                $this->getButton($notification),
+                $notification->has_reminder_button,
             ),
         };
     }

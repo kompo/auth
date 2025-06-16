@@ -8,13 +8,20 @@ use Kompo\Auth\Teams\PermissionResolver;
 use Kompo\Date;
 use Kompo\Elements\Field;
 use Kompo\Place;
+use Condoedge\Utils\Models\Model;
 
 /**
  * Optimized permission checking with caching
+ * 
+ * @param Model|int $id the permission key or model instance in case of a model
  */
-function checkAuthPermission($id, $type = PermissionTypeEnum::READ, $specificTeamId = null): bool
+function checkAuthPermission($id, $type = PermissionTypeEnum::READ, $specificTeamId = null, $specificModel = null): bool
 {
     if (globalSecurityBypass()) {
+        return true;
+    }
+
+    if ($specificModel?->isSecurityBypassRequired()) {
         return true;
     }
 
@@ -214,13 +221,13 @@ if (!function_exists('batchCheckPermissions')) {
 /**
  * Performance-optimized macro extensions
  */
-\Kompo\Elements\BaseElement::macro('checkAuth', function ($id, $type = PermissionTypeEnum::READ, $specificTeamId = null, $returnNullInstead = false) {
+\Kompo\Elements\BaseElement::macro('checkAuth', function ($id, $type = PermissionTypeEnum::READ, $specificTeamId = null, $returnNullInstead = false, $specificModel = null) {
     // Use static cache for repeated checks in same request
     static $permissionCache = [];
-    $cacheKey = $id . '|' . $type->value . '|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest');
+    $cacheKey = $id . '|' . $type->value . '|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest') . '|' . ($specificModel?->getKey() ?? 'null');
 
     if (!isset($permissionCache[$cacheKey])) {
-        $permissionCache[$cacheKey] = checkAuthPermission($id, $type, $specificTeamId);
+        $permissionCache[$cacheKey] = checkAuthPermission($id, $type, $specificTeamId, $specificModel);
     }
 
     if ($permissionCache[$cacheKey]) {
@@ -234,16 +241,16 @@ if (!function_exists('batchCheckPermissions')) {
     return (new ($this::class))->class('hidden');
 });
 
-\Kompo\Elements\BaseElement::macro('checkAuthWrite', function ($id, $specificTeamId = null, $returnNullInstead = false) {
-    return $this->checkAuth($id, PermissionTypeEnum::WRITE, $specificTeamId, $returnNullInstead);
+\Kompo\Elements\BaseElement::macro('checkAuthWrite', function ($id, $specificTeamId = null, $returnNullInstead = false, $specificModel = null) {
+    return $this->checkAuth($id, PermissionTypeEnum::WRITE, $specificTeamId, $returnNullInstead, $specificModel);
 });
 
-Field::macro('readOnlyIfNotAuth', function ($id, $specificTeamId = null) {
+Field::macro('readOnlyIfNotAuth', function ($id, $specificTeamId = null, $specificModel = null) {
     static $permissionCache = [];
-    $cacheKey = $id . '|write|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest');
+    $cacheKey = $id . '|write|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest') . '|' . ($specificModel?->getKey() ?? 'null');
 
     if (!isset($permissionCache[$cacheKey])) {
-        $permissionCache[$cacheKey] = checkAuthPermission($id, PermissionTypeEnum::WRITE, $specificTeamId);
+        $permissionCache[$cacheKey] = checkAuthPermission($id, PermissionTypeEnum::WRITE, $specificTeamId, $specificModel);
     }
 
     if ($permissionCache[$cacheKey]) {
@@ -253,12 +260,12 @@ Field::macro('readOnlyIfNotAuth', function ($id, $specificTeamId = null) {
     return $this->readOnly()->disabled()->class('!opacity-60');
 });
 
-\Kompo\Html::macro('hashIfNotAuth', function ($id, $specificTeamId = null, $minChars = 12) {
+\Kompo\Html::macro('hashIfNotAuth', function ($id, $specificTeamId = null, $minChars = 12, $specificModel = null) {
     static $permissionCache = [];
-    $cacheKey = $id . '|read|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest');
+    $cacheKey = $id . '|read|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest') . '|' . ($specificModel?->getKey() ?? 'null');
 
     if (!isset($permissionCache[$cacheKey])) {
-        $permissionCache[$cacheKey] = checkAuthPermission($id, PermissionTypeEnum::READ, $specificTeamId);
+        $permissionCache[$cacheKey] = checkAuthPermission($id, PermissionTypeEnum::READ, $specificTeamId, $specificModel);
     }
 
     if ($permissionCache[$cacheKey]) {
@@ -270,12 +277,12 @@ Field::macro('readOnlyIfNotAuth', function ($id, $specificTeamId = null) {
     return $this;
 });
 
-Field::macro('hashIfNotAuth', function ($id, $specificTeamId = null, $minChars = 12) {
+Field::macro('hashIfNotAuth', function ($id, $specificTeamId = null, $minChars = 12, $specificModel = null) {
     static $permissionCache = [];
     $cacheKey = $id . '|read|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest');
 
     if (!isset($permissionCache[$cacheKey])) {
-        $permissionCache[$cacheKey] = checkAuthPermission($id, PermissionTypeEnum::READ, $specificTeamId);
+        $permissionCache[$cacheKey] = checkAuthPermission($id, PermissionTypeEnum::READ, $specificTeamId, $specificModel);
     }
 
     if ($permissionCache[$cacheKey]) {
@@ -296,8 +303,8 @@ Field::macro('hashIfNotAuth', function ($id, $specificTeamId = null, $minChars =
     return $this;
 });
 
-Field::macro('hashAndReadOnlyIfNotAuth', function ($id, $specificTeamId = null, $minChars = 12) {
-    return $this->hashIfNotAuth("{$id}.sensibleColumns", $specificTeamId, minChars: $minChars)->readOnlyIfNotAuth($id, $specificTeamId)->readOnlyIfNotAuth("{$id}.sensibleColumns", $specificTeamId);
+Field::macro('hashAndReadOnlyIfNotAuth', function ($id, $specificTeamId = null, $minChars = 12, $specificModel = null) {
+    return $this->hashIfNotAuth("{$id}.sensibleColumns", $specificTeamId, minChars: $minChars, specificModel: $specificModel)->readOnlyIfNotAuth($id, $specificTeamId, specificModel: $specificModel)->readOnlyIfNotAuth("{$id}.sensibleColumns", $specificTeamId, specificModel: $specificModel);
 });
 
 /**

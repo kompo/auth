@@ -176,7 +176,7 @@ class HasSecurity extends ModelPlugin
     /**
      * Enhanced security bypass check with bypass context
      */
-    protected function isSecurityBypassRequired($model)
+    public function isSecurityBypassRequired($model)
     {
         // If we're in bypass context, always bypass
         if ($this->isSecurityGloballyBypassed()) {
@@ -856,6 +856,7 @@ class HasSecurity extends ModelPlugin
             'systemSave',
             'systemDelete',
             'getFieldProtectionDebugInfo',
+            'isSecurityBypassRequired'
         ];
     }
 }

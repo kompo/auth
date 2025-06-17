@@ -109,18 +109,17 @@ class TeamHierarchyService
     private function executeDescendantsQuery(int $teamId, ?string $search = '', ?int $maxDepth = null): Collection
     {
         $maxDepthCondition = $maxDepth ? "AND depth < {$maxDepth}" : '';
-        $searchUnionCondition = $search ? "AND t.team_name LIKE ?" : '';
-        $searchTeamsCondition = $search ? 'AND teams.team_name LIKE ?' : '';
+        $searchCondition = $search ? ' WHERE LOWER(teams.team_name) LIKE LOWER(?)' : '';
 
         $searchParam = $search ? "%{$search}%" : null;
-        $bindings = array_values(array_filter([$teamId, $searchParam, $searchParam]));
+        $bindings = array_values(array_filter([$teamId, $searchParam]));
 
         $sql = "
             WITH RECURSIVE team_hierarchy AS (
                 -- Base case: the root team
                 SELECT id, parent_team_id, team_name, 0 as depth
                 FROM teams 
-                WHERE id = ? {$searchTeamsCondition}
+                WHERE id = ?
                 
                 UNION ALL
                 
@@ -128,10 +127,11 @@ class TeamHierarchyService
                 SELECT t.id, t.parent_team_id, t.team_name, th.depth + 1
                 FROM teams t
                 INNER JOIN team_hierarchy th ON t.parent_team_id = th.id
-                WHERE th.depth < 50 {$maxDepthCondition} {$searchUnionCondition}
+                WHERE th.depth < 50 {$maxDepthCondition}
                   AND t.deleted_at IS NULL
             )
-            SELECT id FROM team_hierarchy
+            SELECT id FROM team_hierarchy 
+            {$searchCondition}
         ";
 
         return collect(DB::select($sql, $bindings))->pluck('id');
@@ -146,7 +146,7 @@ class TeamHierarchyService
 
         $limitQuery = $limit ? "LIMIT ?" : '';
         $searchParam = $search ? "%{$search}%" : null;
-        $params = array_values(array_filter([$teamId, $searchParam, $searchParam, $role, $limit]));
+        $params = array_values(array_filter([$teamId, $role, $limit, $searchParam]));
 
         $sql = "
             WITH RECURSIVE team_hierarchy AS (
@@ -224,7 +224,7 @@ class TeamHierarchyService
      */
     private function executeSiblingsQuery(int $teamId, ?string $search = '', $limit = null): Collection
     {
-        $searchCondition = $search ? 'AND t2.team_name LIKE ? ' : '';
+        $searchCondition = $search ? 'AND LOWER(t2.team_name) LIKE LOWER(?) ' : '';
         $limitCondition = $limit ? "LIMIT {$limit}" : '';
 
         $sql = "
@@ -273,7 +273,7 @@ class TeamHierarchyService
      */
     private function executeBatchDescendantsWithRolesQuery(array $teamIdsWithRoles, ?string $search = '', $limit = null): Collection
     {
-        $searchCondition = $search ? 'AND th.team_name LIKE ?' : '';
+        $searchCondition = $search ? 'AND LOWER(th.team_name) LIKE LOWER(?)' : '';
         $limitQuery = $limit ? "LIMIT ?" : '';
         
         // Create placeholders for IN clause
@@ -320,7 +320,7 @@ class TeamHierarchyService
      */
     private function executeBatchSiblingsWithRolesQuery(array $teamIdsWithRoles, ?string $search = '', $limit = null): Collection
     {
-        $searchCondition = $search ? 'AND t2.team_name LIKE ?' : '';
+        $searchCondition = $search ? 'AND LOWER(t2.team_name) LIKE LOWER(?)' : '';
         $limitQuery = $limit ? "LIMIT ?" : '';
         
         $teamIdPlaceholders = str_repeat('?,', count($teamIdsWithRoles) - 1) . '?';

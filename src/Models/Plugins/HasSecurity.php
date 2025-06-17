@@ -487,7 +487,7 @@ class HasSecurity extends ModelPlugin
      */
     protected function hasBypassByUserId($model)
     {
-        if ($model->getAttribute('user_id') && auth()->user()) {
+        if ($model->getAttribute('user_id') && auth()->user() && !getPrivateProperty($model, 'disableOwnerBypass')) {
             return $model->getAttribute('user_id') === auth()->user()->id;
         }
 

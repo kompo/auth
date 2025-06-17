@@ -10,7 +10,7 @@ trait RoleElementsUtils
     public function multiSelect($defaultRolesIds = null)
     {
         return _MultiSelect()->name('roles', false)->placeholder('auth-roles')->options(
-            getRoles()->mapWithKeys(fn($r) => [$r->id => _Html($r->name)->attr(['data-role-id' => $r->id])])->toArray()
+            getRoles()->mapWithKeys(fn($r) => [$r->id => _Html($r->name)->attr(['data-role-id' => $r->id, 'data-lowercase-name' => strtolower($r->name)])])->toArray()
         )->default($defaultRolesIds ?? [])
             ->onChange(
                 fn($e) => $e->run('precreateRoleVisuals')

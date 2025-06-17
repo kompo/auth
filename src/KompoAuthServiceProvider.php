@@ -111,8 +111,15 @@ class KompoAuthServiceProvider extends ServiceProvider
                     return true;
                 }
 
-                if (config('kompo-auth.security.dont-check-if-not-logged-in', false) && !auth()->check()) {
-                    return true;
+                try {
+                    // Just checking if session exists to avoid unnecessary checks
+                    session()->all();
+
+                    if (config('kompo-auth.security.dont-check-if-not-logged-in', false) && !auth()->check()) {
+                        return true;
+                    }
+                } catch (\Exception $e) {
+                    dd($e);
                 }
 
                 if (config('kompo-auth.security.dont-check-if-impersonating', false) && auth()->user()?->isImpersonating()) {

@@ -118,9 +118,7 @@ class KompoAuthServiceProvider extends ServiceProvider
                     if (config('kompo-auth.security.dont-check-if-not-logged-in', false) && !auth()->check()) {
                         return true;
                     }
-                } catch (\Exception $e) {
-                    dd($e);
-                }
+                } catch (\Exception $e) {}
 
                 if (config('kompo-auth.security.dont-check-if-impersonating', false) && auth()->user()?->isImpersonating()) {
                     return true;

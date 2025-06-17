@@ -2,6 +2,8 @@
 
 namespace Kompo\Auth\Teams;
 
+use Condoedge\Utils\Kompo\ContactInfo\Maps\SingleAddressCard;
+
 class TeamAddressForm extends TeamBaseForm
 {
     protected $_Title = 'crm.team-address';
@@ -10,7 +12,7 @@ class TeamAddressForm extends TeamBaseForm
     protected function body()
     {
         return [
-            new \Kompo\Auth\Maps\SingleAddressCard([
+            new SingleAddressCard([
                 'addressable_id' => $this->model->id,
                 'addressable_type' => 'team',
             ]),

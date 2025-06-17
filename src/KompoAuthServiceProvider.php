@@ -2,6 +2,7 @@
 
 namespace Kompo\Auth;
 
+use App\Models\User;
 use Condoedge\Utils\Kompo\Common\Modal;
 use Condoedge\Utils\Kompo\Common\Query;
 use Condoedge\Utils\Models\ModelBase;
@@ -111,16 +112,7 @@ class KompoAuthServiceProvider extends ServiceProvider
                     return true;
                 }
 
-                try {
-                    // Just checking if session exists to avoid unnecessary checks
-                    session()->all();
-
-                    if (config('kompo-auth.security.dont-check-if-not-logged-in', false) && !auth()->check()) {
-                        return true;
-                    }
-                } catch (\Exception $e) {}
-
-                if (config('kompo-auth.security.dont-check-if-impersonating', false) && auth()->user()?->isImpersonating()) {
+                if (session()->isStarted() && config('kompo-auth.security.dont-check-if-not-logged-in', false) && !auth()->check()) {
                     return true;
                 }
 

@@ -21,15 +21,7 @@ class TeamRole extends Model
     ];
 
     public static function booted()
-    {
-        static::addGlobalScope('withoutTerminated', function ($builder) {
-            $builder->whereNull('terminated_at');
-        });
-
-        static::addGlobalScope('withoutSuspended', function ($builder) {
-            $builder->whereNull('suspended_at');
-        });
-        
+    {        
         static::saved(function ($teamRole) {
             $teamRole->clearCache();
         });
@@ -368,18 +360,21 @@ class TeamRole extends Model
     public function terminate()
     {
         $this->terminated_at = now();
+        $this->deleted_at = now();
         $this->save();
     }
 
     public function suspend()
     {
         $this->suspended_at = now();
+        $this->deleted_at = now();
         $this->save();
     }
 
     public function removeSuspention()
     {
         $this->suspended_at = null;
+        $this->deleted_at = null;
         $this->save();
     }
 

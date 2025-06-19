@@ -166,6 +166,15 @@ class Team extends Model
         return null;
     }
 
+    public function getTeamSwitcherLink($label = null)
+    {
+        $label = $label ?: $this->team_name;
+
+        return _Link($label)->class(currentTeam()->id == $this->id ? 'font-bold' : '')
+			->selfPost('switchToTeamRole', ['team_id' => $this->id])
+			->redirect();
+    }
+
     public function getFullInfoTableElement()
     {
         return _Rows(

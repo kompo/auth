@@ -31,9 +31,7 @@ class MenuTeamsBreadcrumbs extends Form
 	{
 		$label = ($withSlash ? '&nbsp;&nbsp;/&nbsp;&nbsp;' : '').$team->team_name;
 
-		return _Link($label)->class(currentTeam()->id == $team->id ? 'font-bold' : '')
-			->selfPost('switchToTeamRole', ['team_id' => $team->id])
-			->redirect();
+		return $team->getTeamSwitcherLink($label);
 	}
 
     public function switchToTeamRole($teamId)

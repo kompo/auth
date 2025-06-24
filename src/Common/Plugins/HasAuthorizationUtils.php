@@ -111,6 +111,10 @@ class HasAuthorizationUtils extends ComponentPlugin
         if ($this->componentHasMethod('getPermissionKey')) {
             return $this->callComponentMethod('getPermissionKey');
         }
+
+        if ($permissionKey = $this->getComponentProperty('permissionKey')) {
+            return $permissionKey;
+        }
         
         return class_basename($this->component);
     }

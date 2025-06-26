@@ -7,6 +7,7 @@ use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\Roles\PermissionException;
 use Condoedge\Utils\Models\Plugins\ModelPlugin;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -61,6 +62,8 @@ class HasSecurity extends ModelPlugin
      */
     public function onBoot()
     {
+        $this->setupScopes();
+
         // If security is globally disabled, exit early
         if ($this->isSecurityGloballyBypassed()) {
             $this->setupBypassEvents();
@@ -669,6 +672,24 @@ class HasSecurity extends ModelPlugin
         $modelClass::saving(function ($model) {
             $this->handleSavingEvent($model);
         });
+    }
+
+    protected function setupScopes()
+    {
+        $securityBypassReasons = [
+            'alreadyVerifiedAccess',
+            'throughAuthorizedRelation',
+            'withInherentAuthorization',
+            'asSystemOperation',
+            'withinCurrentTeamContext',
+            'forPermissionCheck',
+        ];
+
+        foreach ($securityBypassReasons as $methodName) {
+            Builder::macro($methodName, function () {
+                return $this->withoutGlobalScopes(['authUserHasPermissions']);
+            });
+        }
     }
 
     protected function handleSavingEvent($model)

@@ -8,6 +8,7 @@ use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\Roles\PermissionException;
 use Condoedge\Utils\Models\Plugins\ModelPlugin;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -502,7 +503,7 @@ class HasSecurity extends ModelPlugin
      */
     protected function hasBypassByFlag($model)
     {
-        return $model->getAttribute('_bypassSecurity') === true ||
+        return $model->getAttribute('_bypassSecurity') == true ||
             (static::$bypassedModels[spl_object_hash($model)] ?? false);
     }
 
@@ -687,7 +688,7 @@ class HasSecurity extends ModelPlugin
 
         foreach ($securityBypassReasons as $methodName) {
             Builder::macro($methodName, function () {
-                return $this->withoutGlobalScopes(['authUserHasPermissions']);
+                return $this->withoutGlobalScopes(['authUserHasPermissions'])->addSelect(DB::raw('true as _bypassSecurity'));
             });
         }
     }

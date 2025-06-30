@@ -688,7 +688,7 @@ class HasSecurity extends ModelPlugin
 
         foreach ($securityBypassReasons as $methodName) {
             Builder::macro($methodName, function () {
-                return $this->withoutGlobalScopes(['authUserHasPermissions'])->addSelect(DB::raw('true as _bypassSecurity'));
+                return $this->withoutGlobalScopes(['authUserHasPermissions'])->addSelect(DB::raw('true as _bypassSecurity'))->selectRaw($this->model->getTable() . '.*');
             });
         }
     }

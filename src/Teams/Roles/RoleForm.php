@@ -18,7 +18,9 @@ class RoleForm extends Modal
 
     public function beforeSave()
     {
-        $this->model->id = $this->model->id ?? \Str::snake(request('name'));
+        if (!$this->model->id) {
+            $this->model->id = \Str::snake(request('name')) . '-' . \Str::random(3);
+        }
     }
 
     public function afterSave()
@@ -85,7 +87,7 @@ class RoleForm extends Modal
     public function rules()
     {
         return [
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:roles,name,' . $this->model->id,
             'description' => 'nullable|string|max:1000',
             'profile' => 'string|in:' . implode(',', array_keys($this->profileOptions()->all())),
             'accept_roll_to_child' => 'required|boolean',

@@ -8,6 +8,7 @@ use Kompo\Auth\Facades\RoleModel;
 class RoleForm extends Modal
 {
     use RoleElementsUtils;
+    use RoleRequestsUtils;
 
     protected $_Title = 'permissions-add-role';
     protected $noHeaderButtons = true;
@@ -33,7 +34,10 @@ class RoleForm extends Modal
 
     public function response()
     {
-        return $this->roleHeader($this->model);
+        $latestRoles = collect(session()->get('latest-roles') ?: []);
+        request()->merge(['roles' => $latestRoles->push($this->model->id)->all()]);
+
+        return $this->getRoleUpdate();
     }
 
     public function body()
@@ -56,8 +60,15 @@ class RoleForm extends Modal
 
             _Flex(
                 $this->model->id ? _DeleteButton('permissions-delete')->outlined()->byKey($this->model)->class('w-full') : null,
-                _SubmitButton('permissions-save')->class('w-full')->inPanel('role-header-' . $this->model?->id)->closeModal()
-                    ->onSuccess(fn($e) => $e->selfGet('roleMultiSelect')->inPanel('multi-select-roles')),
+                _SubmitButton('permissions-save')->class('w-full')->onSuccess(
+                    fn($e) => $e->inPanel('hidden-roles')->closeModal()
+                        ->run('() => {
+                            setTimeout(() => {
+                                precreateRoleVisuals(); 
+                                injectRoleContent();
+                            }, 500);
+                        }')
+                )->onSuccess(fn($e) => $e->selfGet('roleMultiSelect')->inPanel('multi-select-roles')),
             )->class('gap-4')
 
             // _Input('Role Permissions')->name('role_permissions')->required(),

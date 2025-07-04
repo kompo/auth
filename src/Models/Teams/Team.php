@@ -185,7 +185,7 @@ class Team extends Model
 
     public function isActive()
     {
-        return !$this->inactive_at || $this->inactive_at > now();
+        return !$this->inactive_at || $this->inactive_at > now() && !$this->deleted_at;
     }
 
     public function getNotificationsEmailAddress()

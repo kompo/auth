@@ -42,6 +42,10 @@ return new class extends Migration
             $table->index(['permission_section_id', 'deleted_at'], 'permissions_section_active_idx');
         });
 
+        Schema::table('teams', function (Blueprint $table) {
+            $table->timestamp('inactive_at')->nullable();
+        });
+
         // Optimize team hierarchy queries
         Schema::table('teams', function (Blueprint $table) {
             // Composite index for hierarchy traversal

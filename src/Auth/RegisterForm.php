@@ -53,7 +53,7 @@ class RegisterForm extends ImgFormLayout
             _InputRegisterPasswords(),
             _CheckboxTerms(),
 			_SubmitButton('auth-register')->class('mb-4'),
-            _LinkAlreadyHaveAccount(),
+            // _LinkAlreadyHaveAccount(),
 		];
 	}
 

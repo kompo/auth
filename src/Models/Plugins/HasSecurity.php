@@ -53,6 +53,8 @@ class HasSecurity extends ModelPlugin
      */
     protected static $inBypassContext = false;
 
+    protected static $inBypassContextTrace = [];
+
     /**
      * Cache for permission checks within the same request to avoid repeated queries.
      */
@@ -116,7 +118,7 @@ class HasSecurity extends ModelPlugin
         if (function_exists('register_shutdown_function')) {
             register_shutdown_function(function () {
                 static::$fieldProtectionInProgress = [];
-                static::$inBypassContext = false;
+                static::exitBypassContext();
                 static::$permissionCheckCache = [];
             });
         }
@@ -202,7 +204,7 @@ class HasSecurity extends ModelPlugin
         }
 
         // Enter bypass context for methods that might query related models
-        static::$inBypassContext = true;
+        static::enterBypassContext();
 
         try {
             // Check allowlist (potential recursion risk)
@@ -218,7 +220,7 @@ class HasSecurity extends ModelPlugin
             return false;
         } finally {
             // Always exit bypass context
-            static::$inBypassContext = false;
+            static::exitBypassContext();
         }
     }
 
@@ -232,9 +234,9 @@ class HasSecurity extends ModelPlugin
         }
 
         try {
-            HasSecurity::enterBypassContext();
+            static::enterBypassContext();
             $allowedUserIds = $model->usersIdsAllowedToManage();
-            HasSecurity::exitBypassContext();
+            static::exitBypassContext();
 
             return collect($allowedUserIds)->contains(auth()->user()->id);
         } catch (\Throwable $e) {
@@ -258,9 +260,9 @@ class HasSecurity extends ModelPlugin
         }
 
         try {
-            HasSecurity::enterBypassContext();
+            static::enterBypassContext();
             $hasByPassMethod = $model->userOwnedRecords()->where($model->getKeyName(), $model->getKey())->exists();
-            HasSecurity::exitBypassContext();
+            static::exitBypassContext();
             return $hasByPassMethod;
 
         } catch (\Throwable $e) {
@@ -396,14 +398,14 @@ class HasSecurity extends ModelPlugin
     {
         // Enter bypass context for team relationship queries
         $wasInBypassContext = static::$inBypassContext;
-        static::$inBypassContext = true;
+        static::enterBypassContext();
 
         try {
             // Strategy 1: Custom method
             if ($this->modelHasMethod($model, 'securityRelatedTeamIds')) {
-                HasSecurity::enterBypassContext();
+                static::enterBypassContext();
                 $teamIds = callPrivateMethod($model, 'securityRelatedTeamIds');
-                HasSecurity::exitBypassContext();
+                static::exitBypassContext();
 
                 return $teamIds;
             }
@@ -564,7 +566,7 @@ class HasSecurity extends ModelPlugin
     public static function clearFieldProtectionTracking(): void
     {
         static::$fieldProtectionInProgress = [];
-        static::$inBypassContext = false;
+        static::exitBypassContext();
         static::$permissionCheckCache = [];
         static::$bypassedModels = [];
     }
@@ -583,6 +585,9 @@ class HasSecurity extends ModelPlugin
     public static function enterBypassContext(): void
     {
         static::$inBypassContext = true;
+
+        // Track the call stack for debugging
+        static::$inBypassContextTrace[] = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
     }
 
     /**
@@ -591,6 +596,9 @@ class HasSecurity extends ModelPlugin
     public static function exitBypassContext(): void
     {
         static::$inBypassContext = false;
+        
+        // Clear the trace
+        static::$inBypassContextTrace = [];
     }
 
     // ... [Include all other original methods from HasSecurity] ...

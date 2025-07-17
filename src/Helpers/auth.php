@@ -121,7 +121,7 @@ if (!function_exists('currentTeamRole')) {
             return null;
         }
 
-        if (!auth()->user()->current_team_role_id) {
+        if (!auth()->user()->currentTeamRole || !auth()->user()->currentTeamRole->roleRelation) {
             auth()->user()->switchToFirstTeamRole();
         }
 

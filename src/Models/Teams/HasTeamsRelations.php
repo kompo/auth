@@ -64,7 +64,7 @@ trait HasTeamsRelations
 
     public function getFirstTeamRole($teamId = null)
     {
-        return $this->teamRoles()->relatedToTeam($teamId)->whereHas('team')->first() ?? 
+        return $this->teamRoles()->relatedToTeam($teamId)->has('team')->has('roleRelation')->first() ?? 
             TeamRole::getParentHierarchyRole($teamId, $this->id)?->createChildForHierarchy($teamId);
     }
 

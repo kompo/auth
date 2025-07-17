@@ -14,21 +14,32 @@ trait HasTeamsRelations
     {
         // Auto-select first team role if none is set
         if ($this->exists && !$this->current_team_role_id) {
-            if(!$this->switchToFirstTeamRole()) {
-                if (auth()->isImpersonating()) {
-                    auth()->leaveImpersonation();
-                } else {
-                    auth()->logout();
-                }
-                
-                abort(403, __('auth-you-dont-have-access-to-any-team'));
-            }
+            $this->manageNullCurrentTeamRole();
         }
 
-        return $this->belongsTo(TeamRole::class, 'current_team_role_id')
+        $res = $this->belongsTo(TeamRole::class, 'current_team_role_id')
             ->when(auth()->id() == $this->id, function ($q) {
                 $q->withoutGlobalScope('authUserHasPermissions');
             });
+
+        if (!(clone $res)->has('roleRelation')->has('team')->exists()) {
+            $this->manageNullCurrentTeamRole();
+        }
+
+        return $res;
+    }
+
+    protected function manageNullCurrentTeamRole()
+    {
+        if(!$this->switchToFirstTeamRole()) {
+            if (auth()->user()->isImpersonated()) {
+                auth()->user()->leaveImpersonation();
+            } else {
+                auth()->logout();
+            }
+            
+            abort(403, __('auth-you-dont-have-access-to-any-team'));
+        }
     }
 
     public function ownedTeams()

@@ -17,11 +17,11 @@ class ContactInformationForm extends Form
 	{
 		return [
 			_Columns(
-                _Input('crm.contact.phone-number')->icon('phone')->name('phone'),
-                _Input('crm.contact.website')->icon('<span class="text-xs">https://</span>')->rIcon('globe')->name('website'),
+                _Input('crm.contact-phone-number')->icon('phone')->name('phone'),
+                _Input('crm.contact-website')->icon('<span class="text-xs">https://</span>')->rIcon('globe')->name('website'),
             ),
 
-            _Textarea('crm.contact.address')->name('address')->icon('location-marker'),
+            _Textarea('crm.contact-address')->name('address')->icon('location-marker'),
 
             _Html('crm.contact.social-presence')->class('text-gray-300 font-medium mb-2'),
 

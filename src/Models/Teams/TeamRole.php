@@ -392,7 +392,13 @@ class TeamRole extends Model
 
     public static function exceedsRoleLimit($roleId, $teamId)
     {
-        return RoleModel::find($roleId)->max_assignments_per_team <= static::where('role', $roleId)->where('team_id', $teamId)->asSystemOperation()->count();
+        $role = RoleModel::find($roleId);
+
+        if (is_null($role) || is_null($role->max_assignments_per_team)) {
+            return false;
+        }
+
+        return $role->max_assignments_per_team <= static::where('role', $roleId)->where('team_id', $teamId)->asSystemOperation()->count();
     }
 
     public static function checkIfIsWarningEls($roleId, $teamId)

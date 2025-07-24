@@ -95,6 +95,23 @@ class Role extends Model
     // SCOPES
 
     // ACTIONS
+    public function save(array $options = []): void
+    {
+        if ($this->from_system) {
+            throw new \Exception(__('translate.you-cannot-update-system-role'));
+        }
+
+        parent::save($options);
+    }
+
+    public function delete()
+    {
+        if ($this->from_system) {
+            throw new \Exception(__('translate.you-cannot-delete-system-role'));
+        }
+
+        parent::delete();
+    }
 
     public function createOrUpdatePermission($permissionId, $value)
     {
@@ -115,6 +132,7 @@ class Role extends Model
             $role = new static;
             $role->id = $name;
             $role->name = ucfirst($name);
+            $role->from_system = true; // Mark as system role
             $role->save();
         }
 

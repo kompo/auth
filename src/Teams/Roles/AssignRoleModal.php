@@ -40,6 +40,17 @@ class AssignRoleModal extends Modal
         }
 
         $this->model->role_hierarchy = RoleHierarchyEnum::getFinal($hierarchies);
+        $this->model->role = $role->id;
+
+        TeamRole::manageTerminateAssignationFromRequest([static::class, 'terminateTeamRole']);
+
+        if (TeamRole::where('team_id', request('team_id'))
+            ->where('user_id', request('user_id'))
+            ->where('role', $this->model->role)
+            ->exists()
+        ) {
+            abort(403, __('translate.role-already-assigned'));
+        }
     }
 
     public function body()
@@ -66,6 +77,8 @@ class AssignRoleModal extends Modal
 
             _Panel()->id('roles-select-panel'),
 
+            _Panel()->id('role-warning'),
+
             // hidden class will be removed by js if the selected role has accept_roll_to_child
             _Toggle('permissions-roll-down')->name('roll_to_child', false)
                 ->id('permissions-roll-down'),
@@ -82,7 +95,9 @@ class AssignRoleModal extends Modal
 
             _Flex(
                 !$this->model->id ? null : _DeleteButton('permissions-delete-assignation')->outlined()->byKey($this->model)->class('w-full'),
-                _SubmitButton('permissions-save-assignation')->closeModal()->refresh($this->refreshId)->class('w-full'),
+                _SubmitButton('permissions-save-assignation')
+                    ->closeModal()->refresh($this->refreshId)
+                    ->class('w-full'),
             )->class('gap-4')
         );
     }
@@ -116,7 +131,20 @@ class AssignRoleModal extends Modal
                 } else {
                     $("#permissions-roll-to-neighbour").closest(".vlToggle").addClass("hidden");
                 }
-            }'));
+            }') && $e->selfPost('checkIfItHasWarning')->withAllFormValues()->inPanel('role-warning'));
+    }
+
+    public function checkIfItHasWarning()
+    {
+        $roleId = request('role');
+        $teamId = request('team_id');
+
+        return TeamRole::checkIfIsWarningEls($roleId, $teamId);
+    }
+
+    static public function terminateTeamRole($teamRole)
+    {
+        $teamRole->terminate();
     }
 
     protected function getRolesByTeam($teamId)

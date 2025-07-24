@@ -4,6 +4,7 @@ namespace Kompo\Auth\Models\Teams;
 
 use Kompo\Auth\Facades\RoleModel;
 use Condoedge\Utils\Models\Model;
+use Illuminate\Support\Facades\Log;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\Roles\Role;
 use Kompo\Auth\Teams\PermissionCacheManager;
@@ -376,6 +377,86 @@ class TeamRole extends Model
         $this->suspended_at = null;
         $this->deleted_at = null;
         $this->save();
+    }
+
+    public function save(array $options = []): void
+    {
+        if (!$this->id && static::exceedsRoleLimit($this->role, $this->team_id)) {
+            abort(403, __('translate.with-values.role-limit-exceeded', ['role' => $this->roleRelation->name, 'max' => $this->roleRelation->max_assignments_per_team]));
+
+            Log::warning('Role limit exceeded for role: ' . $this->roleRelation->name . ' in team: ' . $this->team->team_name);
+        }
+
+        parent::save($options);
+    }
+
+    public static function exceedsRoleLimit($roleId, $teamId)
+    {
+        return RoleModel::find($roleId)->max_assignments_per_team <= static::where('role', $roleId)->where('team_id', $teamId)->asSystemOperation()->count();
+    }
+
+    public static function checkIfIsWarningEls($roleId, $teamId)
+    {
+        if (!$roleId || !$teamId) {
+            return null;
+        }
+
+        $role = RoleModel::findOrFail($roleId);
+
+        if (TeamRole::exceedsRoleLimit($roleId, $teamId)) {
+            $baseQuery = TeamRole::where('role', $roleId)->with('user')->where('team_id', $teamId);
+
+            return _Card(
+                _Html('translate.the-role-limit-exceeded')->class('text-lg'),
+                _Html('translate.you-can-terminate-assignation-to-allow-more-assignments')->class('mb-4'),
+
+                $role->max_assignments_per_team > 1 ? _Select()->name('remove_assignation_id')
+                    ->options(
+                        $baseQuery->get()
+                            ->pluck('user.name', 'id')
+                    )
+                    : _Checkbox(__('translate.with-values.terminate-assignation-to', [
+                        'user_name' => $baseQuery->first()?->user?->name ?: 'N/A'
+                    ]))->name('remove_assignation', false),
+            )->class('border-red-600 text-red-600 bg-red-100 p-4');
+        }
+
+        return null;
+    }
+
+    public static function manageTerminateAssignation($removeAssignation, $removeAssignationId, $roleId, $teamId, $terminateCallback = null)
+    {
+        if ($removeAssignation) {
+            static::where('team_id', $teamId)
+                ->where('role', $roleId)
+                ->get()->each(function ($teamRole) use ($terminateCallback) {
+                    if ($terminateCallback) {
+                        $terminateCallback($teamRole);
+                    } else {
+                        $teamRole->terminate();
+                    }
+                });
+        }
+
+        if ($removeAssignationId) {
+            $teamRole = TeamRole::where('id', $removeAssignationId)->firstOrFail();
+            if ($terminateCallback) {
+                $terminateCallback($teamRole);
+            } else {
+                $teamRole->terminate();
+            }
+        }
+    }
+
+    public static function manageTerminateAssignationFromRequest($terminateCallback = null)
+    {
+        static::manageTerminateAssignation(
+            request('remove_assignation', false),
+            request('remove_assignation_id', null),
+            request('role', null) ?? request('role_id', null),
+            request('team_id', null) ?? currentTeamId(),
+            $terminateCallback
+        );
     }
 
     public static function getParentHierarchyRole($teamId, $userId, $role = null)

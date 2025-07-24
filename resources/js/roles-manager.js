@@ -185,7 +185,7 @@ function setApplyingChangesAlert()
             .attr("id", "applying-changes-alert")
             .addClass("fixed z-50 bottom-8 right-8")
             .html(`
-                <div class="vlAlert h-min !border-warning !text-warning bg-yellow-200 flex gap-6" role="alert">
+                <div class="vlAlert h-min !border-positive !text-positive bg-positive-200 flex gap-6" role="alert">
                     <div class="vlAlert__content">
                         <div v-html="message" class="vlAlert__message">Applying changes...</div>
                     </div>

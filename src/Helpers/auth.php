@@ -9,6 +9,18 @@ use Kompo\Date;
 use Kompo\Elements\Field;
 use Kompo\Place;
 use Condoedge\Utils\Models\Model;
+use Illuminate\Auth\Events\Registered;
+
+if (!function_exists('fireRegisteredEvent')) {
+    /**
+     * Fire the Registered event for the current user
+     * This is used to trigger any post-registration logic
+     */
+    function fireRegisteredEvent()
+    {
+        event(new Registered(auth()->user()));
+    }
+}
 
 /**
  * Optimized permission checking with caching

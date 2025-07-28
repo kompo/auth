@@ -64,7 +64,7 @@ class RoleForm extends Modal
                 _Toggle('permissions-accept-roll-to-neighbours')->name('accept_roll_to_neighbourg'),
             ),
 
-            _Toggle('translate.just-one-per-team')
+            _Toggle('permissions-just-one-per-team')
                 ->name('just_one_per_team', false)
                 ->default($this->model->max_assignments_per_team),
 

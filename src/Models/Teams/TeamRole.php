@@ -382,7 +382,7 @@ class TeamRole extends Model
     public function save(array $options = []): void
     {
         if (!$this->id && static::exceedsRoleLimit($this->role, $this->team_id)) {
-            abort(403, __('translate.with-values.role-limit-exceeded', ['role' => $this->roleRelation->name, 'max' => $this->roleRelation->max_assignments_per_team]));
+            abort(403, __('auth.with-values.role-limit-exceeded', ['role' => $this->roleRelation->name, 'max' => $this->roleRelation->max_assignments_per_team]));
 
             Log::warning('Role limit exceeded for role: ' . $this->roleRelation->name . ' in team: ' . $this->team->team_name);
         }
@@ -413,15 +413,15 @@ class TeamRole extends Model
             $baseQuery = TeamRole::where('role', $roleId)->with('user')->where('team_id', $teamId);
 
             return _Card(
-                _Html('translate.the-role-limit-exceeded')->class('text-lg'),
-                _Html('translate.you-can-terminate-assignation-to-allow-more-assignments')->class('mb-4'),
+                _Html('auth-the-role-limit-exceeded')->class('text-lg'),
+                _Html('auth-you-can-terminate-assignation-to-allow-more-assignments')->class('mb-4'),
 
                 $role->max_assignments_per_team > 1 ? _Select()->name('remove_assignation_id')
                     ->options(
                         $baseQuery->get()
                             ->pluck('user.name', 'id')
                     )
-                    : _Checkbox(__('translate.with-values.terminate-assignation-to', [
+                    : _Checkbox(__('auth-with-values-terminate-assignation-to', [
                         'user_name' => $baseQuery->first()?->user?->name ?: 'N/A'
                     ]))->name('remove_assignation', false),
             )->class('border-red-600 text-red-600 bg-red-100 p-4');

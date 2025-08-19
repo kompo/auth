@@ -92,6 +92,25 @@ class Role extends Model
         return $this->deniedPermissions();
     }
 
+    public function canSeeDeletedButton()
+    {
+        return !$this->from_system;
+    }
+
+    public function hasPendingActionsToDelete()
+    {
+        return $this->teamRoles()->count() > 0;
+    }
+
+    public function pendingActionsToDeleteEls()
+    {
+        return _Rows(
+            _Html(__('translate.with-values.there-are-team-roles-associated-to-this-role-you-cannot-delete-it', [
+                'count' => $this->teamRoles()->count(),
+            ])),
+        );
+    }
+
     // SCOPES
 
     // ACTIONS
@@ -108,6 +127,10 @@ class Role extends Model
     {
         if ($this->from_system) {
             throw new \Exception(__('auth-you-cannot-delete-system-role'));
+        }
+
+        if ($this->teamRoles()->count() > 0) {
+            throw new \Exception(__('translate.auth-you-cannot-delete-role-with-team-roles'));
         }
 
         parent::delete();

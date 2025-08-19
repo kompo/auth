@@ -17,7 +17,7 @@ class RolesAndPermissionMatrix extends Query
 
     public $class = 'overflow-x-auto max-w-full mini-scroll pt-5';
     public $itemsWrapperClass = 'w-max overflow-y-auto mini-scroll';
-    public $itemsWrapperStyle = 'max-height:50vh;';
+    public $itemsWrapperStyle = 'max-height:50vh; min-height:80px;';
     protected $defaultRolesIds;
     const DEFAULT_ROLES_NUM = 4;
 

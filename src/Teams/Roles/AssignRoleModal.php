@@ -49,7 +49,7 @@ class AssignRoleModal extends Modal
             ->where('role', $this->model->role)
             ->exists()
         ) {
-            abort(403, __('translate.role-already-assigned'));
+            abort(403, __('error-role-already-assigned'));
         }
     }
 

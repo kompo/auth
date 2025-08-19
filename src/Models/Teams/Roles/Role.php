@@ -98,7 +98,7 @@ class Role extends Model
     public function save(array $options = []): void
     {
         if ($this->from_system) {
-            throw new \Exception(__('translate.you-cannot-update-system-role'));
+            throw new \Exception(__('auth-you-cannot-update-system-role'));
         }
 
         parent::save($options);
@@ -107,7 +107,7 @@ class Role extends Model
     public function delete()
     {
         if ($this->from_system) {
-            throw new \Exception(__('translate.you-cannot-delete-system-role'));
+            throw new \Exception(__('auth-you-cannot-delete-system-role'));
         }
 
         parent::delete();

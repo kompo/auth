@@ -447,7 +447,8 @@ class KompoAuthServiceProvider extends ServiceProvider
     {
         $configs = [
             'kompo-auth' => __DIR__ . '/../config/kompo-auth.php',
-            'kompo' => __DIR__ . '/../config/kompo.php'
+            'kompo' => __DIR__ . '/../config/kompo.php',
+            'fortify' => __DIR__ . '/../config/fortify.php',
         ];
 
         foreach ($configs as $key => $path) {

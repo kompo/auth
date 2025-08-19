@@ -115,7 +115,7 @@ class User extends Authenticatable
 
     public function block()
     {
-        $this->blocked_at = now();
+        $this->blocked_at = $this->blocked_at ?? now();
         $this->save();
     }
 
@@ -125,9 +125,19 @@ class User extends Authenticatable
         $this->save();
     }
 
+    public function isBlocked()
+    {
+        return !is_null($this->blocked_at);
+    }
+
+    public function isBanned()
+    {
+        return !is_null($this->banned_at);
+    }
+
     public function ban()
     {
-        $this->banned_at = now();
+        $this->banned_at = $this->banned_at ?? now();
         $this->save();
     }
 

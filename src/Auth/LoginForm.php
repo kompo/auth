@@ -26,6 +26,8 @@ class LoginForm extends ImgFormLayout
                 _Html(session('status'))->class('mb-4 p-4 font-medium text-sm bg-green-100 text-green-600') :
                 null,
 
+            _ErrorField()->noInputWrapper()->name('error_field', false)->class('ErrorCard'),
+
 			_Input('auth-email')->name('email')->default($this->email)->required(),
 			_Password('auth-password')->name('password')->required(),
             _Checkbox('auth-remember-me')->name('remember'),
@@ -33,10 +35,16 @@ class LoginForm extends ImgFormLayout
                 _Link('auth-forgot-your-password?')
                     ->href('password.request')
                     ->class('text-gray-600 text-sm'),
-                _SubmitButton('auth-login')->redirect($this->redirectTo),
+                _SubmitButton('auth-login')->redirect($this->redirectTo)
+                    ->onError(fn($e) => $e->selfGet('error')->inModal()),
             )->class('space-x-4')
 		];
 	}
+
+    public function error()
+    {
+        dd(session()->all(), request()->all());
+    }
 
     public function rules()
     {

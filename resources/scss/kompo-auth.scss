@@ -174,3 +174,11 @@
 .balloon-w-300[data-balloon-pos]:after {
   width: 300px;
 }
+
+.ErrorCard:has(.vlFieldErrors) {
+    @apply rounded-2xl mb-4 bg-transparent border-2 border-white p-4;
+}
+
+.ErrorCard > .vlFieldErrors {
+    @apply text-white text-base;
+}

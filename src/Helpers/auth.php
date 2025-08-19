@@ -157,7 +157,8 @@ if (!function_exists('currentTeam')) {
             return null;
         }
 
-        $currentTeam = \Cache::remember(
+        $currentTeam = \Cache::rememberWithTags(
+            ['teams.' . currentTeamRole()?->team?->id],
             'currentTeam' . auth()->id(),
             900,
             fn() => currentTeamRole()?->team

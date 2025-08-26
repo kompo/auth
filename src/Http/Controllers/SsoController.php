@@ -48,4 +48,17 @@ class SsoController extends Controller
      
         return redirect()->route('dashboard');
     }
+
+    protected function logErrorAndRedirect($error)
+    {
+        \Log::warning('SSO ERROR');
+        \Log::warning($error->getMessage());
+
+        if (auth()->user()) { //for some reason we are logged in by azure ?? ..
+            \Auth::guard()->logout();
+        }
+
+        return redirect()->route('login')
+            ->with('status', __('translate.error-translations.issue-with-sso'));
+    }
 }

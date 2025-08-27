@@ -120,3 +120,11 @@ if (!function_exists('_CheckboxTerms')) {
             ->name('terms', false);
     }
 }
+
+if (!function_exists('_StatusNotice')) {
+    function _StatusNotice()
+    {
+        return !session('status') ? null :
+            _Html(session('status'))->class('mb-4 p-4 text-sm rounded-2xl StatusNotice');
+    }
+}

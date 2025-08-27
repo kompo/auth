@@ -19,7 +19,7 @@ class SsoController extends Controller
         try{
             $socialUser = Socialite::driver($service)->user();
         } catch (\Exception $e) {
-            abort(403, 'SSO login failed.');
+            return $this->logErrorAndRedirect($e);
         }
 
         $user = User::where('email', $socialUser->email)->first();

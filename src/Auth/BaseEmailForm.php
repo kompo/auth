@@ -38,6 +38,8 @@ class BaseEmailForm extends ImgFormLayout
 	public function rightColumnBody()
 	{
 		return [
+            _StatusNotice()?->class('ErrorCard'),
+            
             _Rows(
 //                _Link('register.login-with-google')->button()->outlined()->class('mb-2 !bg-transparent border !border-warning')
 //                    ->href('login.sso', ['service' => 'google']),

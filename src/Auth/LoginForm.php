@@ -22,9 +22,7 @@ class LoginForm extends ImgFormLayout
 	public function rightColumnBody()
 	{
 		return [
-            session('status') ? //See ResetPasswordForm: to confirm the password has been reset...
-                _Html(session('status'))->class('mb-4 p-4 font-medium text-sm bg-green-100 text-green-600') :
-                null,
+            _StatusNotice()?->class('ErrorCard'),
 
             _ErrorField()->noInputWrapper()->name('error_field', false)->class('ErrorCard'),
 

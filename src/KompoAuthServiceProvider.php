@@ -450,6 +450,7 @@ class KompoAuthServiceProvider extends ServiceProvider
             'kompo' => __DIR__ . '/../config/kompo.php',
             'fortify' => __DIR__ . '/../config/fortify.php',
             'services' => __DIR__ . '/../config/services.php',
+            'impersonate' => __DIR__ . '/../config/laravel-impersonate.php',
         ];
 
         foreach ($configs as $key => $path) {

@@ -17,7 +17,7 @@ class EnsureUserIsNotBlocked
 
         if ($user && ($user->isBlocked() || $user->isBanned())) {
             throw ValidationException::withMessages([
-                'error_field' => trans('translate.auth.blocked-user-explanation', ['username' => $user->{$username}]),
+                'error_field' => trans('auth-blocked-user-explanation', ['username' => $user->{$username}]),
             ]);
         }
 

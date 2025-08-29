@@ -59,6 +59,6 @@ class SsoController extends Controller
         }
 
         return redirect()->route('login')
-            ->with('status', __('translate.error-translations.issue-with-sso'));
+            ->with('status', __('error-issue-with-sso'));
     }
 }

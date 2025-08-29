@@ -65,7 +65,37 @@
 						</translations>
 					</concept_node>
 					<concept_node>
+						<name>auth-blocked-user-explanation</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
 						<name>auth-change</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
+						<name>auth-close</name>
 						<description/>
 						<comment/>
 						<translations>
@@ -530,6 +560,21 @@
 						</translations>
 					</concept_node>
 					<concept_node>
+						<name>auth-pending-actions-to-delete-role</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
 						<name>auth-permission</name>
 						<description/>
 						<comment/>
@@ -890,6 +935,21 @@
 						</translations>
 					</concept_node>
 					<concept_node>
+						<name>auth-with-values-there-are-team-roles-associated-to-this-role-you-cannot-delete-it</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
 						<name>auth-with-values.this-team-do-the-following-changes</name>
 						<description/>
 						<comment/>
@@ -906,6 +966,21 @@
 					</concept_node>
 					<concept_node>
 						<name>auth-you-can-terminate-assignation-to-allow-more-assignments</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
+						<name>auth-you-cannot-delete-role-with-team-roles</name>
 						<description/>
 						<comment/>
 						<translations>
@@ -1386,6 +1461,21 @@
 					</concept_node>
 					<concept_node>
 						<name>email-work</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
+						<name>error-issue-with-sso</name>
 						<description/>
 						<comment/>
 						<translations>

@@ -82,6 +82,10 @@ class PermissionCacheManager
                 $this->invalidateTeamHierarchy($affectedIds['team_ids'] ?? []);
                 break;
                 
+            case 'team_created':
+                $this->invalidateTeamCreated($affectedIds['team_ids'] ?? []);
+                break;
+                
             case 'permission_updated':
                 $this->invalidatePermissionKey($affectedIds['permission_keys'] ?? []);
                 break;
@@ -141,11 +145,32 @@ class PermissionCacheManager
             $hierarchyService->clearCache($teamId);
         }
         
-        // Clear team role access cache
+        // Clear team role access cache (fixed: only run once, not per team)
+        $this->forgetByPattern("team_role_access.*");
+        $this->forgetByPattern("accessible_teams.*");
+    }
+    
+    /**
+     * Invalidate cache when teams are created - affects all user accessible teams
+     */
+    private function invalidateTeamCreated(array $teamIds): void
+    {
+        // Clear hierarchy service cache for affected teams
+        $hierarchyService = app(TeamHierarchyService::class);
         foreach ($teamIds as $teamId) {
-            $this->forgetByPattern("team_role_access.*");
-            $this->forgetByPattern("accessible_teams.*");
+            $hierarchyService->clearCache($teamId);
         }
+        
+        // When teams are created, we need to clear all user accessible teams cache
+        // because users with parent team access might now have access to new child teams
+        $this->forgetByPattern("user_all_accessible_teams.*");
+        $this->forgetByPattern("allTeamIdsWithRoles.*");
+        $this->forgetByPattern("activeTeamRoles.*");
+        $this->forgetByPattern("team_role_accessible.*");
+        
+        // Also clear general team access patterns
+        $this->forgetByPattern("user_team_access.*");
+        $this->forgetByPattern("accessible_teams.*");
     }
     
     /**

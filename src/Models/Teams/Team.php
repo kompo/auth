@@ -31,11 +31,25 @@ class Team extends Model
 
     protected function clearCache()
     {
-        // if ($this->isDirty('parent_team_id')) {
-            app(PermissionCacheManager::class)->invalidateByChange('team_hierarchy_changed', [
+        $cacheManager = app(PermissionCacheManager::class);
+        
+        if ($this->isDirty('parent_team_id')) {
+            $cacheManager->invalidateByChange('team_hierarchy_changed', [
                 'team_ids' => array_filter([$this->id, $this->parent_team_id, $this->getOriginal('parent_team_id')])
             ]);
-        // }
+        }
+        
+        if ($this->wasRecentlyCreated) {
+            $affectedTeamIds = [$this->id];
+            
+            if ($this->parent_team_id) {
+                $affectedTeamIds[] = $this->parent_team_id;
+            }
+            
+            $cacheManager->invalidateByChange('team_created', [
+                'team_ids' => $affectedTeamIds
+            ]);
+        }
     }
 
     /* RELATIONS */

@@ -55,7 +55,11 @@ class PermissionResolver
         }
         
         // Check for required permission
-        return $this->hasRequiredPermission($userPermissions, $permissionKey, $type);
+        if (!$this->hasRequiredPermission($userPermissions, $permissionKey, $type)) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -131,7 +135,7 @@ class PermissionResolver
     {
         // Get user's active team roles with optimized loading
         $teamRoles = $this->getUserActiveTeamRoles($userId, $teamIds);
-        
+
         if ($teamRoles->isEmpty()) {
             return [];
         }
@@ -422,7 +426,7 @@ class PermissionResolver
                 return true;
             }
         }
-        
+
         return false;
     }
     

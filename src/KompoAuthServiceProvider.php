@@ -313,6 +313,95 @@ class KompoAuthServiceProvider extends ServiceProvider
 
             return $failed;
         });
+
+        // Pattern-based cache forgetting for PermissionCacheManager
+        Cache::macro('forgetByPattern', function ($pattern, $tags = ['permissions-v2']) {
+            try {
+                if (Cache::getStore() instanceof \Illuminate\Cache\RedisStore) {
+                    return Cache::forgetRedisByPattern($pattern);
+                } else {
+                    // For file/database cache, clear all tagged cache
+                    return Cache::flushTags($tags);
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Cache pattern forget failed', [
+                    'pattern' => $pattern,
+                    'tags' => $tags,
+                    'error' => $e->getMessage()
+                ]);
+                return false;
+            }
+        });
+
+        // Redis-specific pattern deletion macro
+        Cache::macro('forgetRedisByPattern', function ($pattern) {
+            try {
+                $store = Cache::getStore();
+
+                if (!($store instanceof \Illuminate\Cache\RedisStore)) {
+                    \Log::warning('forgetRedisByPattern called on non-Redis store');
+                    return false;
+                }
+
+                $connection = $store->connection();
+                $redis = \Illuminate\Support\Facades\Redis::connection($connection->getName());
+                $prefix = $store->getPrefix();
+
+                // Convert Laravel cache pattern to Redis pattern
+                $fullPattern = "*:" . $pattern;
+
+                // Use SCAN instead of KEYS for better performance and reliability
+                $cursor = '0';
+                $keys = [];
+
+                do {
+                    $result = $redis->scan($cursor, ['MATCH' => $fullPattern, 'COUNT' => 100]);
+                    if ($result === false) {
+                        break;
+                    }
+
+                    $cursor = $result[0];
+                    $foundKeys = $result[1] ?? [];
+
+                    if (!empty($foundKeys)) {
+                        $keys = array_merge($keys, $foundKeys);
+                    }
+                } while ($cursor !== '0');
+
+                $deleted = 0;
+                foreach ($keys as $fullKey) {
+                    // Extract the cache key from the full Redis key
+                    $cacheKey = $fullKey;
+
+                    // Remove the database prefix if present
+                    if (str_starts_with($cacheKey, 'laravel_database_')) {
+                        $cacheKey = substr($cacheKey, strlen('laravel_database_'));
+                    }
+
+                    // Remove the cache prefix
+                    if (str_starts_with($cacheKey, $prefix)) {
+                        $cacheKey = substr($cacheKey, strlen($prefix));
+                    }
+
+                    // Remove hash part (format: hash:key)
+                    if (str_contains($cacheKey, ':') && preg_match('/^[a-f0-9]{64}:(.+)$/', $cacheKey, $matches)) {
+                        $cacheKey = $matches[1];
+                    }
+
+                    if (Cache::forget($cacheKey)) {
+                        $deleted++;
+                    }
+                }
+
+                return $deleted;
+            } catch (\Exception $e) {
+                \Log::warning('Redis pattern forget failed', [
+                    'pattern' => $pattern,
+                    'error' => $e->getMessage()
+                ]);
+                return false;
+            }
+        });
     }
 
     /**

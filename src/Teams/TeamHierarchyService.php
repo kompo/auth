@@ -85,6 +85,8 @@ class TeamHierarchyService
     public function clearCache(?int $teamId = null): void
     {
         if ($teamId) {
+            Cache::flushTags(['teams.' . $teamId]);
+
             // Clear specific team cache and its related ones
             $patterns = [
                 "descendants.{$teamId}.*",

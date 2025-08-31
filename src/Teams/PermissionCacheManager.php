@@ -3,7 +3,7 @@
 namespace Kompo\Auth\Teams;
 
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Log;
 use Kompo\Auth\Models\Teams\TeamRole;
 
 /**
@@ -14,7 +14,7 @@ class PermissionCacheManager
 {
     private const CACHE_TAG = 'permissions-v2';
     private const STATS_KEY = 'permission_cache_stats';
-    
+
     /**
      * Warm cache for critical users (most active)
      */
@@ -22,7 +22,7 @@ class PermissionCacheManager
     {
         $criticalUsers = $this->getCriticalUsers();
         $warmed = 0;
-        
+
         foreach ($criticalUsers as $userId) {
             try {
                 $this->warmUserCache($userId);
@@ -31,10 +31,10 @@ class PermissionCacheManager
                 \Log::warning("Failed to warm cache for user {$userId}: " . $e->getMessage());
             }
         }
-        
+
         return $warmed;
     }
-    
+
     /**
      * Warm cache for a specific user
      */
@@ -46,13 +46,13 @@ class PermissionCacheManager
             $user->getAllAccessibleTeamIds();
         }
     }
-    
+
     /**
      * Get list of critical users to warm cache for
      */
     private function getCriticalUsers(): array
     {
-        return Cache::remember('critical_users_list', 3600, function() {
+        return Cache::remember('critical_users_list', 3600, function () {
             // Get users with more team roles (more complex permissions)
             return \App\Models\User::join('team_roles', 'users.id', '=', 'team_roles.user_id')
                 ->select('users.id')
@@ -63,7 +63,7 @@ class PermissionCacheManager
                 ->all();
         });
     }
-    
+
     /**
      * Intelligent cache invalidation based on what changed
      */
@@ -73,29 +73,29 @@ class PermissionCacheManager
             case 'team_role_changed':
                 $this->invalidateUserPermissions($affectedIds['user_ids'] ?? []);
                 break;
-                
+
             case 'role_permissions_changed':
                 $this->invalidateUsersWithRole($affectedIds['role_ids'] ?? []);
                 break;
-                
+
             case 'team_hierarchy_changed':
                 $this->invalidateTeamHierarchy($affectedIds['team_ids'] ?? []);
                 break;
-                
+
             case 'team_created':
                 $this->invalidateTeamCreated($affectedIds['team_ids'] ?? []);
                 break;
-                
+
             case 'permission_updated':
                 $this->invalidatePermissionKey($affectedIds['permission_keys'] ?? []);
                 break;
-                
+
             default:
                 // Fallback to full cache clear
                 $this->clearAllCache();
         }
     }
-    
+
     /**
      * Invalidate permissions for specific users
      */
@@ -108,13 +108,13 @@ class PermissionCacheManager
                 "user_teams_with_permission.{$userId}.*",
                 "user_all_accessible_teams.{$userId}"
             ];
-            
+
             foreach ($patterns as $pattern) {
                 $this->forgetByPattern($pattern);
             }
         }
     }
-    
+
     /**
      * Invalidate cache for users with specific roles
      */
@@ -125,15 +125,15 @@ class PermissionCacheManager
             ->distinct()
             ->pluck('user_id')
             ->toArray();
-            
+
         $this->invalidateUserPermissions($userIds);
-        
+
         // Also clear role-specific cache
         foreach ($roleIds as $roleId) {
             $this->forgetByPattern("role_permissions.{$roleId}");
         }
     }
-    
+
     /**
      * Invalidate team hierarchy cache
      */
@@ -144,12 +144,12 @@ class PermissionCacheManager
         foreach ($teamIds as $teamId) {
             $hierarchyService->clearCache($teamId);
         }
-        
+
         // Clear team role access cache (fixed: only run once, not per team)
         $this->forgetByPattern("team_role_access.*");
         $this->forgetByPattern("accessible_teams.*");
     }
-    
+
     /**
      * Invalidate cache when teams are created - affects all user accessible teams
      */
@@ -160,19 +160,21 @@ class PermissionCacheManager
         foreach ($teamIds as $teamId) {
             $hierarchyService->clearCache($teamId);
         }
-        
+
         // When teams are created, we need to clear all user accessible teams cache
         // because users with parent team access might now have access to new child teams
         $this->forgetByPattern("user_all_accessible_teams.*");
         $this->forgetByPattern("allTeamIdsWithRoles.*");
         $this->forgetByPattern("activeTeamRoles.*");
         $this->forgetByPattern("team_role_accessible.*");
-        
+        $this->forgetByPattern("team_role_permissions.*");
+
         // Also clear general team access patterns
         $this->forgetByPattern("user_team_access.*");
         $this->forgetByPattern("accessible_teams.*");
+        $this->forgetByPattern("*");
     }
-    
+
     /**
      * Invalidate cache for specific permission keys
      */
@@ -182,43 +184,25 @@ class PermissionCacheManager
         $this->forgetByPattern("user_permissions.*");
         $this->forgetByPattern("user_teams_with_permission.*");
     }
-    
+
     /**
-     * Forget cache entries by pattern
+     * Forget cache entries by pattern using cache macro
      */
     private function forgetByPattern(string $pattern): void
     {
-        if (Cache::getStore() instanceof \Illuminate\Cache\RedisStore) {
-            $this->forgetRedisByPattern($pattern);        } else {
-            // For file/database cache, we'll need to clear all tagged cache
-            Cache::flushTags([self::CACHE_TAG]);
-        }
+        Cache::forgetByPattern($pattern, [self::CACHE_TAG]);
     }
-    
     /**
-     * Redis-specific pattern deletion
-     */
-    private function forgetRedisByPattern(string $pattern): void
-    {
-        $redis = Redis::connection();
-        $prefix = Cache::getStore()->getPrefix();
-        $keys = $redis->keys($prefix . $pattern);
-        
-        if (!empty($keys)) {
-            $redis->del($keys);
-        }
-    }
-      /**
      * Clear all permission cache
      */
     public function clearAllCache(): void
     {
         Cache::flushTags([self::CACHE_TAG]);
-        
+
         // Also clear hierarchy cache
         app(TeamHierarchyService::class)->clearCache();
     }
-    
+
     /**
      * Get cache statistics for monitoring
      */
@@ -230,16 +214,16 @@ class PermissionCacheManager
             'last_clear' => null,
             'memory_usage' => 0
         ]);
-        
+
         if (Cache::getStore() instanceof \Illuminate\Cache\RedisStore) {
             $redis = Redis::connection();
             $info = $redis->info('memory');
             $stats['memory_usage'] = $info['used_memory'] ?? 0;
         }
-        
+
         return $stats;
     }
-    
+
     /**
      * Record cache hit for statistics
      */
@@ -247,7 +231,7 @@ class PermissionCacheManager
     {
         $this->incrementStat('hits');
     }
-    
+
     /**
      * Record cache miss for statistics
      */
@@ -255,7 +239,7 @@ class PermissionCacheManager
     {
         $this->incrementStat('misses');
     }
-    
+
     /**
      * Increment a cache statistic
      */

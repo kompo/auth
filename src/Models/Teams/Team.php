@@ -52,14 +52,6 @@ class Team extends Model
             ]);
 
             $this->addedBy?->clearPermissionCache();
-            // $store = Cache::getStore();
-
-            // $connection = $store->connection();
-            // $redis = \Illuminate\Support\Facades\Redis::connection($connection->getName());
-            // $prefix = $store->getPrefix();
-            // Cache::tags([self::CACHE_TAG])->forget('team_role_permissions.757767');
-            Cache::flushTags(['permissions-v2']);
-            // dd($redis->keys("*"));
         }
     }
 

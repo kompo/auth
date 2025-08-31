@@ -52,7 +52,7 @@ class Team extends Model
                 'team_ids' => $affectedTeamIds
             ]);
 
-            $this->owner?->clearPermissionCache();
+            $this->addedBy?->clearPermissionCache();
         }
     }
 

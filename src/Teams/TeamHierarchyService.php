@@ -6,6 +6,7 @@ namespace Kompo\Auth\Teams;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Kompo\Auth\Teams\CacheKeyBuilder;
 
 /**
  * Dedicated service for efficiently handling team hierarchies
@@ -20,9 +21,10 @@ class TeamHierarchyService
      */
     public function getDescendantTeamIds(int $teamId, ?string $search = null, ?int $maxDepth = null): Collection
     {
-        $cacheKey = "descendants.{$teamId}.{$maxDepth}" . md5($search);
+        $cacheKey = CacheKeyBuilder::teamDescendants($teamId, $maxDepth, $search);
+        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::TEAM_DESCENDANTS);
 
-        return Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL, function () use ($teamId, $search, $maxDepth) {
+        return Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL, function () use ($teamId, $search, $maxDepth) {
             return $this->executeDescendantsQuery($teamId, $search, $maxDepth);
         });
     }
@@ -32,9 +34,10 @@ class TeamHierarchyService
      */
     public function getDescendantTeamsWithRole(int $teamId, string $role, ?string $search = '', $limit = null): Collection
     {
-        $cacheKey = "descendants_with_role.{$teamId}.{$role}." . md5($search) . ($limit ? ".{$limit}" : '');
+        $cacheKey = CacheKeyBuilder::teamDescendantsWithRole($teamId, $role, $search, $limit);
+        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::TEAM_DESCENDANTS_WITH_ROLE);
 
-        return Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL / 2, function () use ($teamId, $role, $search, $limit) {
+        return Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL / 2, function () use ($teamId, $role, $search, $limit) {
             return $this->executeDescendantsWithRoleQuery($teamId, $role, $search, $limit);
         });
     }
@@ -48,9 +51,10 @@ class TeamHierarchyService
             return true;
         }
 
-        $cacheKey = "is_descendant.{$parentTeamId}.{$childTeamId}";
+        $cacheKey = CacheKeyBuilder::teamIsDescendant($parentTeamId, $childTeamId);
+        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::TEAM_IS_DESCENDANT);
 
-        return Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL, function () use ($parentTeamId, $childTeamId) {
+        return Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL, function () use ($parentTeamId, $childTeamId) {
             return $this->executeIsDescendantQuery($parentTeamId, $childTeamId);
         });
     }
@@ -60,9 +64,10 @@ class TeamHierarchyService
      */
     public function getAncestorTeamIds(int $teamId): Collection
     {
-        $cacheKey = "ancestors.{$teamId}";
+        $cacheKey = CacheKeyBuilder::teamAncestors($teamId);
+        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::TEAM_ANCESTORS);
 
-        return Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL, function () use ($teamId) {
+        return Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL, function () use ($teamId) {
             return $this->executeAncestorsQuery($teamId);
         });
     }
@@ -72,9 +77,10 @@ class TeamHierarchyService
      */
     public function getSiblingTeamIds(int $teamId, ?string $search = '', $limit = null): Collection
     {
-        $cacheKey = "siblings.{$teamId}." . md5($search) . ($limit ? ".{$limit}" : '');
+        $cacheKey = CacheKeyBuilder::teamSiblings($teamId, $search, $limit);
+        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::TEAM_SIBLINGS);
 
-        return Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL, function () use ($teamId, $search, $limit) {
+        return Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL, function () use ($teamId, $search, $limit) {
             return $this->executeSiblingsQuery($teamId, $search, $limit);
         });
     }
@@ -85,23 +91,17 @@ class TeamHierarchyService
     public function clearCache(?int $teamId = null): void
     {
         if ($teamId) {
-            Cache::flushTags(['teams.' . $teamId]);
-
-            // Clear specific team cache and its related ones
-            $patterns = [
-                "descendants.{$teamId}.*",
-                "ancestors.{$teamId}",
-                "siblings.{$teamId}",
-                "is_descendant.{$teamId}.*",
-                "is_descendant.*.{$teamId}",
-            ];
-
-            foreach ($patterns as $pattern) {
-                Cache::forgetTagsPattern([self::CACHE_TAG], $pattern);
+            // Clear all team hierarchy cache types since any change affects all hierarchy relationships
+            $hierarchyCacheTypes = CacheKeyBuilder::getTeamHierarchyCacheTypes();
+            foreach ($hierarchyCacheTypes as $cacheType) {
+                Cache::flushTags([$cacheType]);
             }
         } else {
             // Clear all hierarchy cache
-            Cache::flushTags([self::CACHE_TAG]);
+            $hierarchyCacheTypes = CacheKeyBuilder::getTeamHierarchyCacheTypes();
+            foreach ($hierarchyCacheTypes as $cacheType) {
+                Cache::flushTags([$cacheType]);
+            }
         }
     }
 

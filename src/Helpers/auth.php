@@ -5,6 +5,7 @@ use Kompo\Auth\Models\Plugins\HasSecurity;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Teams\PermissionResolver;
+use Kompo\Auth\Teams\CacheKeyBuilder;
 use Kompo\Date;
 use Kompo\Elements\Field;
 use Kompo\Place;
@@ -137,8 +138,12 @@ if (!function_exists('currentTeamRole')) {
             auth()->user()->switchToFirstTeamRole();
         }
 
-        $currentTeamRole = \Cache::remember(
-            'currentTeamRole' . auth()->id(),
+        $cacheKey = CacheKeyBuilder::currentTeamRole(auth()->id());
+        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::CURRENT_TEAM_ROLE);
+        
+        $currentTeamRole = \Cache::rememberWithTags(
+            $tags,
+            $cacheKey,
             900, // 15 minutes
             fn() => auth()->user()->currentTeamRole
         );
@@ -157,9 +162,12 @@ if (!function_exists('currentTeam')) {
             return null;
         }
 
+        $cacheKey = CacheKeyBuilder::currentTeam(auth()->id());
+        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::CURRENT_TEAM);
+        
         $currentTeam = \Cache::rememberWithTags(
-            ['teams.' . currentTeamRole()?->team?->id],
-            'currentTeam' . auth()->id(),
+            $tags,
+            $cacheKey,
             900,
             fn() => currentTeamRole()?->team
         );
@@ -192,8 +200,12 @@ if (!function_exists('isAppSuperAdmin')) {
             return false;
         }
 
-        $isSuperAdmin = \Cache::remember(
-            'isSuperAdmin' . auth()->id(),
+        $cacheKey = CacheKeyBuilder::isSuperAdmin(auth()->id());
+        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::IS_SUPER_ADMIN);
+        
+        $isSuperAdmin = \Cache::rememberWithTags(
+            $tags,
+            $cacheKey,
             3600, // 1 hour
             fn() => isSuperAdmin() || auth()->user()->isSuperAdmin()
         );
@@ -361,10 +373,10 @@ if (!function_exists('clearAuthStaticCache')) {
     function clearAuthStaticCache(): void
     {
         // This function helps with testing or when user switches
-        // The static variables will be reset on next function calls
-        \Cache::forget('currentTeamRole' . (auth()->id() ?? 0));
-        \Cache::forget('currentTeam' . (auth()->id() ?? 0));
-        \Cache::forget('isSuperAdmin' . (auth()->id() ?? 0));
+        // Clear current user context cache types using tags
+        \Cache::flushTags([CacheKeyBuilder::CURRENT_TEAM_ROLE]);
+        \Cache::flushTags([CacheKeyBuilder::CURRENT_TEAM]);
+        \Cache::flushTags([CacheKeyBuilder::IS_SUPER_ADMIN]);
     }
 }
 

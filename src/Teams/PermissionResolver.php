@@ -9,6 +9,7 @@ use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\Roles\Role;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Teams\TeamHierarchyService;
+use Kompo\Auth\Teams\CacheKeyBuilder;
 
 /**
  * Centralized permission resolution service
@@ -66,10 +67,11 @@ class PermissionResolver
         string $permissionKey, 
         PermissionTypeEnum $type = PermissionTypeEnum::ALL
     ) {
-        $cacheKey = "user_teams_with_permission.{$userId}.{$permissionKey}.{$type->value}";
+        $cacheKey = CacheKeyBuilder::userTeamsWithPermission($userId, $permissionKey, $type->value);
+        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::USER_TEAMS_WITH_PERMISSION);
         
-        return $this->getRequestCache($cacheKey, function() use ($userId, $permissionKey, $type, $cacheKey) {
-            return Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL, function() use ($userId, $permissionKey, $type) {
+        return $this->getRequestCache($cacheKey, function() use ($userId, $permissionKey, $type, $cacheKey, $tags) {
+            return Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL, function() use ($userId, $permissionKey, $type) {
                 // Check for global permission first
                 if ($this->userHasPermission($userId, $permissionKey, $type)) {
                     // If user has global access, return all accessible teams
@@ -87,10 +89,11 @@ class PermissionResolver
      */
     public function getAllAccessibleTeamsForUser(int $userId)
     {
-        $cacheKey = "user_all_accessible_teams.{$userId}";
+        $cacheKey = CacheKeyBuilder::userAllAccessibleTeams($userId);
+        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::USER_ALL_ACCESSIBLE_TEAMS);
         
-        return $this->getRequestCache($cacheKey, function() use ($userId, $cacheKey) {
-            return Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL, function() use ($userId) {
+        return $this->getRequestCache($cacheKey, function() use ($userId, $cacheKey, $tags) {
+            return Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL, function() use ($userId) {
                 $accessibleTeams = collect();
                 $teamRoles = $this->getUserActiveTeamRoles($userId);
                 
@@ -115,8 +118,9 @@ class PermissionResolver
         $cacheKey = $this->buildPermissionCacheKey($userId, $teamIds);
         
         return $this->getRequestCache($cacheKey, function() use ($userId, $teamIds, $cacheKey) {
+            $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::USER_PERMISSIONS);
             return Cache::rememberWithTags(
-                [self::CACHE_TAG],
+                $tags,
                 $cacheKey, 
                 self::CACHE_TTL, 
                 fn() => $this->resolveUserPermissions($userId, $teamIds)
@@ -175,10 +179,11 @@ class PermissionResolver
      */
     private function getAccessibleTeamIds(int $userId, Collection $targetTeamIds): Collection
     {
-        $cacheKey = "accessible_teams.{$userId}." . $targetTeamIds->sort()->implode(',');
+        $cacheKey = CacheKeyBuilder::accessibleTeams($userId, $targetTeamIds->sort()->implode(','));
         
         return $this->getRequestCache($cacheKey, function() use ($userId, $targetTeamIds, $cacheKey) {
-            return Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL, function() use ($targetTeamIds) {
+            $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::ACCESSIBLE_TEAMS);
+            return Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL, function() use ($targetTeamIds) {
                 $accessibleTeams = collect();
                 
                 // Add target teams themselves
@@ -275,10 +280,11 @@ class PermissionResolver
      */
     private function getTeamRoleAccessibleTeams(TeamRole $teamRole)
     {
-        $cacheKey = "team_role_access.{$teamRole->id}";
+        $cacheKey = CacheKeyBuilder::teamRoleAccess($teamRole->id);
         
         return $this->getRequestCache($cacheKey, function() use ($teamRole, $cacheKey) {
-            return Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL, function() use ($teamRole) {
+            $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::TEAM_ROLE_ACCESS);
+            return Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL, function() use ($teamRole) {
                 $teams = collect([$teamRole->team_id]);
                 
                 if ($teamRole->getRoleHierarchyAccessBelow()) {
@@ -305,13 +311,14 @@ class PermissionResolver
             return [];
         }
         
-        $cacheKey = "role_permissions.{$role->id}";
+        $cacheKey = CacheKeyBuilder::rolePermissions($role->id);
         
         // Check request cache first
         if (isset($this->requestCache[$cacheKey])) {
             $permissions = $this->requestCache[$cacheKey];
         } else {
-            $permissions = Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL, function() use ($role) {
+            $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::ROLE_PERMISSIONS);
+            $permissions = Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL, function() use ($role) {
                 return $role->permissions()->selectRaw(constructComplexPermissionKeySql('permission_role'))
                     ->get()->all();
             });
@@ -325,13 +332,14 @@ class PermissionResolver
      */
     private function getTeamRolePermissions(TeamRole $teamRole)
     {
-        $cacheKey = "team_role_permissions.{$teamRole->id}";
+        $cacheKey = CacheKeyBuilder::teamRolePermissions($teamRole->id);
         
         // Check request cache first
         if (isset($this->requestCache[$cacheKey])) {
             $permissions = $this->requestCache[$cacheKey];
         } else {
-            $permissions = Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL, function() use ($teamRole) {
+            $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::TEAM_ROLE_PERMISSIONS);
+            $permissions = Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL, function() use ($teamRole) {
                 return $teamRole->permissions()
                     ->selectRaw(constructComplexPermissionKeySql('permission_team_role'))
                     ->get()->all();
@@ -431,11 +439,7 @@ class PermissionResolver
      */
     private function buildPermissionCacheKey(int $userId, $teamIds = null): string
     {
-        $teamKey = $teamIds ? 
-            md5(json_encode(collect($teamIds)->sort()->values())) : 
-            'all';
-            
-        return "user_permissions.{$userId}.{$teamKey}";
+        return CacheKeyBuilder::userPermissions($userId, $teamIds);
     }
     
     /**
@@ -449,10 +453,11 @@ class PermissionResolver
         }
         
         // Check super admin status (cached)
-        $cacheKey = "user_super_admin.{$userId}";
+        $cacheKey = CacheKeyBuilder::userSuperAdmin($userId);
         
         return $this->getRequestCache($cacheKey, function() use ($userId, $cacheKey) {
-            return Cache::rememberWithTags([self::CACHE_TAG], $cacheKey, self::CACHE_TTL * 4, function() use ($userId) {
+            $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::USER_SUPER_ADMIN);
+            return Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL * 4, function() use ($userId) {
                 $user = \App\Models\User::find($userId);
                 return $user && $user->isSuperAdmin();
             });
@@ -488,16 +493,10 @@ class PermissionResolver
      */
     public function clearUserCache(int $userId): void
     {
-        $patterns = [
-            "user_permissions.{$userId}.*",
-            "user_teams_with_permission.{$userId}.*",
-            "user_all_accessible_teams.{$userId}",
-            "user_active_team_roles.{$userId}.*",
-            "accessible_teams.{$userId}.*",
-            "user_super_admin.{$userId}"
-        ];
-          foreach ($patterns as $pattern) {
-            Cache::forgetTagsPattern([self::CACHE_TAG], $pattern);
+        // Clear user-specific cache types
+        $userCacheTypes = CacheKeyBuilder::getUserSpecificCacheTypes();
+        foreach ($userCacheTypes as $cacheType) {
+            Cache::flushTags([$cacheType]);
         }
         
         // Clear request cache for this user

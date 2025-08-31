@@ -33,16 +33,10 @@ class LoginForm extends ImgFormLayout
                 _Link('auth-forgot-your-password?')
                     ->href('password.request')
                     ->class('text-gray-600 text-sm'),
-                _SubmitButton('auth-login')->redirect($this->redirectTo)
-                    ->onError(fn($e) => $e->selfGet('error')->inModal()),
+                _SubmitButton('auth-login')->redirect($this->redirectTo),
             )->class('space-x-4')
 		];
 	}
-
-    public function error()
-    {
-        dd(session()->all(), request()->all());
-    }
 
     public function rules()
     {

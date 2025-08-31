@@ -10,6 +10,7 @@ use Kompo\Auth\Models\Teams\PermissionTeamRole;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Teams\PermissionResolver;
 use Kompo\Auth\Teams\TeamHierarchyService;
+use Kompo\Auth\Teams\CacheKeyBuilder;
 
 /**
  * Unified permissions trait that handles all permission logic
@@ -82,9 +83,12 @@ trait HasTeamPermissions
         $cacheKey = "team_access_{$teamId}_" . ($roleId ?? 'any');
 
         return $this->getPermissionRequestCache($cacheKey, function () use ($teamId, $roleId) {
+            $cacheKey = CacheKeyBuilder::userTeamAccess($this->id, $teamId, $roleId);
+            $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::USER_TEAM_ACCESS);
+            
             return Cache::rememberWithTags(
-                ['permissions-v2'],
-                "user_team_access.{$this->id}.{$teamId}." . ($roleId ?? 'any'),
+                $tags,
+                $cacheKey,
                 900,
                 function () use ($teamId, $roleId) {
                     $teamRoles = $this->getActiveTeamRolesOptimized($roleId);
@@ -474,10 +478,18 @@ trait HasTeamPermissions
             $currentTeamRole = $this->currentTeamRole()->first();
 
             if ($currentTeamRole) {
-                // Pre-warm critical caches
-                Cache::put('currentTeamRole' . $this->id, $currentTeamRole, 900);
-                Cache::put('currentTeam' . $this->id, $currentTeamRole->team, 900);
-                Cache::put('isSuperAdmin' . $this->id, $this->isSuperAdmin(), 900);
+                // Pre-warm critical caches using tags
+                $teamRoleKey = CacheKeyBuilder::currentTeamRole($this->id);
+                $teamRoleTags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::CURRENT_TEAM_ROLE);
+                Cache::tags($teamRoleTags)->put($teamRoleKey, $currentTeamRole, 900);
+
+                $teamKey = CacheKeyBuilder::currentTeam($this->id);
+                $teamTags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::CURRENT_TEAM);
+                Cache::tags($teamTags)->put($teamKey, $currentTeamRole->team, 900);
+
+                $superAdminKey = CacheKeyBuilder::isSuperAdmin($this->id);
+                $superAdminTags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::IS_SUPER_ADMIN);
+                Cache::tags($superAdminTags)->put($superAdminKey, $this->isSuperAdmin(), 900);
 
                 // Pre-load permissions asynchronously if possible
                 if (config('queue.default') !== 'sync') {

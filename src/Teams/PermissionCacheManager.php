@@ -5,6 +5,7 @@ namespace Kompo\Auth\Teams;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Kompo\Auth\Models\Teams\TeamRole;
+use Kompo\Auth\Teams\CacheKeyBuilder;
 
 /**
  * Centralized cache management for permissions
@@ -101,17 +102,10 @@ class PermissionCacheManager
      */
     private function invalidateUserPermissions(array $userIds): void
     {
-        foreach ($userIds as $userId) {
-            $patterns = [
-                "user_permissions.{$userId}.*",
-                "user_team_access.{$userId}.*",
-                "user_teams_with_permission.{$userId}.*",
-                "user_all_accessible_teams.{$userId}"
-            ];
-
-            foreach ($patterns as $pattern) {
-                $this->forgetByPattern($pattern);
-            }
+        // Clear all user-specific cache types
+        $userCacheTypes = CacheKeyBuilder::getUserSpecificCacheTypes();
+        foreach ($userCacheTypes as $cacheType) {
+            Cache::flushTags([$cacheType]);
         }
     }
 
@@ -127,11 +121,6 @@ class PermissionCacheManager
             ->toArray();
 
         $this->invalidateUserPermissions($userIds);
-
-        // Also clear role-specific cache
-        foreach ($roleIds as $roleId) {
-            $this->forgetByPattern("role_permissions.{$roleId}");
-        }
     }
 
     /**
@@ -145,9 +134,11 @@ class PermissionCacheManager
             $hierarchyService->clearCache($teamId);
         }
 
-        // Clear team role access cache (fixed: only run once, not per team)
-        $this->forgetByPattern("team_role_access.*");
-        $this->forgetByPattern("accessible_teams.*");
+        // Clear team-specific cache types
+        $teamCacheTypes = CacheKeyBuilder::getTeamSpecificCacheTypes();
+        foreach ($teamCacheTypes as $cacheType) {
+            Cache::flushTags([$cacheType]);
+        }
     }
 
     /**
@@ -161,18 +152,11 @@ class PermissionCacheManager
             $hierarchyService->clearCache($teamId);
         }
 
-        // When teams are created, we need to clear all user accessible teams cache
-        // because users with parent team access might now have access to new child teams
-        $this->forgetByPattern("user_all_accessible_teams.*");
-        $this->forgetByPattern("allTeamIdsWithRoles.*");
-        $this->forgetByPattern("activeTeamRoles.*");
-        $this->forgetByPattern("team_role_accessible.*");
-        $this->forgetByPattern("team_role_permissions.*");
-
-        // Also clear general team access patterns
-        $this->forgetByPattern("user_team_access.*");
-        $this->forgetByPattern("accessible_teams.*");
-        $this->forgetByPattern("*");
+        // Clear team-specific cache types
+        $teamCacheTypes = CacheKeyBuilder::getTeamSpecificCacheTypes();
+        foreach ($teamCacheTypes as $cacheType) {
+            Cache::flushTags([$cacheType]);
+        }
     }
 
     /**
@@ -180,18 +164,11 @@ class PermissionCacheManager
      */
     private function invalidatePermissionKey(array $permissionKeys): void
     {
-        // This requires clearing most user caches since permissions are cross-cutting
-        $this->forgetByPattern("user_permissions.*");
-        $this->forgetByPattern("user_teams_with_permission.*");
+        // This requires clearing all cache since permissions are cross-cutting
+        // Changes to permission definitions affect all users and teams
+        $this->clearAllCache();
     }
 
-    /**
-     * Forget cache entries by pattern using cache macro
-     */
-    private function forgetByPattern(string $pattern): void
-    {
-        Cache::forgetByPattern($pattern, [self::CACHE_TAG]);
-    }
     /**
      * Clear all permission cache
      */

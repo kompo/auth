@@ -6,7 +6,6 @@ use Condoedge\Utils\Models\Model;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Redis;
 use Kompo\Auth\Teams\PermissionCacheManager;
 use Kompo\Auth\Teams\TeamHierarchyService;
 
@@ -53,6 +52,8 @@ class Team extends Model
             ]);
 
             $this->addedBy?->clearPermissionCache();
+
+            Cache::flush();
         }
     }
 

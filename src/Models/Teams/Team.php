@@ -22,10 +22,14 @@ class Team extends Model
         parent::booted();
 
         static::saved(function ($team) {
+            clearAuthStaticCache();
+
             $team->clearCache();
         });
 
         static::deleted(function ($team) {
+            clearAuthStaticCache();
+            
             $team->clearCache();
         });
     }

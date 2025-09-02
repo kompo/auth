@@ -91,6 +91,10 @@ class PermissionCacheManager
                 $this->invalidatePermissionKey($affectedIds['permission_keys'] ?? []);
                 break;
 
+            case 'team_changed':
+                $this->invalidateTeamChanged($affectedIds['team_ids'] ?? []);
+                break;
+
             default:
                 // Fallback to full cache clear
                 $this->clearAllCache();
@@ -157,6 +161,11 @@ class PermissionCacheManager
         foreach ($teamCacheTypes as $cacheType) {
             Cache::flushTags([$cacheType]);
         }
+    }
+
+    private function invalidateTeamChanged(array $teamIds): void
+    {
+        clearAuthStaticCache();
     }
 
     /**

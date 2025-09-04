@@ -5,6 +5,7 @@ namespace Kompo\Auth\Models\Teams;
 use Kompo\Auth\Facades\RoleModel;
 use Condoedge\Utils\Models\Model;
 use Illuminate\Support\Facades\Cache;
+use Kompo\Auth\Facades\UserModel;
 use Kompo\Auth\Models\User;
 use Kompo\Database\HasTranslations;
 
@@ -57,7 +58,7 @@ class Permission extends Model
     {
         $roleIds = $this->roles->pluck('id')->toArray();
 
-        return User::whereHas('teamRoles', function ($q) use ($roleIds, $teamsIds) {
+        return UserModel::whereHas('teamRoles', function ($q) use ($roleIds, $teamsIds) {
             $q->whereIn('role', $roleIds);
             
             if ($teamsIds) {

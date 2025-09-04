@@ -5,6 +5,7 @@ namespace Kompo\Auth\Models\Teams;
 use Kompo\Auth\Facades\RoleModel;
 use Condoedge\Utils\Models\Model;
 use Illuminate\Support\Facades\Cache;
+use Kompo\Auth\Models\User;
 use Kompo\Database\HasTranslations;
 
 class Permission extends Model
@@ -50,6 +51,19 @@ class Permission extends Model
     public function getPermissionTypeByRoleId($roleId)
     {
         return $this->roles->firstWhere('id', $roleId)?->pivot?->permission_type;
+    }
+
+    public function getUsersWithPermission($teamsIds = null)
+    {
+        $roleIds = $this->roles->pluck('id')->toArray();
+
+        return User::whereHas('teamRoles', function ($q) use ($roleIds, $teamsIds) {
+            $q->whereIn('role', $roleIds);
+            
+            if ($teamsIds) {
+                $q->whereIn('team_id', $teamsIds);
+            }
+        })->get();
     }
 
     // SCOPES 

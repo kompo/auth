@@ -9,7 +9,15 @@ return new class extends Migration
     public function up()
     {
         Schema::table('roles', function (Blueprint $table) {
-            $table->bigIncrements('numeric_id')->after('id')->unique();
+            $table->unsignedBigInteger('numeric_id');
+        });
+
+        Schema::table('roles', function (Blueprint $table) {
+            $table->unique('numeric_id');
+        });
+
+        Schema::table('roles', function (Blueprint $table) {
+            $table->unsignedBigInteger('numeric_id')->autoIncrement()->change();
         });
     }
 

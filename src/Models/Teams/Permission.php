@@ -19,7 +19,7 @@ class Permission extends Model
         'permission_description',
         'permission_section_id',
         'object_type',
-        'added_by', 
+        'added_by',
         'modified_by'
     ];
 

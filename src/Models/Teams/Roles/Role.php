@@ -3,6 +3,7 @@
 namespace Kompo\Auth\Models\Teams\Roles;
 
 use Condoedge\Utils\Models\Model;
+use Kompo\Auth\Facades\UserModel;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\TeamRole;
@@ -109,6 +110,16 @@ class Role extends Model
                 'count' => $this->teamRoles()->count(),
             ])),
         );
+    }
+
+    public function getUsersWithRole($teamsIds = null)
+    {
+        return UserModel::whereHas('teamRoles', function ($q) use ($teamsIds) {
+            $q->where('role', $this->id);
+            if ($teamsIds) {
+                $q->whereIn('team_id', $teamsIds);
+            }
+        })->get();
     }
 
     // SCOPES

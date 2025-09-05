@@ -12,6 +12,26 @@ use Kompo\Place;
 use Condoedge\Utils\Models\Model;
 use Illuminate\Auth\Events\Registered;
 
+if (!function_exists('systemUserId')) {
+    /**
+     * Get the system user ID from config
+     */
+    function systemUserId()
+    {
+        return config('kompo-auth.system_user_id', 1);
+    }
+}
+
+if (!function_exists('systemUser')) {
+    /**
+     * Get the system user model instance
+     */
+    function systemUser()
+    {
+        return \App\Models\User::find(systemUserId());
+    }
+}
+
 if (!function_exists('fireRegisteredEvent')) {
     /**
      * Fire the Registered event for the current user

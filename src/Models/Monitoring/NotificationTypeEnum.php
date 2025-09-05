@@ -35,7 +35,7 @@ enum NotificationTypeEnum: int
 
         if ($handler) {
             $button = $handler->getButton();
-        } else if ($notification->custom_button_text) {
+        } else if ($notification->custom_button_text && $notification->custom_button_href) {
             $button = _Link2Button($notification->custom_button_text)->button()->href($notification->custom_button_href);
         }
 

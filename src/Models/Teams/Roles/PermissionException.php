@@ -14,6 +14,7 @@ class PermissionException extends HttpException
                 'permission' => $permissionKey,
                 'type' => $type?->label(),
                 'teams' => $teamsIds,
+                'backtrace' => collect(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS))->map(fn($item) => $item['function'] ?? null)->filter()->values(),
             ]);
         }
 

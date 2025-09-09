@@ -601,8 +601,6 @@ class HasSecurity extends ModelPlugin
         static::$inBypassContextTrace = [];
     }
 
-    // ... [Include all other original methods from HasSecurity] ...
-
     protected function isSecurityGloballyBypassed()
     {
         return globalSecurityBypass();
@@ -764,14 +762,14 @@ class HasSecurity extends ModelPlugin
             !$this->individualRestrictByTeam($model) &&
             !auth()->user()?->hasPermission($this->getPermissionKey(), PermissionTypeEnum::WRITE)
         ) {
-            throw new PermissionException(__('permissions-you-do-not-have-write-permissions'));
+            throw new PermissionException(__('permissions-you-do-not-have-write-permissions'), $this->getPermissionKey(), PermissionTypeEnum::WRITE, []);
         }
 
         if (
             $this->individualRestrictByTeam($model) &&
             !auth()->user()?->hasPermission($this->getPermissionKey(), PermissionTypeEnum::WRITE, $this->getTeamOwnersIdsSafe($model))
         ) {
-            throw new PermissionException(__('permissions-you-do-not-have-write-permissions'));
+            throw new PermissionException(__('permissions-you-do-not-have-write-permissions'), $this->getPermissionKey(), PermissionTypeEnum::WRITE, $this->getTeamOwnersIdsSafe($model));
         }
 
         return true;

@@ -19,6 +19,15 @@ class RegisterForm extends ImgFormLayout
         $this->emailRequest = EmailRequest::findOrFail($this->emailRequestId);
 
         $this->emailRequest->markEmailAsVerified();
+
+        $user = User::where('email', $this->emailRequest->getEmailForVerification())->first();
+
+        if ($user) {
+            // If there is a registered user, setting the model to that user
+            $this->model($user);
+
+            auth()->login($this->model);
+        }
     }
 
     public function beforeSave()
@@ -34,7 +43,7 @@ class RegisterForm extends ImgFormLayout
 
         fireRegisteredEvent($this->model);
 
-        auth()->guard()->login($this->model);
+        auth()->login($this->model);
     }
 
     public function response()
@@ -44,6 +53,14 @@ class RegisterForm extends ImgFormLayout
 
 	public function rightColumnBody()
 	{
+        if ($this->model->id) {
+            return _Rows(
+                _Html('translate-you-are-already-registered-and-logged-in')->class('mb-6'),
+
+                _Link2Button('translate.go-to-the-dashboard-page')->href('dashboard'),
+            );
+        }
+
 		return [
             _Rows(
                 _Html($this->emailRequest->getEmailForVerification()),

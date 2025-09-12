@@ -108,9 +108,10 @@ class RoleForm extends Modal
     public function rules()
     {
         return [
-            'name' => 'required|string|max:255|unique:roles,name,' . $this->model->id,
-            'description' => 'nullable|string|max:1000',
-            'profile' => 'string|in:' . implode(',', array_keys($this->profileOptions()->all())),
+            'name' => 'required|string|max:60|unique:roles,name,' . $this->model->id,
+            'description' => 'required|string|max:255',
+            'icon' => 'nullable',
+            'profile' => 'required|string|in:' . implode(',', array_keys($this->profileOptions()->all())),
             'accept_roll_to_child' => 'required|boolean',
             'accept_roll_to_neighbourg' => 'required|boolean',
         ];

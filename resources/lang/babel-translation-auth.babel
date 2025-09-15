@@ -290,6 +290,21 @@
 						</translations>
 					</concept_node>
 					<concept_node>
+						<name>auth-go-to-the-dashboard-page</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
 						<name>auth-i-already-have-an-account-log-in-instead</name>
 						<description/>
 						<comment/>
@@ -951,6 +966,21 @@
 					</concept_node>
 					<concept_node>
 						<name>auth-with-values.this-team-do-the-following-changes</name>
+						<description/>
+						<comment/>
+						<translations>
+							<translation>
+								<language>en-US</language>
+								<approved>false</approved>
+							</translation>
+							<translation>
+								<language>fr-FR</language>
+								<approved>false</approved>
+							</translation>
+						</translations>
+					</concept_node>
+					<concept_node>
+						<name>auth-you-are-already-registered-and-logged-in</name>
 						<description/>
 						<comment/>
 						<translations>

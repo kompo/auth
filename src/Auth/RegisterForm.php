@@ -55,9 +55,9 @@ class RegisterForm extends ImgFormLayout
 	{
         if ($this->model->id) {
             return _Rows(
-                _Html('translate-you-are-already-registered-and-logged-in')->class('mb-6'),
+                _Html('auth-you-are-already-registered-and-logged-in')->class('mb-6'),
 
-                _Link2Button('translate.go-to-the-dashboard-page')->href('dashboard'),
+                _Link2Button('auth-go-to-the-dashboard-page')->href('dashboard'),
             );
         }
 

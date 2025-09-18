@@ -9,6 +9,16 @@ use Kompo\Auth\Facades\NotificationModel;
 
 class NotificationsController extends Controller
 {
+	public function goToButtonAction($notification_id)
+	{
+		$notification = NotificationModel::findOrFail($notification_id);
+		if($notification->user_id != auth()->user()->id) {
+			abort(403);
+		}
+		$notification->markSeen();
+		return redirect($notification->custom_button_href ?? '/');
+	}
+	
     public function remind($id, $reminderDays)
     {
     	$notification = NotificationModel::findOrFail($id);

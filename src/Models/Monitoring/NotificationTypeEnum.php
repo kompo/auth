@@ -28,7 +28,7 @@ enum NotificationTypeEnum: int
 
     protected function getButton($notification)
     {
-        $handlerClass = $notification->custom_button_handler;
+        $handlerClass = $notification->custom_button_handler ?? config('kompo-auth.notifications.default_notification_button_handler', DefaultNotificationButtonHandler::class);
         $handler = $handlerClass ? new $handlerClass($notification) : null;
 
         $button = null;
@@ -36,7 +36,8 @@ enum NotificationTypeEnum: int
         if ($handler) {
             $button = $handler->getButton();
         } else if ($notification->custom_button_text && $notification->custom_button_href) {
-            $button = _Link2Button($notification->custom_button_text)->button()->href($notification->custom_button_href);
+            $button = _Link2Button($notification->custom_button_text)->button()
+                ->href($notification->custom_button_href);
         }
 
         return $button;

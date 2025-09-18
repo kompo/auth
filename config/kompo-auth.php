@@ -14,6 +14,10 @@ return [
         'check-even-if-permission-does-not-exist' => false,
     ],
 
+    'notifications' => [
+        'default_notification_button_handler' => \Kompo\Auth\Models\Monitoring\DefaultNotificationButtonHandler::class,
+    ],
+
     // Performance monitoring
     'monitor-performance' => env('KOMPO_AUTH_MONITOR_PERFORMANCE', false),
     'performance-thresholds' => [

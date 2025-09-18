@@ -76,6 +76,13 @@ class TeamRole extends Model
         $query->when($teamId, fn($q) => $q->where('team_id', $teamId));
     }
 
+    public function scopeSearch($query, $search)
+    {
+        $query->whereHas('user', fn($q) => $q->search($search))
+            ->orWhereHas('team', fn($q) => $q->search($search))
+            ->orWhereHas('roleRelation', fn($q) => $q->search($search));
+    }
+
     /**
      * Get the query for valid permissions for the team role.
      * This includes permissions defined directly on the team role and those inherited from the role relation.

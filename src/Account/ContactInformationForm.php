@@ -3,6 +3,7 @@
 namespace Kompo\Auth\Account;
 
 use Kompo\Form;
+use Condoedge\Utils\Rule\InternationalPhoneRule;
 
 class ContactInformationForm extends Form
 {
@@ -17,7 +18,7 @@ class ContactInformationForm extends Form
 	{
 		return [
 			_Columns(
-                _Input('crm.contact-phone-number')->icon('phone')->name('phone'),
+                _InternationalPhoneInput('crm.contact-phone-number')->icon('phone')->name('phone'),
                 _Input('crm.contact-website')->icon('<span class="text-xs">https://</span>')->rIcon('globe')->name('website'),
             ),
 
@@ -38,7 +39,7 @@ class ContactInformationForm extends Form
     public function rules()
     {
         return [
-            'phone' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:255', new InternationalPhoneRule()],
             'website' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:1000'],
         ];

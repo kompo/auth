@@ -61,7 +61,7 @@ class TeamForm extends Modal
         return [
             $this->addressInput(),
             _InputEmail('team-email')->name('email', false)->default($this->model->getFirstValidEmailLabel())->class('mb-2'),
-            _Input('team-phone')->name('phone', false)->default($this->model->getFirstValidPhoneLabel())->class('mb-2'),
+            _InternationalPhoneInput('team-phone')->name('phone', false)->default($this->model->getFirstValidPhoneLabel())->class('mb-2'),
             _Input('team-facebook-url')->name('facebook_url')->class('mb-2'),
             _Input('team-instagram')->name('instagram')->class('mb-2'),
         ];

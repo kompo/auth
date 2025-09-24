@@ -16,9 +16,7 @@ return new class extends Migration
             $table->unique('numeric_id');
         });
 
-        Schema::table('roles', function (Blueprint $table) {
-            $table->unsignedBigInteger('numeric_id')->autoIncrement()->primary(false)->change();
-        });
+        DB::statement("alter table `roles` modify `numeric_id` bigint unsigned not null auto_increment");
     }
 
     /**

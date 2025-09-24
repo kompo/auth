@@ -17,7 +17,7 @@ return new class extends Migration
         });
 
         Schema::table('roles', function (Blueprint $table) {
-            $table->unsignedBigInteger('numeric_id')->autoIncrement()->change();
+            $table->unsignedBigInteger('numeric_id')->autoIncrement()->primary(false)->change();
         });
     }
 

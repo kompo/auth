@@ -40,9 +40,9 @@ class UpdatePasswordForm extends Form
 
             _Password('Current Password')
                 ->name('current_password', false)->required(),
-			_Password('Password')
+			_PasswordInput('Password')
                 ->name('password')->required(),
-            _Password('Confirm Password')
+            _PasswordInput('Confirm Password')
                 ->name('password_confirmation', false),
 
 			_FlexEnd(

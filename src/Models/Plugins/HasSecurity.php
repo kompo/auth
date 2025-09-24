@@ -648,15 +648,30 @@ class HasSecurity extends ModelPlugin
 
     protected function applyTeamReadSecurity($builder, $hasUserOwnedRecordsScope)
     {
-        $teamIds = auth()->user()?->getTeamsIdsWithPermission(
-            $this->getPermissionKey(),
-            PermissionTypeEnum::READ
-        ) ?? [];
-
-        $builder->where(function ($q) use ($teamIds, $hasUserOwnedRecordsScope) {
-            if ($this->modelHasMethod('scopeSecurityForTeams')) {
+        $builder->where(function ($q) use ($hasUserOwnedRecordsScope) {
+            // Check for new query-based security method first
+            if ($this->modelHasMethod('scopeSecurityForTeamByQuery')) {
+                $teamsQuery = auth()->user()?->getTeamsQueryWithPermission(
+                    $this->getPermissionKey(),
+                    PermissionTypeEnum::READ,
+                    $this->getModelTable()
+                );
+                if ($teamsQuery) {
+                    $q->securityForTeamByQuery($teamsQuery);
+                }
+            } else if ($this->modelHasMethod('scopeSecurityForTeams')) {
+                // Fallback to existing method with team IDs
+                $teamIds = auth()->user()?->getTeamsIdsWithPermission(
+                    $this->getPermissionKey(),
+                    PermissionTypeEnum::READ
+                ) ?? [];
                 $q->securityForTeams($teamIds);
             } else if ($teamIdCol = $this->getTeamIdColumn()) {
+                $teamIds = auth()->user()?->getTeamsIdsWithPermission(
+                    $this->getPermissionKey(),
+                    PermissionTypeEnum::READ
+                ) ?? [];
+                
                 $q->whereIn($this->getModelTable() . '.' . $teamIdCol, $teamIds);
             }
 

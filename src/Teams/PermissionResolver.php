@@ -561,6 +561,102 @@ class PermissionResolver
     }
     
     /**
+     * Get query builder for teams where user has specific permission
+     * Returns a query that can be used in EXISTS, JOIN, or subquery contexts
+     */
+    public function getTeamsQueryWithPermissionForUser(
+        int $userId,
+        string $permissionKey,
+        PermissionTypeEnum $type = PermissionTypeEnum::ALL,
+        ?string $teamTableAlias = 'teams'
+    ): \Illuminate\Database\Query\Builder {
+        // Base query for teams
+        $query = DB::table($teamTableAlias ?: 'teams')
+            ->select(($teamTableAlias ?: 'teams') . '.id');
+
+        $query->where(function ($q) use ($userId, $permissionKey, $type, $teamTableAlias) {
+            // First, exclude teams where user has explicit DENY for this permission
+            $q->whereNotExists(function ($denyQuery) use ($userId, $permissionKey, $teamTableAlias) {
+                $denyQuery->select(DB::raw(1))
+                    ->from('team_roles as tr_deny')
+                    ->whereColumn('tr_deny.team_id', ($teamTableAlias ?: 'teams') . '.id')
+                    ->where('tr_deny.user_id', $userId)
+                    ->whereNull('tr_deny.terminated_at')
+                    ->whereNull('tr_deny.suspended_at')
+                    ->where(function ($denySubQuery) use ($permissionKey) {
+                        // Check for DENY in role-based permissions
+                        $denySubQuery->whereExists(function ($roleDenyQuery) use ($permissionKey) {
+                            $roleDenyQuery->select(DB::raw(1))
+                                ->from('permission_role as pr_deny')
+                                ->join('permissions as p_deny', 'pr_deny.permission_id', '=', 'p_deny.id')
+                                ->whereColumn('pr_deny.role', 'tr_deny.role')
+                                ->where('p_deny.permission_key', $permissionKey)
+                                ->where('pr_deny.permission_type', PermissionTypeEnum::DENY->value);
+                        })
+                        // Check for DENY in direct team role permissions
+                        ->orWhereExists(function ($directDenyQuery) use ($permissionKey) {
+                            $directDenyQuery->select(DB::raw(1))
+                                ->from('permission_team_role as ptr_deny')
+                                ->join('permissions as p_deny', 'ptr_deny.permission_id', '=', 'p_deny.id')
+                                ->whereColumn('ptr_deny.team_role_id', 'tr_deny.id')
+                                ->where('p_deny.permission_key', $permissionKey)
+                                ->where('ptr_deny.permission_type', PermissionTypeEnum::DENY->value);
+                        });
+                    });
+            });
+
+            // Then, include teams where user has the required permission
+            $q->where(function ($allowQuery) use ($userId, $permissionKey, $type, $teamTableAlias) {
+                // Query for role-based permissions
+                $allowQuery->whereExists(function ($roleQuery) use ($userId, $permissionKey, $type, $teamTableAlias) {
+                    $roleQuery->select(DB::raw(1))
+                        ->from('team_roles as tr')
+                        ->join('permission_role as pr', 'tr.role', '=', 'pr.role')
+                        ->join('permissions as p', 'pr.permission_id', '=', 'p.id')
+                        ->whereColumn('tr.team_id', ($teamTableAlias ?: 'teams') . '.id')
+                        ->where('tr.user_id', $userId)
+                        ->whereNull('tr.terminated_at')
+                        ->whereNull('tr.suspended_at')
+                        ->where('p.permission_key', $permissionKey)
+                        ->where('pr.permission_type', '!=', PermissionTypeEnum::DENY->value);
+
+                    // Apply permission type filter
+                    if ($type !== PermissionTypeEnum::ALL) {
+                        $roleQuery->where(function ($typeQuery) use ($type) {
+                            $typeQuery->where('pr.permission_type', $type->value)
+                                ->orWhere('pr.permission_type', PermissionTypeEnum::ALL->value);
+                        });
+                    }
+                });
+
+                // Query for direct team role permissions
+                $allowQuery->orWhereExists(function ($directQuery) use ($userId, $permissionKey, $type, $teamTableAlias) {
+                    $directQuery->select(DB::raw(1))
+                        ->from('team_roles as tr')
+                        ->join('permission_team_role as ptr', 'tr.id', '=', 'ptr.team_role_id')
+                        ->join('permissions as p', 'ptr.permission_id', '=', 'p.id')
+                        ->whereColumn('tr.team_id', ($teamTableAlias ?: 'teams') . '.id')
+                        ->where('tr.user_id', $userId)
+                        ->whereNull('tr.terminated_at')
+                        ->whereNull('tr.suspended_at')
+                        ->where('p.permission_key', $permissionKey)
+                        ->where('ptr.permission_type', '!=', PermissionTypeEnum::DENY->value);
+
+                    // Apply permission type filter
+                    if ($type !== PermissionTypeEnum::ALL) {
+                        $directQuery->where(function ($typeQuery) use ($type) {
+                            $typeQuery->where('ptr.permission_type', $type->value)
+                                ->orWhere('ptr.permission_type', PermissionTypeEnum::ALL->value);
+                        });
+                    }
+                });
+            });
+        });
+
+        return $query;
+    }
+
+    /**
      * Get performance metrics for debugging
      */
     public function getPerformanceMetrics(): array

@@ -61,8 +61,8 @@ class ResetPasswordForm extends Form
 		return [
 			_Hidden('token')->value($this->token)->required(),
             _Input('auth-email')->name('email')->value(request('email'))->required(),
-            _Password('auth-password')->name('password'),
-            _Password('auth-password-confirmation')->name('password_confirmation'),
+            _PasswordInput('auth-password')->name('password'),
+            _PasswordInput('auth-password-confirmation')->name('password_confirmation'),
 			_FlexEnd(
                 _SubmitButton('auth-reset-password')
             )

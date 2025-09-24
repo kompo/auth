@@ -116,6 +116,23 @@ trait HasTeamPermissions
     }
 
     /**
+     * Get query builder for teams where user has specific permission
+     * Returns a query that can be used in EXISTS, JOIN, or subquery contexts
+     */
+    public function getTeamsQueryWithPermission(
+        string $permissionKey,
+        PermissionTypeEnum $type = PermissionTypeEnum::ALL,
+        ?string $teamTableAlias = 'teams'
+    ): \Illuminate\Database\Query\Builder {
+        return $this->getPermissionResolver()->getTeamsQueryWithPermissionForUser(
+            $this->id,
+            $permissionKey,
+            $type,
+            $teamTableAlias
+        );
+    }
+
+    /**
      * Get all team IDs user has access to
      */
     public function getAllAccessibleTeamIds($search = null, $limit = null)

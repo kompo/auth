@@ -107,8 +107,8 @@ if (!function_exists('_InputRegisterPasswords')) {
     function _InputRegisterPasswords()
     {
         return _Rows(
-            _Password('auth-my-password')->name('password'),
-            _Password('auth-my-password-confirmation')->name('password_confirmation', false),
+            _PasswordInput('auth-my-password')->name('password'),
+            _PasswordInput('auth-my-password-confirmation')->name('password_confirmation', false),
         );
     }
 }

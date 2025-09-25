@@ -89,7 +89,7 @@ class Notification extends Model
                 $this->reminderButton('notifications-button-in-3-days', 3),
                 $this->reminderButton('notifications-button-next-week', 7),
             )
-            ->dropdownOverModal()
+            ->dropdownOverModal(sumWidth: true)
             ->alignRight();
     }
 

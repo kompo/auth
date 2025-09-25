@@ -89,6 +89,7 @@ class Notification extends Model
                 $this->reminderButton('notifications-button-in-3-days', 3),
                 $this->reminderButton('notifications-button-next-week', 7),
             )
+            ->dropdownOverModal()
             ->alignRight();
     }
 
@@ -105,10 +106,10 @@ class Notification extends Model
     {
         return _Rows(
             _Html($title)->class('mb-2'),
-            _Rows(
-                $button,
-                !$hasReminderButton ? null : $this->reminderDropdown(),
-            )->class('space-y-2')
+            _FlexBetween(
+                $button?->class('flex-1'),
+                !$hasReminderButton ? null : $this->reminderDropdown()?->class('flex-1'),
+            )->class('gap-4 flex-wrap')
         );
     }
 

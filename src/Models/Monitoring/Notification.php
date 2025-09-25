@@ -83,7 +83,7 @@ class Notification extends Model
     public function reminderDropdown()
     {
         return _Dropdown('notifications-button-remind-me-again')->rIcon('icon-down')
-            ->class('vlBtn !text-warning !border-warning border !bg-transparent [&>.vlDropdownToggler]:!justify-end')
+            ->class('vlBtn !text-warning !border-warning border !bg-transparent [&>.vlDropdownToggler]:!justify-end [&>.vlDropdownToggler>.span>.icon-down]:!text-level2')
             ->submenu(
                 $this->reminderButton('notifications-button-tomorrow', 1),
                 $this->reminderButton('notifications-button-in-3-days', 3),

@@ -83,7 +83,7 @@ class Notification extends Model
     public function reminderDropdown()
     {
         return _Dropdown('notifications-button-remind-me-again')->rIcon('icon-down')
-            ->class('vlBtn !text-warning !border-warning border !bg-transparent')
+            ->class('vlBtn !text-warning !border-warning border !bg-transparent [&>.vlDropdownToggler]:!justify-end')
             ->submenu(
                 $this->reminderButton('notifications-button-tomorrow', 1),
                 $this->reminderButton('notifications-button-in-3-days', 3),
@@ -95,7 +95,7 @@ class Notification extends Model
 
     protected function reminderButton($label, $days)
     {
-        return _Link($label)->class('px-4 py-2 border-b border-gray-100')
+        return _Link($label)->class('px-4 py-2 border-b border-gray-100 min-w-[200px]')
             ->post('notification-reminder', [
                 'id' => $this->id,
                 'reminder_days' => $days,
@@ -105,7 +105,7 @@ class Notification extends Model
     public function genericNotificationCard($title, $button, $hasReminderButton = false)
     {
         return _Rows(
-            _Html($title)->class('mb-2'),
+            _Html($title)->class('mb-3'),
             _FlexBetween(
                 $button?->class('flex-1'),
                 !$hasReminderButton ? null : $this->reminderDropdown()?->class('flex-1'),

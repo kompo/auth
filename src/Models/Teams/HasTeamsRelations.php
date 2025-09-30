@@ -22,6 +22,7 @@ trait HasTeamsRelations
                 $q->withoutGlobalScope('authUserHasPermissions');
             });
 
+        // We check here if the current team role is valid (has a team and a role), otherwise we manage it
         if (!(clone $res)->has('roleRelation')->has('team')->exists()) {
             $this->manageNullCurrentTeamRole();
         }
@@ -32,7 +33,11 @@ trait HasTeamsRelations
     protected function manageNullCurrentTeamRole()
     {
         if(!$this->switchToFirstTeamRole()) {
-            if (auth()->user()->isImpersonated()) {
+            if (auth()->id() !== $this->id) {
+                // If the user is not the owner of the account, just return null. Because it's not related
+                // to current session
+                return null;
+            } else if (auth()->user()->isImpersonated()) {
                 auth()->user()->leaveImpersonation();
             } else {
                 auth()->logout();

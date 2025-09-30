@@ -15,6 +15,7 @@ class TeamRoleFactory extends Factory
         return [
             // 'user_id' => UserFactory::new()->create()->id,
             'team_id' => TeamFactory::new()->create()->id,
+            'role' => RoleFactory::new()->create()->id,
         ];
     }
 }

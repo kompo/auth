@@ -84,6 +84,7 @@ class Permission extends Model
                         ->whereColumn('permission_sections.id', 'permissions.permission_section_id')
                         ->leftJoin('permissions as permissions2', 'permission_sections.id', '=', 'permissions2.permission_section_id')
                         ->groupBy('permission_sections.id')
+                        ->whereNull('permissions2.deleted_at')
                         ->limit(1)
                         ->toRawSql() . ') 
                     THEN "0" 

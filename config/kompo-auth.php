@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'breadcrumbs' => [
+        'clickeable-action' => true,
+    ],
+
     'security' => [
         'bypass-security' => env('BYPASS_SECURITY', false),
         'default-read-security-restrictions' => true,

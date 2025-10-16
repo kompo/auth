@@ -190,10 +190,15 @@ class Team extends Model
     public function getTeamSwitcherLink($label = null)
     {
         $label = $label ?: $this->team_name;
+        $isClickeable = config('kompo-auth.breadcrumbs.clickeable-action');
 
         return _Link($label)->class(currentTeam()->id == $this->id ? 'font-bold' : '')
-			->selfPost('switchToTeamRole', ['team_id' => $this->id])
-			->redirect();
+            ->when($isClickeable, function ($el) {
+                return $el->selfPost('switchToTeamRole', ['team_id' => $this->id])
+                    ->redirect();
+            })->when(!$isClickeable, function ($el) {
+                return $el->class('pointer-events-none hover:!text-inherit focus:!shadow-none');
+            });
     }
 
     public function getFullInfoTableElement()

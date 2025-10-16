@@ -84,7 +84,7 @@ function parsePermissionKey($permissionKey, PermissionTypeEnum $permissionType)
  */
 function getPermissionKey($permissionKey)
 {
-	return substr($permissionKey, 2);
+	return explode(PERMISSION_SEPARATOR, $permissionKey)[1];
 }
 
 /**
@@ -95,7 +95,7 @@ function getPermissionKey($permissionKey)
  */
 function getPermissionType($permissionKey)
 {
-	return PermissionTypeEnum::from((int) substr($permissionKey, 0, 1));
+	return PermissionTypeEnum::from((int) explode(PERMISSION_SEPARATOR, $permissionKey)[0]);
 }
 
 /**

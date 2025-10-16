@@ -25,10 +25,10 @@ enum PermissionTypeEnum: int
     public function explanation()
     {
         return match($this) {
-            self::READ => 'translate.permissions-permission-read-explanation',
-            self::WRITE => 'translate.permissions-permission-write-explanation',
-            self::ALL => 'translate.permissions-permission-all-explanation',
-            self::DENY => 'translate.permissions-permission-deny-explanation',
+            self::READ => 'permissions-permission-read-explanation',
+            self::WRITE => 'permissions-permission-write-explanation',
+            self::ALL => 'permissions-permission-all-explanation',
+            self::DENY => 'permissions-permission-deny-explanation',
         };
     }
 

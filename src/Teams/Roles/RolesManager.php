@@ -35,7 +35,7 @@ class RolesManager extends Form
         return _Rows(
             _Html('Roles')->class('text-lg font-bold opacity-0'),             // Just as a placeholder to align with the right side
             _CardWhite(
-                _Html('translate.permission-levels-explained')->class('font-semibold mb-4'),
+                _Html('permission-levels-explained')->class('font-semibold mb-4'),
 
                 _Rows(collect(PermissionTypeEnum::cases())->filter(fn($case) => $case->visibleInSelects())->map(function ($case, $i) {
                     return _Collapsible(_Html($case->explanation())->class('text-sm'))
@@ -48,8 +48,8 @@ class RolesManager extends Form
                         );
                 }))->class('gap-5'),
 
-                _Html('translate.priority-order')->class('font-semibold mt-6 mb-2'),
-                _Html('translate.roles-are-prioritized-by-order-explained')->class('text-sm'),
+                _Html('permission-priority-order')->class('font-semibold mt-6 mb-2'),
+                _Html('permission-roles-are-prioritized-by-order-explained')->class('text-sm'),
             )->class('h-full p-8'),
         )->class('h-full w-[350px] mt-6');
     }

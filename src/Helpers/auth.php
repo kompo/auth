@@ -28,7 +28,7 @@ if (!function_exists('systemUser')) {
      */
     function systemUser()
     {
-        return \App\Models\User::find(systemUserId());
+        return \Kompo\Auth\Facades\UserModel::find(systemUserId());
     }
 }
 
@@ -46,7 +46,7 @@ if (!function_exists('fireRegisteredEvent')) {
 /**
  * Optimized permission checking with caching
  * 
- * @param Model|int $id the permission key or model instance in case of a model
+ * @param Model|string $id the permission key or model instance in case of a model
  */
 function checkAuthPermission($id, $type = PermissionTypeEnum::READ, $specificTeamId = null, $specificModel = null): bool
 {
@@ -305,23 +305,6 @@ Field::macro('readOnlyIfNotAuth', function ($id, $specificTeamId = null, $specif
     return $this->readOnly()->disabled()->class('!opacity-60');
 });
 
-\Kompo\Html::macro('hashIfNotAuth', function ($id, $specificTeamId = null, $minChars = 12, $specificModel = null) {
-    static $permissionCache = [];
-    $cacheKey = $id . '|read|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest') . '|' . ($specificModel?->getKey() ?? 'null');
-
-    if (!isset($permissionCache[$cacheKey])) {
-        $permissionCache[$cacheKey] = checkAuthPermission($id, PermissionTypeEnum::READ, $specificTeamId, $specificModel);
-    }
-
-    if ($permissionCache[$cacheKey]) {
-        return $this;
-    }
-
-    $this->label = str_pad(preg_replace('/.*/', '*', $this->label), $minChars, '*');
-
-    return $this;
-});
-
 Field::macro('hashIfNotAuth', function ($id, $specificTeamId = null, $minChars = 12, $specificModel = null) {
     static $permissionCache = [];
     $cacheKey = $id . '|read|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest');
@@ -350,6 +333,23 @@ Field::macro('hashIfNotAuth', function ($id, $specificTeamId = null, $minChars =
 
 Field::macro('hashAndReadOnlyIfNotAuth', function ($id, $specificTeamId = null, $minChars = 12, $specificModel = null) {
     return $this->hashIfNotAuth("{$id}.sensibleColumns", $specificTeamId, minChars: $minChars, specificModel: $specificModel)->readOnlyIfNotAuth($id, $specificTeamId, specificModel: $specificModel)->readOnlyIfNotAuth("{$id}.sensibleColumns", $specificTeamId, specificModel: $specificModel);
+});
+
+\Kompo\Html::macro('hashIfNotAuth', function ($id, $specificTeamId = null, $minChars = 12, $specificModel = null) {
+    static $permissionCache = [];
+    $cacheKey = $id . '|read|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest') . '|' . ($specificModel?->getKey() ?? 'null');
+
+    if (!isset($permissionCache[$cacheKey])) {
+        $permissionCache[$cacheKey] = checkAuthPermission($id, PermissionTypeEnum::READ, $specificTeamId, $specificModel);
+    }
+
+    if ($permissionCache[$cacheKey]) {
+        return $this;
+    }
+
+    $this->label = str_pad(preg_replace('/.*/', '*', $this->label), $minChars, '*');
+
+    return $this;
 });
 
 /**

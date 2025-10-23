@@ -5,8 +5,8 @@ namespace Kompo\Auth\Teams;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Kompo\Auth\Facades\UserModel;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
-use Kompo\Auth\Models\Teams\Roles\Role;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Teams\TeamHierarchyService;
 use Kompo\Auth\Teams\CacheKeyBuilder;
@@ -458,7 +458,7 @@ class PermissionResolver
         return $this->getRequestCache($cacheKey, function() use ($userId, $cacheKey) {
             $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::USER_SUPER_ADMIN);
             return Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL * 4, function() use ($userId) {
-                $user = \App\Models\User::find($userId);
+                $user = UserModel::find($userId);
                 return $user && $user->isSuperAdmin();
             });
         });

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="./vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         failOnRisky="true"
+         failOnWarning="true"
+         stopOnFailure="false">
+    <testsuites>
+        <testsuite name="Unit">
+            <directory suffix="Test.php">./tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory suffix="Test.php">./tests/Feature</directory>
+        </testsuite>
+    </testsuites>
+    <php>
+        <!-- Application Environment -->
+        <server name="APP_ENV" value="testing"/>
+        <server name="APP_KEY" value="base64:2fl+Ktvkujsw9/8CIKUW/sjksjDFDAKJDKSJKDJKSJjdk="/>
+        <server name="APP_DEBUG" value="true"/>
+        
+        <!-- Security Configuration -->
+        <server name="BYPASS_SECURITY" value="false"/>
+        <server name="SUPERADMIN_EMAILS" value=""/>
+        
+        <!-- Database Configuration - MySQL (Required, like finance) -->
+        <server name="DB_CONNECTION" value="mysql"/>
+        <server name="DB_HOST" value="127.0.0.1"/>
+        <server name="DB_PORT" value="3309"/>
+        <server name="DB_DATABASE" value="testbench"/>
+        <server name="MYSQL_USER" value="root"/>
+        <server name="MYSQL_PASSWORD" value="testing_password"/>
+        <server name="USE_SCHEMA_DUMP" value="true"/>
+        
+        <!-- Cache Configuration - Use array driver (supports tags) -->
+        <server name="CACHE_DRIVER" value="array"/>
+        <server name="CACHE_STORE" value="array"/>
+        
+        <!-- Session & Queue -->
+        <server name="SESSION_DRIVER" value="array"/>
+        <server name="QUEUE_CONNECTION" value="sync"/>
+        
+        <!-- Mail -->
+        <server name="MAIL_MAILER" value="array"/>
+        
+        <!-- Bcrypt -->
+        <server name="BCRYPT_ROUNDS" value="4"/>
+        
+        <!-- Telescope & Other Services -->
+        <server name="TELESCOPE_ENABLED" value="false"/>
+        
+        <!-- Performance Monitoring -->
+        <server name="KOMPO_AUTH_MONITOR_PERFORMANCE" value="false"/>
+    </php>
+    <source>
+        <include>
+            <directory suffix=".php">./src</directory>
+        </include>
+        <exclude>
+            <directory suffix=".php">./src/Http</directory>
+            <directory suffix=".php">./src/Mail</directory>
+            <directory suffix=".php">./src/Notifications</directory>
+            <directory suffix=".php">./src/Commands</directory>
+            <directory>./vendor</directory>
+        </exclude>
+    </source>
+    <coverage processUncoveredFiles="true">
+        <report>
+            <html outputDirectory="coverage-html"/>
+            <text outputFile="coverage.txt"/>
+        </report>
+    </coverage>
+</phpunit>
+

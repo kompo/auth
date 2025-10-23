@@ -6,6 +6,8 @@ use Condoedge\Utils\Models\Model;
 
 class PermissionRole extends Model
 {
+    protected $table = 'permission_role';
+
     public static function booted()
     {
         parent::booted();

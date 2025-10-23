@@ -56,6 +56,11 @@ class HasSecurity extends ModelPlugin
     protected static $inBypassContextTrace = [];
 
     /**
+     * Tracks models that were booted during bypass context and need rebooting
+     */
+    protected static $modelsBootedDuringBypass = [];
+
+    /**
      * Cache for permission checks within the same request to avoid repeated queries.
      */
     protected static $permissionCheckCache = [];
@@ -70,6 +75,10 @@ class HasSecurity extends ModelPlugin
         // If security is globally disabled, exit early
         if ($this->isSecurityGloballyBypassed()) {
             $this->setupBypassEvents();
+            // Track that this model was booted during bypass context
+            if (static::$inBypassContext) {
+                static::$modelsBootedDuringBypass[$this->modelClass] = true;
+            }
             return;
         }
 
@@ -120,8 +129,14 @@ class HasSecurity extends ModelPlugin
                 static::$fieldProtectionInProgress = [];
                 static::exitBypassContext();
                 static::$permissionCheckCache = [];
+                static::$modelsBootedDuringBypass = [];
             });
         }
+    }
+
+    protected function hasLazyProtectedFields()
+    {
+        return getPrivateProperty($this->modelClass, 'lazyProtectedFields') === true || config('kompo-auth.security.lazy-protected-fields');
     }
 
     /**
@@ -135,6 +150,10 @@ class HasSecurity extends ModelPlugin
         }
 
         $modelKey = $this->getModelKey($model);
+
+        if ($this->hasLazyProtectedFields()) {
+            return;
+        }
 
         // Prevent infinite loops - if this model is already being processed, skip
         if (isset(static::$fieldProtectionInProgress[$modelKey])) {
@@ -157,6 +176,34 @@ class HasSecurity extends ModelPlugin
             // Always clean up to prevent memory leaks
             unset(static::$fieldProtectionInProgress[$modelKey]);
         }
+    }
+
+    protected function getAttribute($model, $attribute, $value)
+    {
+        if (!$this->hasLazyProtectedFields()) {
+            return $value;
+        }
+
+        // Apply field protection logic here
+        $this->processFieldProtection($model);
+
+        if (in_array($attribute, $this->getSensibleColumns($model)) && static::$permissionCheckCache['user_permission_' . $this->getPermissionKey() . '.sensibleColumns' . '_' . auth()->id()] === false) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    public function getAttributes($model, $attributes)
+    {
+        if (!$this->hasLazyProtectedFields()) {
+            return $attributes;
+        }
+
+        // Apply field protection logic here
+        $this->processFieldProtection($model);
+
+        return getPrivateProperty($model, 'attributes');
     }
 
     /**
@@ -298,6 +345,7 @@ class HasSecurity extends ModelPlugin
         return static::$permissionCheckCache[$cacheKey];
     }
 
+
     /**
      * Removes sensitive fields with enhanced safety measures
      */
@@ -317,7 +365,8 @@ class HasSecurity extends ModelPlugin
         $teamsIdsRelated = $this->getTeamOwnersIdsSafe($model);
 
         // Check permission with caching
-        $permissionCacheKey = "user_permission_{$sensibleColumnsKey}_" . auth()->id() . '_' . md5(serialize($teamsIdsRelated));
+        $permissionCacheKey = "user_permission_{$sensibleColumnsKey}_" . auth()->id();
+        // . '_' . md5(serialize($teamsIdsRelated));
 
         if (!isset(static::$permissionCheckCache[$permissionCacheKey])) {
             try {
@@ -569,6 +618,7 @@ class HasSecurity extends ModelPlugin
         static::exitBypassContext();
         static::$permissionCheckCache = [];
         static::$bypassedModels = [];
+        static::$modelsBootedDuringBypass = [];
     }
 
     /**
@@ -596,9 +646,18 @@ class HasSecurity extends ModelPlugin
     public static function exitBypassContext(): void
     {
         static::$inBypassContext = false;
-        
+
         // Clear the trace
         static::$inBypassContextTrace = [];
+
+        // Reboot models that were booted during bypass context
+        foreach (static::$modelsBootedDuringBypass as $modelClass => $true) {
+            // Force reboot to set up proper security scopes
+            $modelClass::boot();
+        }
+
+        // Clear the tracking array
+        static::$modelsBootedDuringBypass = [];
     }
 
     protected function isSecurityGloballyBypassed()

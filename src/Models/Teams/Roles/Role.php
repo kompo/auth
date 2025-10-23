@@ -127,7 +127,7 @@ class Role extends Model
     // ACTIONS
     public function save(array $options = []): void
     {
-        if ($this->from_system) {
+        if ($this->from_system && !$this->_bypassSecurity) {
             throw new \Exception(__('auth-you-cannot-update-system-role'));
         }
 
@@ -136,7 +136,7 @@ class Role extends Model
 
     public function delete()
     {
-        if ($this->from_system) {
+        if ($this->from_system && !$this->_bypassSecurity) {
             throw new \Exception(__('auth-you-cannot-delete-system-role'));
         }
 
@@ -152,9 +152,9 @@ class Role extends Model
         $permission = $this->permissions()->where('permissions.id', $permissionId)->first();
 
         if (!$permission) {
-            $this->permissions()->attach($permissionId, ['permission_type' => $value, 'added_by' => auth()->id(), 'modified_by' => auth()->id()]);
+            $this->permissions()->attach($permissionId, ['permission_type' => $value, 'added_by' => auth()->id(), 'modified_by' => auth()->id(), 'updated_at' => now(), 'created_at' => now()]);
         } else {
-            $this->permissions()->updateExistingPivot($permissionId, ['permission_type' => $value, 'modified_by' => auth()->id()]);
+            $this->permissions()->updateExistingPivot($permissionId, ['permission_type' => $value, 'modified_by' => auth()->id(), 'updated_at' => now()]);
         }
     }
 
@@ -167,7 +167,7 @@ class Role extends Model
             $role->id = $name;
             $role->name = ucfirst($name);
             $role->from_system = true; // Mark as system role
-            $role->save();
+            $role->systemSave();
         }
 
         return $role;

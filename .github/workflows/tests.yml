@@ -1,0 +1,177 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        php: ['8.1', '8.2', '8.3']
+        laravel: ['10.*', '11.*']
+        dependency-version: [prefer-lowest, prefer-stable]
+        exclude:
+          # Laravel 11 requires PHP 8.2+
+          - laravel: '11.*'
+            php: '8.1'
+
+    name: PHP ${{ matrix.php }} - Laravel ${{ matrix.laravel }} - ${{ matrix.dependency-version }}
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: auth_testing_password
+          MYSQL_DATABASE: auth_testbench
+        ports:
+          - 3310:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, mysql, pdo_mysql, bcmath, soap, intl, gd, exif, iconv
+          coverage: none
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: |
+          composer require "laravel/framework:${{ matrix.laravel }}" --no-interaction --no-update
+          composer update --${{ matrix.dependency-version }} --prefer-dist --no-interaction --no-progress
+
+      - name: Wait for MySQL
+        run: |
+          while ! mysqladmin ping -h"127.0.0.1" -P3310 --silent; do
+            sleep 1
+          done
+
+      - name: Run migrations
+        run: vendor/bin/testbench migrate
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3310
+          DB_DATABASE: auth_testbench
+          DB_USERNAME: root
+          DB_PASSWORD: auth_testing_password
+
+      - name: Generate schema dump
+        run: vendor/bin/testbench schema:dump
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3310
+          DB_DATABASE: auth_testbench
+          DB_USERNAME: root
+          DB_PASSWORD: auth_testing_password
+
+      - name: Execute tests (MySQL only)
+        run: vendor/bin/testbench package:test --testdox
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3310
+          DB_DATABASE: auth_testbench
+          DB_USERNAME: root
+          DB_PASSWORD: auth_testing_password
+          USE_SCHEMA_DUMP: true
+
+  coverage:
+    runs-on: ubuntu-latest
+    name: Code Coverage
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: auth_testing_password
+          MYSQL_DATABASE: auth_testbench
+        ports:
+          - 3310:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, mysql, pdo_mysql, bcmath, soap, intl, gd, exif, iconv
+          coverage: xdebug
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Wait for MySQL
+        run: |
+          while ! mysqladmin ping -h"127.0.0.1" -P3310 --silent; do
+            sleep 1
+          done
+
+      - name: Run migrations
+        run: vendor/bin/testbench migrate
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3310
+          DB_DATABASE: auth_testbench
+          DB_USERNAME: root
+          DB_PASSWORD: auth_testing_password
+
+      - name: Generate schema dump
+        run: vendor/bin/testbench schema:dump
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3310
+          DB_DATABASE: auth_testbench
+          DB_USERNAME: root
+          DB_PASSWORD: auth_testing_password
+
+      - name: Execute tests with coverage
+        run: vendor/bin/testbench package:test --coverage-text --coverage-clover=coverage.xml
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3310
+          DB_DATABASE: auth_testbench
+          DB_USERNAME: root
+          DB_PASSWORD: auth_testing_password
+          USE_SCHEMA_DUMP: true
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+

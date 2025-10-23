@@ -3,9 +3,12 @@
 namespace Kompo\Auth\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Kompo\Auth\Facades\TeamModel;
 use Kompo\Auth\Models\User;
 
+/**
+ * @method static \Illuminate\Database\Eloquent\Factories\Factory<User> new()
+ * @method static \Illuminate\Database\Eloquent\Factories\Factory<User> create(array $attributes = [])
+ */
 class UserFactory extends Factory
 {
     public function definition()

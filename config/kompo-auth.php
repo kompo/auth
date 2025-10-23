@@ -16,6 +16,8 @@ return [
         'dont-check-if-impersonating' => false,
 
         'check-even-if-permission-does-not-exist' => false,
+
+        'lazy-protected-fields' => true, // Better performance but the attributes internal array will contain unsafe fields
     ],
 
     'notifications' => [

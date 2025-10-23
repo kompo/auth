@@ -42,7 +42,7 @@ class PermissionCacheManager
     public function warmUserCache(int $userId): void
     {
         // Pre-load team access info
-        $user = \App\Models\User::find($userId);
+        $user = \Kompo\Auth\Facades\UserModel::find($userId);
         if ($user) {
             $user->getAllAccessibleTeamIds();
         }
@@ -55,7 +55,7 @@ class PermissionCacheManager
     {
         return Cache::remember('critical_users_list', 3600, function () {
             // Get users with more team roles (more complex permissions)
-            return \App\Models\User::join('team_roles', 'users.id', '=', 'team_roles.user_id')
+            return \Kompo\Auth\Facades\UserModel::join('team_roles', 'users.id', '=', 'team_roles.user_id')
                 ->select('users.id')
                 ->groupBy('users.id')
                 ->orderByRaw('COUNT(team_roles.id) DESC')

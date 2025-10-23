@@ -511,7 +511,7 @@ class KompoAuthServiceProvider extends ServiceProvider
     {
         $policies = [
             config('kompo-auth.team-model-namespace') => \Kompo\Auth\Policies\TeamPolicy::class,
-            \App\Models\User::class => \Kompo\Auth\Policies\UserPolicy::class,
+            \Kompo\Auth\Facades\UserModel::class => \Kompo\Auth\Policies\UserPolicy::class,
         ];
 
         foreach ($policies as $model => $policy) {

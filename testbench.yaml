@@ -1,0 +1,48 @@
+# laravel: '@testbench'
+
+providers:
+  - Kompo\KompoServiceProvider
+  - Condoedge\Utils\CondoedgeUtilsServiceProvider
+  - Kompo\Auth\KompoAuthServiceProvider
+
+migrations:
+  - ./database/migrations
+
+seeders:
+  # - Condoedge\Finance\Database\Seeders\DatabaseSeeder
+
+tests:
+  - ./tests/Feature
+  - ./tests/Unit
+
+env:
+  DB_CONNECTION: mysql
+  DB_HOST: 127.0.0.1
+  DB_DATABASE: testbench
+  DB_USERNAME: root
+  DB_PASSWORD: testing_password
+  DB_PORT: 3309
+  CACHE_DRIVER: file
+
+workbench:
+  start: '/'
+  install: true
+  health: false
+  discovers:
+    web: true
+    api: true
+    commands: true
+    components: false
+    factories: true
+    views: false
+  build:
+    - asset-publish
+    - create-sqlite-db
+    - db-wipe
+    - migrate-fresh
+  assets:
+    - laravel-assets
+  sync:
+    - from: storage
+      to: ./storage
+      reverse: true

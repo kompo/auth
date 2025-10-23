@@ -134,9 +134,9 @@ class HasSecurity extends ModelPlugin
         }
     }
 
-    protected function hasLazyProtectedFields()
+    protected function hasLazyProtectedFields($model)
     {
-        return getPrivateProperty($this->modelClass, 'lazyProtectedFields') === true || config('kompo-auth.security.lazy-protected-fields');
+        return getPrivateProperty($model, 'lazyProtectedFields') === true || config('kompo-auth.security.lazy-protected-fields');
     }
 
     /**
@@ -151,7 +151,7 @@ class HasSecurity extends ModelPlugin
 
         $modelKey = $this->getModelKey($model);
 
-        if ($this->hasLazyProtectedFields()) {
+        if ($this->hasLazyProtectedFields($model)) {
             return;
         }
 
@@ -178,32 +178,77 @@ class HasSecurity extends ModelPlugin
         }
     }
 
-    protected function getAttribute($model, $attribute, $value)
+    public function getAttribute($model, $attribute, $value)
     {
-        if (!$this->hasLazyProtectedFields()) {
+        if ($attribute == $model->getKeyName() || !empty(static::$fieldProtectionInProgress[$this->getModelKey($model)])) {
+            return $value;
+        }
+
+        static::$fieldProtectionInProgress[$this->getModelKey($model)] = true;
+
+        if (!$this->hasLazyProtectedFields($model)) {
+            static::$fieldProtectionInProgress[$this->getModelKey($model)] = false;
+
+            return $value;
+        }
+
+        $sensibleColumnsKey = $this->getPermissionKey() . '.sensibleColumns';
+
+        // Early exit if no sensible columns permission exists
+        if (!permissionMustBeAuthorized($sensibleColumnsKey)) {
+            return $value;
+        }
+
+        // Skip if security bypass is required (simple check)
+        if ($this->isSecurityBypassRequired($model)) {
             return $value;
         }
 
         // Apply field protection logic here
         $this->processFieldProtection($model);
 
-        if (in_array($attribute, $this->getSensibleColumns($model)) && static::$permissionCheckCache['user_permission_' . $this->getPermissionKey() . '.sensibleColumns' . '_' . auth()->id()] === false) {
+        if (in_array($attribute, $this->getSensibleColumns($model)) && static::$permissionCheckCache['user_permission_' . $sensibleColumnsKey . '_' . auth()->id()] === false) {
+            static::$fieldProtectionInProgress[$this->getModelKey($model)] = false;
             return null;
         }
+
+        static::$fieldProtectionInProgress[$this->getModelKey($model)] = false;
 
         return $value;
     }
 
     public function getAttributes($model, $attributes)
     {
-        if (!$this->hasLazyProtectedFields()) {
+        if (!empty(static::$fieldProtectionInProgress[class_basename($model)])) {
+            return $attributes;
+        }
+
+        static::$fieldProtectionInProgress[class_basename($model)] = true;
+
+        if (!$this->hasLazyProtectedFields($model)) {
+            static::$fieldProtectionInProgress[class_basename($model)] = false;
+
+            return $attributes;
+        }
+
+        $sensibleColumnsKey = $this->getPermissionKey() . '.sensibleColumns';
+
+        // Early exit if no sensible columns permission exists
+        if (!permissionMustBeAuthorized($sensibleColumnsKey)) {
+            return $attributes;
+        }
+
+        // Skip if security bypass is required (simple check)
+        if ($this->isSecurityBypassRequired($model)) {
             return $attributes;
         }
 
         // Apply field protection logic here
         $this->processFieldProtection($model);
 
-        return getPrivateProperty($model, 'attributes');
+        static::$fieldProtectionInProgress[class_basename($model)] = false;
+
+        return $attributes;
     }
 
     /**

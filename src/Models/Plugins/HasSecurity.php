@@ -127,8 +127,9 @@ class HasSecurity extends ModelPlugin
      */
     protected function setupFieldProtectionSafe($modelClass)
     {
-        // Setup automatic batch loading for collections
-        $this->setupAutoBatchLoading($modelClass);
+        if (config('kompo-auth.security.lazy-protected-fields') || config('kompo-auth.security.batch-protected-fields')) {
+            return;
+        }
 
         $modelClass::retrieved(function ($model) {
             $this->handleRetrievedEventSafe($model);
@@ -147,18 +148,6 @@ class HasSecurity extends ModelPlugin
     }
 
     /**
-     * Setup automatic batch loading for collections
-     * This prevents N+1 queries by loading permissions before retrieved events
-     *
-     * Strategy: Use custom SecuredModelCollection that auto-batches on creation
-     */
-    protected function setupAutoBatchLoading($modelClass)
-    {
-        // Override newCollection() to return our custom collection with auto-batching
-        // This is done via a public method that models will use
-    }
-
-    /**
      * Create a new Eloquent Collection instance with auto-batch loading
      * This method should be called by models using HasSecurity
      *
@@ -167,6 +156,11 @@ class HasSecurity extends ModelPlugin
      */
     public function newCollection($model, array $models = [])
     {
+        if (!config('kompo-auth.security.batch-protected-fields')) {
+            return new \Illuminate\Database\Eloquent\Collection($models);
+        }
+
+        // This batch the protected fields to ensure better performance
         return new \Kompo\Auth\Support\SecuredModelCollection($models);
     }
 
@@ -440,37 +434,44 @@ class HasSecurity extends ModelPlugin
         // Get team context safely (without triggering field protection)
         $teamsIdsRelated = $this->getTeamOwnersIdsSafe($model);
 
-        // Build proper cache key including team context
-        $teamCacheKey = is_array($teamsIdsRelated) ? md5(serialize($teamsIdsRelated)) : $teamsIdsRelated;
-        $batchCacheKey = auth()->id() . '_' . $sensibleColumnsKey . '_' . $teamCacheKey;
+        if (is_null($teamsIdsRelated) || empty($teamsIdsRelated)) {
+            $teamsIdsRelated = ['null'];
+        }
 
-        // Check batch cache first (for collection-level loading)
-        if (isset(static::$batchPermissionCache[$batchCacheKey])) {
-            $hasPermission = static::$batchPermissionCache[$batchCacheKey];
-        } else {
-            // Fall back to individual permission cache
-            $permissionCacheKey = "user_permission_{$sensibleColumnsKey}_" . auth()->id() . '_' . $teamCacheKey;
+        foreach ($teamsIdsRelated as $teamId) {
+            // Build proper cache key including team context
+            $teamCacheKey = $teamId;
+            $batchCacheKey = auth()->id() . '_' . $sensibleColumnsKey . '_' . $teamCacheKey;
 
-            if (!isset(static::$permissionCheckCache[$permissionCacheKey])) {
-                try {
-                    static::$permissionCheckCache[$permissionCacheKey] = auth()->user()?->hasPermission(
-                        $sensibleColumnsKey,
-                        PermissionTypeEnum::READ,
-                        $teamsIdsRelated
-                    ) ?? false;
-                } catch (\Throwable $e) {
-                    Log::warning('Permission check failed for sensitive columns', [
-                        'permission_key' => $sensibleColumnsKey,
-                        'user_id' => auth()->id(),
-                        'model_class' => get_class($model),
-                        'error' => $e->getMessage()
-                    ]);
-                    // Default to hiding sensitive data if permission check fails
-                    static::$permissionCheckCache[$permissionCacheKey] = false;
+            // Check batch cache first (for collection-level loading)
+            if (isset(static::$batchPermissionCache[$batchCacheKey])) {
+                $hasPermission = static::$batchPermissionCache[$batchCacheKey];
+            } else {
+                // Fall back to individual permission cache
+                $permissionCacheKey = "user_permission_{$sensibleColumnsKey}_" . auth()->id() . '_' . $teamCacheKey;
+
+                if (!isset(static::$permissionCheckCache[$permissionCacheKey])) {
+                    try {
+                        static::$permissionCheckCache[$permissionCacheKey] = auth()->user()?->hasPermission(
+                            $sensibleColumnsKey,
+                            PermissionTypeEnum::READ,
+                            $teamsIdsRelated
+                        ) ?? false;
+                    } catch (\Throwable $e) {
+                        Log::warning('Permission check failed for sensitive columns', [
+                            'permission_key' => $sensibleColumnsKey,
+                            'user_id' => auth()->id(),
+                            'model_class' => get_class($model),
+                            'error' => $e->getMessage()
+                        ]);
+                        // Default to hiding sensitive data if permission check fails
+                        static::$permissionCheckCache[$permissionCacheKey] = false;
+                    }
                 }
-            }
 
-            $hasPermission = static::$permissionCheckCache[$permissionCacheKey];
+                $hasPermission = static::$permissionCheckCache[$permissionCacheKey];
+            }
+            $teamCacheKey = $teamId;
         }
 
         // Remove sensitive fields if permission check fails
@@ -485,22 +486,27 @@ class HasSecurity extends ModelPlugin
      *
      * @param \Illuminate\Support\Collection|array $models Collection of models
      * @param int|null $userId User ID (defaults to current user)
-     * @return void
+     * @return array
      */
-    public static function batchLoadFieldProtectionPermissions($models, $userId = null)
+    public static function batchLoadFieldProtectionPermissions($models)
     {
         if (empty($models)) {
-            return;
-        }
+            return collect($models)->map(function ($model) {
+                $sensibleColumns = $this->getSensibleColumns($model);
 
-        $userId = $userId ?? auth()->id();
-        if (!$userId) {
-            return;
+                return $this->hideSensitiveFields($model, $sensibleColumns);
+            })->all();
         }
 
         $user = auth()->user();
+        $userId = $user?->id;
+        
         if (!$user) {
-            return;
+            return collect($models)->map(function ($model) {
+                $sensibleColumns = $this->getSensibleColumns($model);
+
+                return $this->hideSensitiveFields($model, $sensibleColumns);
+            })->all();
         }
 
         // Convert to collection if array
@@ -509,7 +515,7 @@ class HasSecurity extends ModelPlugin
         // Get the model class from first model
         $firstModel = $modelsCollection->first();
         if (!$firstModel) {
-            return;
+            return [];
         }
 
         $modelClass = get_class($firstModel);
@@ -518,21 +524,15 @@ class HasSecurity extends ModelPlugin
 
         // Check if permission exists
         if (!permissionMustBeAuthorized($sensibleColumnsKey)) {
-            return;
+            return $models;
         }
 
         // Extract all unique team IDs from models
         $teamIds = $modelsCollection
-            ->map(function ($model) {
-                // Try to get team_id from the model
-                if (isset($model->team_id)) {
-                    return $model->team_id;
-                }
-                // Try relationship
-                if (method_exists($model, 'team') && $model->team) {
-                    return $model->team->id;
-                }
-                return null;
+            ->flatMap(function ($model) {
+                $pluginInstance = new HasSecurity($model);
+
+                return $pluginInstance->getTeamOwnersIdsSafe($model);
             })
             ->filter()
             ->unique()
@@ -558,8 +558,6 @@ class HasSecurity extends ModelPlugin
                 ]);
                 static::$batchPermissionCache[$batchCacheKey] = false;
             }
-
-            return;
         }
 
         // Batch load permissions for all team IDs
@@ -588,6 +586,10 @@ class HasSecurity extends ModelPlugin
                 static::$batchPermissionCache[$batchCacheKey] = false;
             }
         }
+
+        return collect($models)->map(function ($model) {
+            return $this->handleRetrievedEventSafe($model);
+        })->all();
     }
 
     /**
@@ -1197,8 +1199,6 @@ class HasSecurity extends ModelPlugin
             'systemDelete',
             'getFieldProtectionDebugInfo',
             'isSecurityBypassRequired',
-            'batchLoadFieldProtectionPermissions',
-            'clearBatchPermissionCache',
         ];
     }
 }

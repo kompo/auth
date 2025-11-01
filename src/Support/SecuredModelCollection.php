@@ -46,7 +46,7 @@ class SecuredModelCollection extends Collection
         try {
             // Only batch if we have multiple models (optimization)
             if ($this->count() > 0) {
-                HasSecurity::batchLoadFieldProtectionPermissions($this->all());
+                $this->items = HasSecurity::batchLoadFieldProtectionPermissions($this->all());
             }
         } catch (\Throwable $e) {
             // Log but don't break - field protection will fall back to individual checks

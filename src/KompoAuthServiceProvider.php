@@ -92,6 +92,7 @@ class KompoAuthServiceProvider extends ServiceProvider
         // Register core services in correct order
         $this->registerCoreServices();
         $this->registerOptimizedPermissionServices();
+        $this->registerSecurityServices();
 
         // Register route loading
         $this->booted(function () {
@@ -220,6 +221,32 @@ class KompoAuthServiceProvider extends ServiceProvider
                 }
             };
         });
+    }
+
+    /**
+     * Register security services with proper dependency injection (Laravel standard)
+     */
+    private function registerSecurityServices(): void
+    {
+        // Register singleton services (stateless, shared across requests)
+        $this->app->singleton(
+            \Kompo\Auth\Models\Plugins\Services\SecurityBypassService::class
+        );
+
+        $this->app->singleton(
+            \Kompo\Auth\Models\Plugins\Services\PermissionCacheService::class
+        );
+
+        // Register the factory as singleton (it manages service creation)
+        $this->app->singleton(
+            \Kompo\Auth\Models\Plugins\Services\SecurityServiceFactory::class,
+            function ($app) {
+                return new \Kompo\Auth\Models\Plugins\Services\SecurityServiceFactory(
+                    $app->make(\Kompo\Auth\Models\Plugins\Services\SecurityBypassService::class),
+                    $app->make(\Kompo\Auth\Models\Plugins\Services\PermissionCacheService::class)
+                );
+            }
+        );
     }
 
     /**

@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "Read(//c/Users/jkend/Documents/kompo/**)",
-      "Read(//c/Users/jkend/Documents/**)"
+      "Read(//c/Users/jkend/Documents/**)",
+      "Bash(mkdir:*)",
+      "Bash(php artisan:*)",
+      "Bash(php -l:*)",
+      "Bash(for file in \"C:/Users/jkend/Documents/kompo/auth/src/Models/Plugins/Services\"/*.php \"C:/Users/jkend/Documents/kompo/auth/src/Models/Plugins/Services/Traits\"/*.php)",
+      "Bash(do echo \"Checking: $file\")",
+      "Bash(done)",
+      "Bash(for file in \"C:/Users/jkend/Documents/kompo/auth/src/Models/Plugins/Services\"/*.php)",
+      "Bash(do php -l \"$file\")",
+      "Bash(exit 1)"
     ],
     "deny": [],
     "ask": []

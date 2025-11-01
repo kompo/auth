@@ -527,70 +527,261 @@ class HasSecurity extends ModelPlugin
             return $models;
         }
 
-        // Extract all unique team IDs from models
-        $teamIds = $modelsCollection
-            ->flatMap(function ($model) {
-                $pluginInstance = new HasSecurity($model);
-
-                return $pluginInstance->getTeamOwnersIdsSafe($model);
-            })
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
-
-        // If no team IDs, check global permission once
-        if (empty($teamIds)) {
-            $teamCacheKey = 'null';
-            $batchCacheKey = $userId . '_' . $sensibleColumnsKey . '_' . $teamCacheKey;
-
-            try {
-                static::$batchPermissionCache[$batchCacheKey] = $user->hasPermission(
-                    $sensibleColumnsKey,
-                    PermissionTypeEnum::READ,
-                    null
-                ) ?? false;
-            } catch (\Throwable $e) {
-                Log::warning('Batch permission loading failed', [
-                    'permission_key' => $sensibleColumnsKey,
-                    'user_id' => $userId,
-                    'error' => $e->getMessage()
-                ]);
-                static::$batchPermissionCache[$batchCacheKey] = false;
-            }
+        if (!permissionMustBeAuthorized($sensibleColumnsKey)) {
+            return $models;
         }
 
-        // Batch load permissions for all team IDs
-        foreach ($teamIds as $teamId) {
-            $teamCacheKey = $teamId;
-            $batchCacheKey = $userId . '_' . $sensibleColumnsKey . '_' . $teamCacheKey;
+        // Set context for cache lookups
+        static::$currentBatchPermissionKey = $sensibleColumnsKey;
 
-            // Skip if already cached
-            if (isset(static::$batchPermissionCache[$batchCacheKey])) {
+        try {
+            return static::batchLoadWithTeamIntersections($modelsCollection, $sensibleColumnsKey, $userId, $user);
+        } finally {
+            // Clean up context
+            static::$currentBatchPermissionKey = null;
+        }
+    }
+
+    /**
+     * Advanced batch loading with team intersections for optimal performance
+     */
+    protected static function batchLoadWithTeamIntersections($modelsCollection, $sensibleColumnsKey, $userId, $user)
+    {
+        // Step 1: Group models by their team associations
+        $teamModelMap = static::groupModelsByTeams($modelsCollection);
+        
+        // Step 2: Get teams where user has permissions (pre-filter)
+        $authorizedTeams = static::getAuthorizedTeams($user, $sensibleColumnsKey);
+        
+        // Step 3: Calculate intersections and determine which models need processing
+        $processingPlan = static::calculateProcessingPlan($teamModelMap, $authorizedTeams);
+        
+        // Step 4: Batch load only the necessary permission checks
+        static::executeBatchPermissionChecks($processingPlan, $user, $sensibleColumnsKey, $userId);
+        
+        // Step 5: Apply field protection based on the results
+        return static::applyFieldProtectionFromPlan($modelsCollection, $processingPlan);
+    }
+
+    /**
+     * Group models by their team associations for efficient processing
+     * 
+     * @return array Format: [
+     *   'team_123' => [model1, model2, ...],
+     *   'team_456' => [model3, model4, ...],
+     *   'no_team' => [model5, model6, ...]
+     * ]
+     */
+    protected static function groupModelsByTeams($modelsCollection)
+    {
+        $teamModelMap = [];
+        
+        foreach ($modelsCollection as $model) {
+            $pluginInstance = new HasSecurity($model);
+            $teamIds = $pluginInstance->getTeamOwnersIdsSafe($model);
+            
+            // Handle models with no team
+            if (empty($teamIds) || $teamIds === null) {
+                $teamModelMap['no_team'][] = $model;
                 continue;
             }
-
-            try {
-                static::$batchPermissionCache[$batchCacheKey] = $user->hasPermission(
-                    $sensibleColumnsKey,
-                    PermissionTypeEnum::READ,
-                    $teamId
-                ) ?? false;
-            } catch (\Throwable $e) {
-                Log::warning('Batch permission loading failed for team', [
-                    'permission_key' => $sensibleColumnsKey,
-                    'user_id' => $userId,
-                    'team_id' => $teamId,
-                    'error' => $e->getMessage()
-                ]);
-                static::$batchPermissionCache[$batchCacheKey] = false;
+            
+            // Handle models with multiple teams
+            $teamIds = is_array($teamIds) ? $teamIds : [$teamIds];
+            
+            foreach ($teamIds as $teamId) {
+                $teamKey = 'team_' . $teamId;
+                $teamModelMap[$teamKey][] = $model;
             }
         }
-
-        return collect($models)->map(function ($model) {
-            return $this->handleRetrievedEventSafe($model);
-        })->all();
+        
+        return $teamModelMap;
     }
+
+    /**
+     * Get teams where user already has the required permission (pre-filtering)
+     */
+    protected static function getAuthorizedTeams($user, $sensibleColumnsKey)
+    {
+        try {
+            // Get all teams user has permission for this specific permission key
+            $authorizedTeamIds = $user->getTeamsIdsWithPermission(
+                $sensibleColumnsKey,
+                PermissionTypeEnum::READ
+            ) ?? [];
+            
+            return collect($authorizedTeamIds)->mapWithKeys(function ($teamId) {
+                return ['team_' . $teamId => true];
+            })->all();
+            
+        } catch (\Throwable $e) {
+            Log::warning('Failed to get authorized teams for batch processing', [
+                'permission_key' => $sensibleColumnsKey,
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Calculate the optimal processing plan based on team intersections
+     * 
+     * @return array Format: [
+     *   'authorized_models' => [model1, model2, ...],     // Models that definitely have access
+     *   'unauthorized_models' => [model3, model4, ...],   // Models that definitely don't have access
+     *   'needs_check' => [                                // Models that need individual permission checks
+     *     'team_789' => [model5, model6, ...],
+     *     'no_team' => [model7, ...]
+     *   ]
+     * ]
+     */
+    protected static function calculateProcessingPlan($teamModelMap, $authorizedTeams)
+    {
+        $plan = [
+            'authorized_models' => [],
+            'unauthorized_models' => [],
+            'needs_check' => []
+        ];
+        
+        foreach ($teamModelMap as $teamKey => $models) {
+            if ($teamKey === 'no_team') {
+                // Models without team need individual checking
+                $plan['needs_check'][$teamKey] = $models;
+                continue;
+            }
+            
+            if (isset($authorizedTeams[$teamKey])) {
+                // User has permission for this entire team - all models are authorized
+                $plan['authorized_models'] = array_merge($plan['authorized_models'], $models);
+            } else {
+                // Need to check this team individually
+                $plan['needs_check'][$teamKey] = $models;
+            }
+        }
+        
+        return $plan;
+    }
+
+    /**
+     * Execute batch permission checks only for teams/models that need it
+     */
+    protected static function executeBatchPermissionChecks($processingPlan, $user, $sensibleColumnsKey, $userId)
+    {
+        foreach ($processingPlan['needs_check'] as $teamKey => $models) {
+            if ($teamKey === 'no_team') {
+                // Check global permission for no-team models
+                $teamCacheKey = 'null';
+                $batchCacheKey = $userId . '_' . $sensibleColumnsKey . '_' . $teamCacheKey;
+                
+                if (!isset(static::$batchPermissionCache[$batchCacheKey])) {
+                    try {
+                        static::$batchPermissionCache[$batchCacheKey] = $user->hasPermission(
+                            $sensibleColumnsKey,
+                            PermissionTypeEnum::READ,
+                            null
+                        ) ?? false;
+                    } catch (\Throwable $e) {
+                        Log::warning('Batch permission check failed for no-team models', [
+                            'permission_key' => $sensibleColumnsKey,
+                            'user_id' => $userId,
+                            'error' => $e->getMessage()
+                        ]);
+                        static::$batchPermissionCache[$batchCacheKey] = false;
+                    }
+                }
+            } else {
+                // Extract team ID from team key (team_123 -> 123)
+                $teamId = str_replace('team_', '', $teamKey);
+                $batchCacheKey = $userId . '_' . $sensibleColumnsKey . '_' . $teamId;
+                
+                if (!isset(static::$batchPermissionCache[$batchCacheKey])) {
+                    try {
+                        static::$batchPermissionCache[$batchCacheKey] = $user->hasPermission(
+                            $sensibleColumnsKey,
+                            PermissionTypeEnum::READ,
+                            $teamId
+                        ) ?? false;
+                    } catch (\Throwable $e) {
+                        Log::warning('Batch permission check failed for team', [
+                            'permission_key' => $sensibleColumnsKey,
+                            'user_id' => $userId,
+                            'team_id' => $teamId,
+                            'error' => $e->getMessage()
+                        ]);
+                        static::$batchPermissionCache[$batchCacheKey] = false;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Apply field protection based on the processing plan results
+     */
+    protected static function applyFieldProtectionFromPlan($modelsCollection, $processingPlan)
+    {
+        $processedModels = [];
+        
+        // Process authorized models (no field hiding needed)
+        foreach ($processingPlan['authorized_models'] as $model) {
+            $processedModels[] = $model; // Keep as-is, they have permission
+        }
+        
+        // Process models that need individual checks
+        foreach ($processingPlan['needs_check'] as $teamKey => $models) {
+            $hasPermission = static::getPermissionFromCache($teamKey, auth()->id());
+            
+            foreach ($models as $model) {
+                if (!$hasPermission) {
+                    // Hide sensitive fields
+                    $pluginInstance = new HasSecurity($model);
+                    $sensibleColumns = $pluginInstance->getSensibleColumns($model);
+                    $pluginInstance->hideSensitiveFields($model, $sensibleColumns);
+                }
+                $processedModels[] = $model;
+            }
+        }
+        
+        // Process unauthorized models (hide fields)
+        foreach ($processingPlan['unauthorized_models'] as $model) {
+            $pluginInstance = new HasSecurity($model);
+            $sensibleColumns = $pluginInstance->getSensibleColumns($model);
+            $pluginInstance->hideSensitiveFields($model, $sensibleColumns);
+            $processedModels[] = $model;
+        }
+        
+        return $processedModels;
+    }
+
+    /**
+     * Get permission result from cache based on team key
+     */
+    protected static function getPermissionFromCache($teamKey, $userId)
+    {
+        if ($teamKey === 'no_team') {
+            $cacheKey = $userId . '_' . static::getCurrentPermissionKey() . '_null';
+        } else {
+            $teamId = str_replace('team_', '', $teamKey);
+            $cacheKey = $userId . '_' . static::getCurrentPermissionKey() . '_' . $teamId;
+        }
+        
+        return static::$batchPermissionCache[$cacheKey] ?? false;
+    }
+
+    /**
+     * Helper to get current permission key context
+     */
+    protected static function getCurrentPermissionKey()
+    {
+        // This should be set during the batch process - we'll need to track it
+        return static::$currentBatchPermissionKey ?? '';
+    }
+
+    /**
+     * Track current permission key for cache lookups
+     */
+    protected static $currentBatchPermissionKey = null;
 
     /**
      * Get sensitive columns safely

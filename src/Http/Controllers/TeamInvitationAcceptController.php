@@ -3,8 +3,8 @@
 namespace Kompo\Auth\Http\Controllers;
 
 use Kompo\Auth\Models\Teams\TeamInvitation;
-use App\Models\User;
 use Illuminate\Routing\Controller as RoutingController;
+use Kompo\Auth\Facades\UserModel;
 
 class TeamInvitationAcceptController extends RoutingController
 {
@@ -14,7 +14,7 @@ class TeamInvitationAcceptController extends RoutingController
         $email = $teamInvitation->email;
         $team = $teamInvitation->team;
 
-        if ($user = User::where('email', $email)->first()) {
+        if ($user = UserModel::where('email', $email)->first()) {
             
             if (!$team->hasUserWithEmail($email)) {
                 $user->createRolesFromInvitation($teamInvitation);

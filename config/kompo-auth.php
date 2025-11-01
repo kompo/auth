@@ -16,6 +16,10 @@ return [
         'dont-check-if-impersonating' => false,
 
         'check-even-if-permission-does-not-exist' => false,
+
+        'lazy-protected-fields' => false, // Better performance but the attributes internal array will contain unsafe fields
+
+        'default-validate-owned-as-well' => false, // Enforce owner validation by default in addition to permissions
     ],
 
     'notifications' => [

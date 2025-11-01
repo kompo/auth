@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Teams;
 
-use App\Models\User;
+use Kompo\Auth\Facades\UserModel;
 use Kompo\Modal;
 
 class RemoveTeamMemberModal extends Modal
@@ -25,7 +25,7 @@ class RemoveTeamMemberModal extends Modal
     public function created()
     {
 		$this->userId = $this->prop('user_id');
-		$this->user = User::findOrFail($this->userId);
+		$this->user = UserModel::findOrFail($this->userId);
     }
 
 	public function handle()

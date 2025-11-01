@@ -2,14 +2,14 @@
 
 namespace Kompo\Auth\Models\Traits;
 
-use App\Models\User;
+use Kompo\Auth\Facades\UserModel;
 
 trait BelongsToUserTrait
 {
     /* RELATIONS */
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(UserModel::class);
     }
 
     /* ACTIONS */

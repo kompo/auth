@@ -2,8 +2,9 @@
 
 namespace Kompo\Auth\Auth;
 
-use App\Models\User;
 use Condoedge\Utils\Kompo\Common\ImgFormLayout;
+use Illuminate\Support\Facades\URL;
+use Kompo\Auth\Facades\UserModel;
 use Kompo\Auth\Models\Teams\EmailRequest;
 
 class BaseEmailForm extends ImgFormLayout
@@ -14,7 +15,7 @@ class BaseEmailForm extends ImgFormLayout
     {
         $email = request('email');
 
-        if ($user = User::where('email', $email)->first()) {
+        if ($user = UserModel::where('email', $email)->first()) {
 
             return redirect()->route('login.password', ['email' => $email]);
 
@@ -24,7 +25,7 @@ class BaseEmailForm extends ImgFormLayout
 
             $emailRequest->sendEmailVerificationNotification();
 
-            return redirect()->to(\Url::signedRoute('check.verify.email', ['id' => $emailRequest]));
+            return redirect()->to(URL::signedRoute('check.verify.email', ['id' => $emailRequest]));
 
             //if (!$emailRequest->hasVerifiedEmail()) { //commented this out to force verification every time otherwise somebody can use a verified email to create an account
 

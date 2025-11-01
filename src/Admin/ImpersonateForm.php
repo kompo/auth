@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Admin;
 
-use App\Models\User;
+use Kompo\Auth\Facades\UserModel;
 use Kompo\Form;
 
 class ImpersonateForm extends Form
@@ -26,7 +26,7 @@ class ImpersonateForm extends Form
 
 	public function searchUsers($search)
 	{
-		return User::where('id', '<>', authId())->hasNameLike($search)
+		return UserModel::where('id', '<>', authId())->hasNameLike($search)
 			->with('currentTeamRole.team')->orderBy('name')->take(100)->get()
 			->mapWithKeys(fn($user) => [
 				$user->id => $this->getUserOptionLink($user)

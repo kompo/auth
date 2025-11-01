@@ -2,13 +2,13 @@
 
 namespace Kompo\Auth\Auth;
 
-use App\Models\User;
 use Condoedge\Utils\Kompo\Common\ImgFormLayout;
+use Kompo\Auth\Facades\UserModel;
 use Kompo\Auth\Models\Teams\EmailRequest;
 
 class RegisterForm extends ImgFormLayout
 {
-    public $model = User::class;
+    public $model = UserModel::class;
 
     protected $imgUrl = 'images/register-image.png';
 
@@ -20,7 +20,7 @@ class RegisterForm extends ImgFormLayout
 
         $this->emailRequest->markEmailAsVerified();
 
-        $user = User::where('email', $this->emailRequest->getEmailForVerification())->first();
+        $user = UserModel::where('email', $this->emailRequest->getEmailForVerification())->first();
 
         if ($user) {
             // If there is a registered user, setting the model to that user

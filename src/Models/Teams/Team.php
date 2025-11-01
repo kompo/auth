@@ -3,9 +3,9 @@
 namespace Kompo\Auth\Models\Teams;
 
 use Condoedge\Utils\Models\Model;
-use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Kompo\Auth\Facades\UserModel;
 use Kompo\Auth\Teams\PermissionCacheManager;
 use Kompo\Auth\Teams\TeamHierarchyService;
 
@@ -62,7 +62,7 @@ class Team extends Model
     /* RELATIONS */
     public function owner()
     {
-        return $this->belongsTo(User::class, 'user_id')
+        return $this->belongsTo(UserModel::getClass(), 'user_id')
             ->withoutGlobalScope('authUserHasPermissions');
     }
 
@@ -79,7 +79,7 @@ class Team extends Model
 
     public function users()
     {
-        return $this->belongsToMany(User::class, TeamRole::class)->withPivot('role')->withTimestamps();
+        return $this->belongsToMany(UserModel::getClass(), TeamRole::class)->withPivot('role')->withTimestamps();
     }
 
     public function teamRoles()

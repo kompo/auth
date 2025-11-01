@@ -540,3 +540,18 @@ if (!function_exists('safeSecurityQuery')) {
         return executeInBypassContext($queryCallback);
     }
 }
+
+/**
+ * Batch load field protection permissions for a collection
+ * Use this before accessing sensitive fields on multiple models to prevent N+1 queries
+ *
+ * @param \Illuminate\Support\Collection|array $models
+ * @param int|null $userId
+ * @return void
+ */
+if (!function_exists('batchLoadFieldProtection')) {
+    function batchLoadFieldProtection($models, $userId = null)
+    {
+        HasSecurity::batchLoadFieldProtectionPermissions($models, $userId);
+    }
+}

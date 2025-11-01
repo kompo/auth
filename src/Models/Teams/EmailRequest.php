@@ -3,8 +3,9 @@
 namespace Kompo\Auth\Models\Teams;
 
 use Illuminate\Support\Carbon;
-use App\Models\User;
 use Condoedge\Utils\Models\ModelBase;
+use Illuminate\Support\Facades\URL;
+use Kompo\Auth\Facades\UserModel;
 
 class EmailRequest extends ModelBase
 {
@@ -21,7 +22,7 @@ class EmailRequest extends ModelBase
 
     public function getRegisterRoute()
     {
-        return \URL::temporarySignedRoute(
+        return URL::temporarySignedRoute(
             'register', 
             Carbon::now()->addMinutes(30),
             [
@@ -32,7 +33,7 @@ class EmailRequest extends ModelBase
 
     public function getRelatedUser()
     {
-        return User::where('email', $this->email)->first();
+        return UserModel::where('email', $this->email)->first();
     }
 
     /* ACTIONS */

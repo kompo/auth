@@ -2,8 +2,8 @@
 
 namespace Kompo\Auth\Teams;
 
+use Kompo\Auth\Facades\UserModel;
 use Kompo\Query;
-use App\Models\User;
 
 class TeamsJoinedForUserList extends Query
 {
@@ -13,7 +13,7 @@ class TeamsJoinedForUserList extends Query
     public function created()
     {
         $this->userId = $this->prop('user_id');
-        $this->user = User::findOrFail($this->userId);
+        $this->user = UserModel::findOrFail($this->userId);
     }
 
     public function query()

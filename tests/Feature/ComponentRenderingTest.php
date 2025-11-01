@@ -8,6 +8,7 @@ use Kompo\Auth\Tests\Helpers\AuthTestHelpers;
 use Kompo\Auth\Tests\Stubs\TestSecuredComponent;
 use Kompo\Auth\Tests\Stubs\TestUnsecuredComponent;
 use Kompo\Auth\Tests\TestCase;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * Component Rendering Test
@@ -81,8 +82,9 @@ class ComponentRenderingTest extends TestCase
 
         $this->actingAs($user);
 
-        // Expect: AuthorizationException when booting
-        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
+        // Expect: HttpException (403) when booting
+        $this->expectException(HttpException::class);
+        $this->expectExceptionMessage('Unauthorized action.');
 
         // Act: Try to boot component
         TestSecuredComponent::boot();
@@ -146,7 +148,7 @@ class ComponentRenderingTest extends TestCase
 
         // Assert: Delete button should be hidden/null (no ALL permission)
         // Note: checkAuth returns null when permission check fails
-        $this->assertNull(
+        $this->assertFalse(
             $deleteButton,
             'Delete button should be hidden without ALL permission'
         );
@@ -257,8 +259,9 @@ class ComponentRenderingTest extends TestCase
 
         $this->actingAs($user);
 
-        // Expect: AuthorizationException
-        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
+        // Expect: HttpException
+        $this->expectException(HttpException::class);
+        $this->expectExceptionMessage('Unauthorized action.');
 
         // Act: Try to boot
         TestSecuredComponent::boot();
@@ -285,7 +288,7 @@ class ComponentRenderingTest extends TestCase
         // Act: Boot and find
         $component = TestSecuredComponent::boot();
 
-        $title = $component->findElById('secured-component-title');
+        $title = $component->findById('secured-component-title');
 
         // Assert: Element found
         $this->assertNotNull($title, 'findById should find element');

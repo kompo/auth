@@ -2,7 +2,8 @@
 
 namespace Kompo\Auth\Tests\Stubs;
 
-use Kompo\Form;
+use Condoedge\Utils\Kompo\Common\Form;
+use Condoedge\Utils\Kompo\Plugins\DebugReload;
 
 /**
  * Test Secured Component
@@ -11,6 +12,10 @@ use Kompo\Form;
  */
 class TestSecuredComponent extends Form
 {
+    protected $excludePlugins = [
+        DebugReload::class, // Was causing an error (it will be fixed in condoedge/utils)
+    ];
+
     public $model = \Kompo\Auth\Tests\Stubs\TestSecuredModel::class;
 
     // Security is enabled by default (HasAuthorizationUtils plugin)
@@ -35,4 +40,5 @@ class TestSecuredComponent extends Form
         ];
     }
 }
+
 

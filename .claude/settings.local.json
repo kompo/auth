@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/jkend/Documents/kompo/**)",
+      "Read(//c/Users/jkend/Documents/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

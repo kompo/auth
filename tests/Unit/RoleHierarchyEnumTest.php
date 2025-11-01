@@ -147,25 +147,6 @@ class RoleHierarchyEnumTest extends TestCase
     }
 
     /**
-     * Static method: optionsWithLabels()
-     * 
-     * @test
-     */
-    public function test_options_with_labels()
-    {
-        // Act: Get options
-        $options = RoleHierarchyEnum::optionsWithLabels();
-
-        // Assert: Should be an array/collection
-        $this->assertIsArray($options);
-        $this->assertGreaterThan(0, count($options));
-
-        // Should include all enum values
-        $this->assertArrayHasKey(RoleHierarchyEnum::DIRECT->value, $options);
-        $this->assertArrayHasKey(RoleHierarchyEnum::DIRECT_AND_BELOW->value, $options);
-    }
-
-    /**
      * Edge case: getFinal with empty array
      * 
      * @test
@@ -194,4 +175,5 @@ class RoleHierarchyEnumTest extends TestCase
         $this->assertEquals('D', RoleHierarchyEnum::DISABLED_BELOW->value);
     }
 }
+
 

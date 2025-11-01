@@ -18,8 +18,6 @@
     <php>
         <!-- Application Environment -->
         <server name="APP_ENV" value="testing"/>
-        <server name="APP_KEY" value="base64:2fl+Ktvkujsw9/8CIKUW/sjksjDFDAKJDKSJKDJKSJjdk="/>
-        <server name="APP_DEBUG" value="true"/>
         
         <!-- Security Configuration -->
         <server name="BYPASS_SECURITY" value="false"/>

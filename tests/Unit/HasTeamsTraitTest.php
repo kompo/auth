@@ -525,3 +525,4 @@ class HasTeamsTraitTest extends TestCase
     }
 }
 
+

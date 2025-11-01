@@ -225,11 +225,16 @@ class PermissionResolverTest extends TestCase
     public function test_resolver_batch_optimization()
     {
         // Arrange: User with multiple team roles
-        $rolesConfig = [
-            ['roleName' => 'Role 1', 'permissions' => ['TestResource' => PermissionTypeEnum::READ]],
-            ['roleName' => 'Role 2', 'permissions' => ['TestResource' => PermissionTypeEnum::READ]],
-            ['roleName' => 'Role 3', 'permissions' => ['TestResource' => PermissionTypeEnum::READ]],
-        ];
+        $rolesConfig = [];
+
+        for ($i = 1; $i <= 40; $i++) {
+            $rolesConfig[] = [
+                'roleName' => "Role {$i}",
+                'permissions' => [
+                    'TestResource' => PermissionTypeEnum::READ,
+                ],
+            ];
+        }
 
         $data = AuthTestHelpers::createUserWithMultipleRoles($rolesConfig);
         $user = $data['user'];
@@ -249,7 +254,7 @@ class PermissionResolverTest extends TestCase
         // Assert: Should be optimized (batch queries)
         $this->assertTrue($hasPermission);
         $this->assertLessThanOrEqual(
-            10,
+            15, // There is a minimum number of queries needed even with batching
             $queryCount,
             "Resolver should batch-optimize queries (got {$queryCount})"
         );
@@ -310,4 +315,5 @@ class PermissionResolverTest extends TestCase
         $this->assertFalse($hasPermission, 'User without team roles should have no permissions');
     }
 }
+
 

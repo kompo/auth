@@ -235,3 +235,4 @@ class PermissionTypeEnumTest extends TestCase
     }
 }
 
+

@@ -2,7 +2,6 @@
 
 namespace Kompo\Auth;
 
-use App\Models\User;
 use Condoedge\Utils\Kompo\Common\Modal;
 use Condoedge\Utils\Kompo\Common\Query;
 use Condoedge\Utils\Models\ModelBase;

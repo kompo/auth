@@ -2,12 +2,12 @@
 
 namespace Kompo\Auth\Teams;
 
+use Kompo\Auth\Facades\UserModel;
 use Kompo\Form;
-use App\Models\User;
 
 class UserRolesAndPermissionsPage extends Form
 {
-    public $model = User::class;
+    public $model = UserModel::class;
 
     public function authorizeBoot()
     {

@@ -426,3 +426,4 @@ class ComponentAuthTest extends TestCase
     }
 }
 
+

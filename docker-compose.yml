@@ -12,3 +12,4 @@ services:
       MYSQL_DATABASE: testbench
     ports:
       - "3309:3306"
+

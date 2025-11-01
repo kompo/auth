@@ -39,16 +39,36 @@ class ReadSecurityService
      */
     public function setupReadSecurity(string $permissionKey): void
     {
-        if ($this->hasReadSecurityRestrictions() && permissionMustBeAuthorized($permissionKey)) {
-            $this->modelClass::addGlobalScope('authUserHasPermissions', function ($builder) {
-                if ($this->bypassService->isSecurityBypassRequired(new ($this->modelClass), $this->teamService)) {
-                    // If security is bypassed, skip the read security scope
-                    return $builder;
-                }
-
-                $this->applyReadSecurityScope($builder);
-            });
+        if (!$this->shouldApplyReadSecurity($permissionKey)) {
+            return;
         }
+
+        $this->modelClass::addGlobalScope('authUserHasPermissions', function ($builder) {
+            if ($this->shouldBypassSecurityForQuery()) {
+                return $builder;
+            }
+
+            $this->applyReadSecurityScope($builder);
+        });
+    }
+
+    /**
+     * Check if read security should be applied
+     */
+    protected function shouldApplyReadSecurity(string $permissionKey): bool
+    {
+        return $this->hasReadSecurityRestrictions() && permissionMustBeAuthorized($permissionKey);
+    }
+
+    /**
+     * Check if security should be bypassed for this query
+     */
+    protected function shouldBypassSecurityForQuery(): bool
+    {
+        return $this->bypassService->isSecurityBypassRequired(
+            new ($this->modelClass),
+            $this->teamService
+        );
     }
 
     /**
@@ -58,78 +78,210 @@ class ReadSecurityService
     {
         $hasUserOwnedRecordsScope = $this->modelHasMethod('scopeUserOwnedRecords');
 
-        if (!$this->teamService->massRestrictByTeam()) {
-            $this->applyNonTeamReadSecurity($builder, $hasUserOwnedRecordsScope);
+        if ($this->teamService->massRestrictByTeam()) {
+            $this->applyTeamBasedRestrictions($builder, $hasUserOwnedRecordsScope);
         } else {
-            $this->applyTeamReadSecurity($builder, $hasUserOwnedRecordsScope);
+            $this->applyNonTeamRestrictions($builder, $hasUserOwnedRecordsScope);
         }
     }
 
     /**
-     * Apply non-team read security
+     * Apply restrictions for non-team-based models
      */
-    protected function applyNonTeamReadSecurity(Builder $builder, bool $hasUserOwnedRecordsScope): void
+    protected function applyNonTeamRestrictions(Builder $builder, bool $hasUserOwnedRecordsScope): void
     {
-        $permissionKey = class_basename($this->modelClass);
-
-        if (!auth()->user()?->hasPermission($permissionKey, PermissionTypeEnum::READ)) {
-            $builder->when($hasUserOwnedRecordsScope, function ($q) {
-                SecurityBypassService::enterBypassContext();
-                $q->userOwnedRecords();
-                SecurityBypassService::exitBypassContext();
-            })->when(!$hasUserOwnedRecordsScope, function ($q) {
-                if (hasColumnCached($this->getModelTable(), 'user_id')) {
-                    $q->where($this->getModelTable() . '.user_id', auth()->user()?->id);
-                }
-            });
+        if ($this->userHasGlobalReadPermission()) {
+            return; // User has global permission, no restrictions needed
         }
+
+        // User doesn't have global permission, restrict to owned records
+        $this->restrictToOwnedRecords($builder, $hasUserOwnedRecordsScope);
     }
 
     /**
-     * Apply team-based read security
+     * Apply restrictions for team-based models
      */
-    protected function applyTeamReadSecurity(Builder $builder, bool $hasUserOwnedRecordsScope): void
+    protected function applyTeamBasedRestrictions(Builder $builder, bool $hasUserOwnedRecordsScope): void
     {
-        $permissionKey = class_basename($this->modelClass);
+        $builder->where(function ($q) use ($hasUserOwnedRecordsScope) {
+            // Apply team restrictions
+            $this->applyTeamRestrictions($q);
 
-        $builder->where(function ($q) use ($hasUserOwnedRecordsScope, $permissionKey) {
-            // Check for new query-based security method first
-            if ($this->modelHasMethod('scopeSecurityForTeamByQuery')) {
-                $teamsQuery = auth()->user()?->getTeamsQueryWithPermission(
-                    $permissionKey,
-                    PermissionTypeEnum::READ,
-                    $this->getModelTable()
-                );
-                if ($teamsQuery) {
-                    $q->securityForTeamByQuery($teamsQuery);
-                }
-            } else if ($this->modelHasMethod('scopeSecurityForTeams')) {
-                // Fallback to existing method with team IDs
-                $teamIds = auth()->user()?->getTeamsIdsWithPermission(
-                    $permissionKey,
-                    PermissionTypeEnum::READ
-                ) ?? [];
-                $q->securityForTeams($teamIds);
-            } else if ($teamIdCol = $this->teamService->getTeamIdColumn()) {
-                $teamIds = auth()->user()?->getTeamsIdsWithPermission(
-                    $permissionKey,
-                    PermissionTypeEnum::READ
-                ) ?? [];
-
-                $q->whereIn($this->getModelTable() . '.' . $teamIdCol, $teamIds);
-            }
-
-            if ($hasUserOwnedRecordsScope) {
-                $q->orWhere(function ($sq) {
-                    SecurityBypassService::enterBypassContext();
-                    $sq->userOwnedRecords();
-                    SecurityBypassService::exitBypassContext();
-                });
-            } else {
-                if (hasColumnCached($this->getModelTable(), 'user_id')) {
-                    $q->orWhere($this->getModelTable() . '.user_id', auth()->user()?->id);
-                }
-            }
+            // Add OR condition for owned records
+            $this->addOwnedRecordsAlternative($q, $hasUserOwnedRecordsScope);
         });
+    }
+
+    /**
+     * Apply team-based restrictions using available strategy
+     */
+    protected function applyTeamRestrictions(Builder $query): void
+    {
+        // Strategy 1: Query-based security (most flexible)
+        if ($this->applyQueryBasedTeamSecurity($query)) {
+            return;
+        }
+
+        // Strategy 2: Scope-based security (custom implementation)
+        if ($this->applyScopeBasedTeamSecurity($query)) {
+            return;
+        }
+
+        // Strategy 3: Column-based security (simple WHERE IN)
+        $this->applyColumnBasedTeamSecurity($query);
+    }
+
+    /**
+     * Strategy 1: Apply query-based team security
+     */
+    protected function applyQueryBasedTeamSecurity(Builder $query): bool
+    {
+        if (!$this->modelHasMethod('scopeSecurityForTeamByQuery')) {
+            return false;
+        }
+
+        $teamsQuery = $this->getUserTeamsQuery();
+        if (!$teamsQuery) {
+            return false;
+        }
+
+        $query->securityForTeamByQuery($teamsQuery);
+        return true;
+    }
+
+    /**
+     * Strategy 2: Apply scope-based team security
+     */
+    protected function applyScopeBasedTeamSecurity(Builder $query): bool
+    {
+        if (!$this->modelHasMethod('scopeSecurityForTeams')) {
+            return false;
+        }
+
+        $teamIds = $this->getUserAuthorizedTeamIds();
+        $query->securityForTeams($teamIds);
+        return true;
+    }
+
+    /**
+     * Strategy 3: Apply column-based team security
+     */
+    protected function applyColumnBasedTeamSecurity(Builder $query): void
+    {
+        $teamIdColumn = $this->teamService->getTeamIdColumn();
+        if (!$teamIdColumn) {
+            return;
+        }
+
+        $teamIds = $this->getUserAuthorizedTeamIds();
+        $query->whereIn($this->getModelTable() . '.' . $teamIdColumn, $teamIds);
+    }
+
+    /**
+     * Add owned records as alternative to team restrictions
+     */
+    protected function addOwnedRecordsAlternative(Builder $query, bool $hasUserOwnedRecordsScope): void
+    {
+        if ($hasUserOwnedRecordsScope) {
+            $this->applyUserOwnedRecordsScope($query);
+        } else {
+            $this->applyUserIdFallback($query);
+        }
+    }
+
+    /**
+     * Restrict query to user-owned records only
+     */
+    protected function restrictToOwnedRecords(Builder $builder, bool $hasUserOwnedRecordsScope): void
+    {
+        if ($hasUserOwnedRecordsScope) {
+            $this->applyUserOwnedRecordsScopeDirectly($builder);
+        } else {
+            $this->applyUserIdRestriction($builder);
+        }
+    }
+
+    /**
+     * Apply user-owned records scope with OR condition (for team-based)
+     */
+    protected function applyUserOwnedRecordsScope(Builder $query): void
+    {
+        $query->orWhere(function ($sq) {
+            SecurityBypassService::enterBypassContext();
+            $sq->userOwnedRecords();
+            SecurityBypassService::exitBypassContext();
+        });
+    }
+
+    /**
+     * Apply user-owned records scope directly (for non-team)
+     */
+    protected function applyUserOwnedRecordsScopeDirectly(Builder $builder): void
+    {
+        SecurityBypassService::enterBypassContext();
+        $builder->userOwnedRecords();
+        SecurityBypassService::exitBypassContext();
+    }
+
+    /**
+     * Apply user_id restriction as fallback (OR condition for team-based)
+     */
+    protected function applyUserIdFallback(Builder $query): void
+    {
+        if (hasColumnCached($this->getModelTable(), 'user_id')) {
+            $query->orWhere($this->getModelTable() . '.user_id', auth()->user()?->id);
+        }
+    }
+
+    /**
+     * Apply user_id restriction directly (for non-team)
+     */
+    protected function applyUserIdRestriction(Builder $builder): void
+    {
+        if (hasColumnCached($this->getModelTable(), 'user_id')) {
+            $builder->where($this->getModelTable() . '.user_id', auth()->user()?->id);
+        }
+    }
+
+    /**
+     * Check if current user has global read permission
+     */
+    protected function userHasGlobalReadPermission(): bool
+    {
+        return auth()->user()?->hasPermission(
+            $this->getPermissionKey(),
+            PermissionTypeEnum::READ
+        ) ?? false;
+    }
+
+    /**
+     * Get teams query for current user with read permission
+     */
+    protected function getUserTeamsQuery()
+    {
+        return auth()->user()?->getTeamsQueryWithPermission(
+            $this->getPermissionKey(),
+            PermissionTypeEnum::READ,
+            $this->getModelTable()
+        );
+    }
+
+    /**
+     * Get team IDs where user has read permission
+     */
+    protected function getUserAuthorizedTeamIds(): array
+    {
+        return auth()->user()?->getTeamsIdsWithPermission(
+            $this->getPermissionKey(),
+            PermissionTypeEnum::READ
+        ) ?? [];
+    }
+
+    /**
+     * Get permission key for this model
+     */
+    protected function getPermissionKey(): string
+    {
+        return class_basename($this->modelClass);
     }
 }

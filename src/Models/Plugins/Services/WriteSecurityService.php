@@ -47,56 +47,142 @@ class WriteSecurityService
      */
     protected function handleSavingEvent($model): void
     {
-        if ($this->bypassService->isSecurityBypassRequired($model, $this->teamService)) {
+        if ($this->shouldBypassSecurityForModel($model)) {
             $this->bypassService->markModelAsBypassed($model);
             return;
         }
 
-        if ($this->hasSaveSecurityRestrictions()) {
+        if ($this->shouldValidateWritePermissions()) {
             $this->checkWritePermissions($model);
         }
     }
 
     /**
-     * Check write permissions
+     * Check if security should be bypassed for this model
+     */
+    protected function shouldBypassSecurityForModel($model): bool
+    {
+        return $this->bypassService->isSecurityBypassRequired($model, $this->teamService);
+    }
+
+    /**
+     * Check if write permissions should be validated
+     */
+    protected function shouldValidateWritePermissions(): bool
+    {
+        return $this->hasSaveSecurityRestrictions();
+    }
+
+    /**
+     * Check write permissions for model
      */
     public function checkWritePermissions($model = null): bool
     {
-        $permissionKey = class_basename($this->modelClass);
-
-        if (!permissionMustBeAuthorized($permissionKey)) {
+        if (!$this->isPermissionCheckRequired()) {
             return true;
         }
 
-        if (
-            !$this->teamService->individualRestrictByTeam($model) &&
-            !auth()->user()?->hasPermission($permissionKey, PermissionTypeEnum::WRITE)
-        ) {
-            throw new PermissionException(
-                __('permissions-you-do-not-have-write-permissions'),
-                $permissionKey,
-                PermissionTypeEnum::WRITE,
-                []
-            );
-        }
-
-        if (
-            $this->teamService->individualRestrictByTeam($model) &&
-            !auth()->user()?->hasPermission(
-                $permissionKey,
-                PermissionTypeEnum::WRITE,
-                $this->teamService->getTeamOwnersIdsSafe($model)
-            )
-        ) {
-            throw new PermissionException(
-                __('permissions-you-do-not-have-write-permissions'),
-                $permissionKey,
-                PermissionTypeEnum::WRITE,
-                $this->teamService->getTeamOwnersIdsSafe($model)
-            );
+        if ($this->isTeamBasedModel($model)) {
+            $this->validateTeamBasedWritePermission($model);
+        } else {
+            $this->validateGlobalWritePermission();
         }
 
         return true;
+    }
+
+    /**
+     * Check if permission check is required
+     */
+    protected function isPermissionCheckRequired(): bool
+    {
+        return permissionMustBeAuthorized($this->getPermissionKey());
+    }
+
+    /**
+     * Check if model uses team-based restrictions
+     */
+    protected function isTeamBasedModel($model): bool
+    {
+        return $this->teamService->individualRestrictByTeam($model);
+    }
+
+    /**
+     * Validate global (non-team) write permission
+     */
+    protected function validateGlobalWritePermission(): void
+    {
+        if ($this->userHasGlobalWritePermission()) {
+            return;
+        }
+
+        $this->throwWritePermissionException();
+    }
+
+    /**
+     * Validate team-based write permission
+     */
+    protected function validateTeamBasedWritePermission($model): void
+    {
+        $teamIds = $this->getModelTeamIds($model);
+
+        if ($this->userHasWritePermissionForTeams($teamIds)) {
+            return;
+        }
+
+        $this->throwWritePermissionException($teamIds);
+    }
+
+    /**
+     * Check if user has global write permission
+     */
+    protected function userHasGlobalWritePermission(): bool
+    {
+        return auth()->user()?->hasPermission(
+            $this->getPermissionKey(),
+            PermissionTypeEnum::WRITE
+        ) ?? false;
+    }
+
+    /**
+     * Check if user has write permission for specific teams
+     */
+    protected function userHasWritePermissionForTeams($teamIds): bool
+    {
+        return auth()->user()?->hasPermission(
+            $this->getPermissionKey(),
+            PermissionTypeEnum::WRITE,
+            $teamIds
+        ) ?? false;
+    }
+
+    /**
+     * Get team IDs for the model
+     */
+    protected function getModelTeamIds($model)
+    {
+        return $this->teamService->getTeamOwnersIdsSafe($model);
+    }
+
+    /**
+     * Throw write permission exception
+     */
+    protected function throwWritePermissionException($teamIds = []): void
+    {
+        throw new PermissionException(
+            __('permissions-you-do-not-have-write-permissions'),
+            $this->getPermissionKey(),
+            PermissionTypeEnum::WRITE,
+            $teamIds
+        );
+    }
+
+    /**
+     * Get permission key for this model
+     */
+    protected function getPermissionKey(): string
+    {
+        return class_basename($this->modelClass);
     }
 
     /**
@@ -104,8 +190,23 @@ class WriteSecurityService
      */
     public function systemSave($model): bool
     {
+        $this->markModelForBypass($model);
+        return $this->performSave($model);
+    }
+
+    /**
+     * Mark model to bypass security
+     */
+    protected function markModelForBypass($model): void
+    {
         $model->_bypassSecurity = true;
-        $result = $model->save();
-        return $result;
+    }
+
+    /**
+     * Perform the actual save operation
+     */
+    protected function performSave($model): bool
+    {
+        return $model->save();
     }
 }

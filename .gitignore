@@ -18,3 +18,10 @@ package-lock.json
 composer.lock
 
 vendor/
+
+coverage-html/
+.phpunit.cache/
+
+phpunit-tests.xml
+
+.claude

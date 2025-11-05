@@ -11,6 +11,8 @@ use Kompo\Auth\Models\User;
  */
 class UserFactory extends Factory
 {
+    protected $withoutTeamRole = false;
+
     public function definition()
     {
         $this->model = User::class;
@@ -25,9 +27,20 @@ class UserFactory extends Factory
 
     public function configure()
     {
+        if ($this->withoutTeamRole) {
+            return $this;
+        }
+
         return $this->afterCreating(function (User $user) {
             $user->current_team_role_id = TeamRoleFactory::new()->create(['user_id' => $user->id])->id;
             $user->save();
         });
+    }
+
+    public function withoutTeamRole()
+    {
+        $this->withoutTeamRole = true;
+
+        return $this;
     }
 }

@@ -182,6 +182,10 @@ class ReadSecurityService
      */
     protected function addOwnedRecordsAlternative(Builder $query, bool $hasUserOwnedRecordsScope): void
     {
+        if ($this->teamService->shouldValidateOwnedRecords($query->getModel())) {
+            return;
+        }
+
         if ($hasUserOwnedRecordsScope) {
             $this->applyUserOwnedRecordsScope($query);
         } else {
@@ -194,6 +198,10 @@ class ReadSecurityService
      */
     protected function restrictToOwnedRecords(Builder $builder, bool $hasUserOwnedRecordsScope): void
     {
+        if ($this->teamService->shouldValidateOwnedRecords($builder->getModel())) {
+            return;
+        }
+
         if ($hasUserOwnedRecordsScope) {
             $this->applyUserOwnedRecordsScopeDirectly($builder);
         } else {
@@ -269,12 +277,12 @@ class ReadSecurityService
     /**
      * Get team IDs where user has read permission
      */
-    protected function getUserAuthorizedTeamIds(): array
+    protected function getUserAuthorizedTeamIds(): \Illuminate\Support\Collection
     {
         return auth()->user()?->getTeamsIdsWithPermission(
             $this->getPermissionKey(),
             PermissionTypeEnum::READ
-        ) ?? [];
+        ) ?? collect();
     }
 
     /**

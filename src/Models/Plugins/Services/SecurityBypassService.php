@@ -71,6 +71,8 @@ class SecurityBypassService
         }
 
         static::$modelsBootedDuringBypass = [];
+
+        static::clearTracking();
     }
 
     /**
@@ -246,7 +248,6 @@ class SecurityBypassService
     public static function clearTracking(): void
     {
         static::$bypassedModels = [];
-        static::exitBypassContext();
         static::$modelsBootedDuringBypass = [];
     }
 

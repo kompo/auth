@@ -83,6 +83,31 @@ class SecurityServiceFactory
         ];
     }
 
+    public function createFieldProtectionService(string $modelClass, $teamService = null): FieldProtectionService
+    {
+        return new FieldProtectionService(
+            $this->bypassService,
+            $this->cacheService,
+            $teamService ?? $this->createTeamSecurityServiceForModel($modelClass)
+        );
+    }
+
+    public function createBatchPermissionServiceForModel(string $modelClass,): BatchPermissionService
+    {
+        $teamService = $teamService ?? $this->createTeamSecurityServiceForModel($modelClass);
+
+        return new BatchPermissionService(
+            $this->cacheService,
+            $teamService,
+            $this->createFieldProtectionService($modelClass, $teamService)
+        );
+    }
+
+    public function createTeamSecurityServiceForModel(string $modelClass): TeamSecurityService
+    {
+        return new TeamSecurityService($modelClass, $this->cacheService);
+    }
+
     /**
      * Get the bypass service (singleton)
      */

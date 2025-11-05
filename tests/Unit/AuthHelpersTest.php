@@ -2,10 +2,12 @@
 
 namespace Kompo\Auth\Tests\Unit;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Kompo\Auth\Models\Plugins\HasSecurity;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\RoleHierarchyEnum;
+use Kompo\Auth\Teams\PermissionResolver;
 use Kompo\Auth\Tests\Helpers\AuthTestHelpers;
 use Kompo\Auth\Tests\TestCase;
 
@@ -417,13 +419,24 @@ class AuthHelpersTest extends TestCase
 
         $results = batchCheckPermissions(['Perm1', 'Perm2', 'Perm3'], PermissionTypeEnum::READ);
 
-        $batchQueries = $this->getQueryCount();
+        $batchQueriesAll = $this->getQueryCount();
+
+        DB::flushQueryLog();
+
+        $this->enableQueryLog();
+        Cache::flush();
+        app(PermissionResolver::class)->clearAllCache();
+        
+        // Individual checks
+        checkAuthPermission('Perm1', PermissionTypeEnum::READ);
+
+        $queryCount1 = $this->getQueryCount();
 
         // Assert: Should be efficient
         $this->assertLessThanOrEqual(
-            10,
-            $batchQueries,
-            "Batch permission checks should be efficient (got {$batchQueries})"
+            $queryCount1 + 5,
+            $batchQueriesAll,
+            "Batch permission checks should be efficient (got {$batchQueriesAll})"
         );
 
         // Results should be correct

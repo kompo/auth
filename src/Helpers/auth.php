@@ -335,7 +335,7 @@ Field::macro('hashAndReadOnlyIfNotAuth', function ($id, $specificTeamId = null, 
     return $this->hashIfNotAuth("{$id}.sensibleColumns", $specificTeamId, minChars: $minChars, specificModel: $specificModel)->readOnlyIfNotAuth($id, $specificTeamId, specificModel: $specificModel)->readOnlyIfNotAuth("{$id}.sensibleColumns", $specificTeamId, specificModel: $specificModel);
 });
 
-\Kompo\Html::macro('hashIfNotAuth', function ($id, $specificTeamId = null, $minChars = 12, $specificModel = null) {
+\Kompo\Html::macro('hashIfNotAuthHtml', function ($id, $specificTeamId = null, $minChars = 12, $specificModel = null) {
     static $permissionCache = [];
     $cacheKey = $id . '|read|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest') . '|' . ($specificModel?->getKey() ?? 'null');
 
@@ -550,8 +550,8 @@ if (!function_exists('safeSecurityQuery')) {
  * @return void
  */
 if (!function_exists('batchLoadFieldProtection')) {
-    function batchLoadFieldProtection($models, $userId = null)
+    function batchLoadFieldProtection($models)
     {
-        HasSecurity::batchLoadFieldProtectionPermissions($models, $userId);
+        return HasSecurity::batchLoadFieldProtectionPermissions($models);
     }
 }

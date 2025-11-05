@@ -78,19 +78,19 @@ class TeamSecurityService
 
             // Strategy 2: Direct team model check
             if ($model::class == TeamModel::getClass()) {
-                return $model->getKey();
+                return [$model->getKey()];
             }
 
             // Strategy 3: Team ID column (safest, no relations)
             $teamIdColumn = $this->getTeamIdColumn();
             if ($teamIdColumn && isset($model->{$teamIdColumn})) {
-                return $model->{$teamIdColumn};
+                return [$model->{$teamIdColumn}];
             }
 
             // Strategy 4: Team relationship
             if (method_exists($model, 'team')) {
                 $team = $model->team()->first(['id']);
-                return $team?->id;
+                return [$team?->id];
             }
 
             // Strategy 5: Fallback

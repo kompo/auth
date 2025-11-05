@@ -51,7 +51,7 @@ class FieldProtectionService
 
         $modelKey = $this->getModelKey($model);
 
-        if ($this->hasLazyProtectedFields($model)) {
+        if ($this->hasLazyProtectedFields($model) || $this->hasBatchProtectedFields($model)) {
             return;
         }
 
@@ -274,10 +274,16 @@ class FieldProtectionService
     /**
      * Check if model has lazy protected fields
      */
-    protected function hasLazyProtectedFields($model): bool
+    public function hasLazyProtectedFields($model): bool
     {
         return getPrivateProperty($model, 'lazyProtectedFields') === true ||
                config('kompo-auth.security.lazy-protected-fields');
+    }
+
+    public function hasBatchProtectedFields($model): bool
+    {
+        return getPrivateProperty($model, 'batchProtectedFields') === true ||
+               config('kompo-auth.security.batch-protected-fields');
     }
 
     /**

@@ -64,7 +64,7 @@
             <directory>./vendor</directory>
         </exclude>
     </source>
-    <coverage processUncoveredFiles="true">
+    <coverage>
         <report>
             <html outputDirectory="coverage-html"/>
             <text outputFile="coverage.txt"/>

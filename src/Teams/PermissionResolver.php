@@ -6,6 +6,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Kompo\Auth\Facades\UserModel;
+use Kompo\Auth\Models\Plugins\HasSecurity;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Teams\TeamHierarchyService;
@@ -69,15 +70,15 @@ class PermissionResolver
     ) {
         $cacheKey = CacheKeyBuilder::userTeamsWithPermission($userId, $permissionKey, $type->value);
         $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::USER_TEAMS_WITH_PERMISSION);
-        
+
         return $this->getRequestCache($cacheKey, function() use ($userId, $permissionKey, $type, $cacheKey, $tags) {
             return Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL, function() use ($userId, $permissionKey, $type) {
-                // Check for global permission first
-                if ($this->userHasPermission($userId, $permissionKey, $type)) {
-                    // If user has global access, return all accessible teams
-                    return $this->getAllAccessibleTeamsForUser($userId);
-                }
-                
+                // ! THIS WAS BREAKING THE LOGIC. I NEED TO CHECK WHY I WOULD HAVE THIS
+                // if ($this->userHasPermission($userId, $permissionKey, $type)) {
+                //     // If user has global access, return all accessible teams
+                //     return $this->getAllAccessibleTeamsForUser($userId);
+                // }
+
                 // Otherwise, check team-specific permissions
                 return $this->getTeamSpecificPermissions($userId, $permissionKey, $type);
             });
@@ -320,7 +321,7 @@ class PermissionResolver
             $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::ROLE_PERMISSIONS);
             $permissions = Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL, function() use ($role) {
                 return $role->permissions()->selectRaw(constructComplexPermissionKeySql('permission_role'))
-                    ->get()->all();
+                    ->pluck('complex_permission_key')->all();
             });
         }
         
@@ -342,7 +343,7 @@ class PermissionResolver
             $permissions = Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL, function() use ($teamRole) {
                 return $teamRole->permissions()
                     ->selectRaw(constructComplexPermissionKeySql('permission_team_role'))
-                    ->get()->all();
+                    ->pluck('complex_permission_key')->all();
             });
         }
         
@@ -356,14 +357,14 @@ class PermissionResolver
     {
         $teamsWithPermission = collect();
         $teamRoles = $this->getUserActiveTeamRoles($userId);
-        
+
         foreach ($teamRoles as $teamRole) {
             if ($this->teamRoleHasPermission($teamRole, $permissionKey, $type)) {
                 $accessibleTeams = $this->getTeamRoleAccessibleTeams($teamRole);
                 $teamsWithPermission = $teamsWithPermission->concat($accessibleTeams);
             }
         }
-        
+
         return $teamsWithPermission->unique()->values()->all();
     }
     
@@ -378,11 +379,11 @@ class PermissionResolver
         // Check role permissions first (most common case)
         if ($teamRole->roleRelation) {
             $rolePermissions = $this->getRolePermissions($teamRole->roleRelation);
-            
+
             foreach ($rolePermissions as $permission) {
                 if (getPermissionKey($permission) === $permissionKey && 
-                    getPermissionType($permission['type']) !== PermissionTypeEnum::DENY &&
-                    PermissionTypeEnum::hasPermission(getPermissionType($permission['type']), $type)) {
+                    getPermissionType($permission) !== PermissionTypeEnum::DENY &&
+                    PermissionTypeEnum::hasPermission(getPermissionType($permission), $type)) {
                     return true;
                 }
             }
@@ -393,12 +394,12 @@ class PermissionResolver
         
         foreach ($directPermissions as $permission) {
             if (getPermissionKey($permission) === $permissionKey && 
-                getPermissionType($permission['type']) !== PermissionTypeEnum::DENY &&
-                PermissionTypeEnum::hasPermission(getPermissionType($permission['type']), $type)) {
+                getPermissionType($permission) !== PermissionTypeEnum::DENY &&
+                PermissionTypeEnum::hasPermission(getPermissionType($permission), $type)) {
                 return true;
             }
         }
-        
+
         return false;
     }
     

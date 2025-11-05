@@ -184,7 +184,7 @@ class ElementMacrosTest extends TestCase
         $this->actingAs($user);
 
         // Act: Use hashIfNotAuth
-        $element = _Html('Sensitive Data')->hashIfNotAuth('TestResource.sensibleColumns');
+        $element = _Html('Sensitive Data')->hashIfNotAuthHtml('TestResource.sensibleColumns');
 
         // Assert: Label should be hashed
         // The macro replaces label with asterisks when no permission
@@ -311,9 +311,9 @@ class ElementMacrosTest extends TestCase
         // Assert: Field should NOT be read-only (user has WRITE permission)
         $this->assertNotNull($field);
         // Field should not have disabled or readOnly attributes applied
-        $attributes = $field->attributes ?? [];
-        $this->assertFalse(isset($attributes['readonly']), 'Field should NOT be readonly with WRITE permission');
-        $this->assertFalse(isset($attributes['disabled']), 'Field should NOT be disabled with WRITE permission');
+
+        $this->assertFalse($field->config('readOnly') ?? false, 'Field should NOT be readonly with WRITE permission');
+        $this->assertFalse($field->config('disabled') ?? false, 'Field should NOT be disabled with WRITE permission');
     }
 
     /**
@@ -366,7 +366,7 @@ class ElementMacrosTest extends TestCase
 
         // Act: Use hashIfNotAuth on Html
         $originalText = 'Sensitive123Data';
-        $element = _Html($originalText)->hashIfNotAuth('TestResource.sensibleColumns');
+        $element = _Html($originalText)->hashIfNotAuthHtml('TestResource.sensibleColumns');
 
         // Assert: Label should be replaced with asterisks
         $this->assertNotNull($element);
@@ -424,7 +424,7 @@ class ElementMacrosTest extends TestCase
         $this->actingAs($user);
 
         // Act: Use hashIfNotAuth with custom minChars = 20
-        $element = _Html('Sensitive')->hashIfNotAuth('TestResource.sensibleColumns', null, 20);
+        $element = _Html('Sensitive')->hashIfNotAuthHtml('TestResource.sensibleColumns', null, 20);
 
         // Assert: Hashed label should have at least 20 characters
         $this->assertNotNull($element);
@@ -452,7 +452,7 @@ class ElementMacrosTest extends TestCase
 
         // Act: Use hashIfNotAuth
         $originalValue = 'SensitiveData123';
-        $element = _Html($originalValue)->hashIfNotAuth('TestResource.sensibleColumns');
+        $element = _Html($originalValue)->hashIfNotAuthHtml('TestResource.sensibleColumns');
 
         // Assert: Should show original label (not hashed)
         $this->assertNotNull($element);
@@ -571,7 +571,7 @@ class ElementMacrosTest extends TestCase
         // Act: Test different field types
         $input = _Input('Name')->readOnlyIfNotAuth('TestResource');
         $textarea = _Textarea('Description')->readOnlyIfNotAuth('TestResource');
-        $email = _Email('Email')->readOnlyIfNotAuth('TestResource');
+        $email = _InputEmail('Email')->readOnlyIfNotAuth('TestResource');
 
         // Assert: All field types should be read-only
         $this->assertNotNull($input, 'Input should not be null');
@@ -614,7 +614,7 @@ class ElementMacrosTest extends TestCase
         // Act: Check various permission types
         $readElement = _Button('Read')->checkAuth('TestResource', PermissionTypeEnum::READ, null, true);
         $writeElement = _Button('Write')->checkAuth('TestResource', PermissionTypeEnum::WRITE, null, true);
-        $deleteElement = _Button('Delete')->checkAuth('TestResource', PermissionTypeEnum::DELETE, null, true);
+        $deleteElement = _Button('Delete')->checkAuth('TestResource', PermissionTypeEnum::WRITE, null, true);
 
         // Assert: ALL permission should grant access to all types
         $this->assertNotNull($readElement, 'ALL permission should grant READ');

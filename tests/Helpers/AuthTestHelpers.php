@@ -32,6 +32,10 @@ class AuthTestHelpers
             ['name' => 'Test Section']
         );
 
+        if (Permission::where('permission_key', $key)->withTrashed()->exists()) {
+            return Permission::where('permission_key', $key)->withTrashed()->first();
+        }
+
         return Permission::firstOrCreate(
             ['permission_key' => $key],
             array_merge([

@@ -5,6 +5,12 @@ namespace Kompo\Auth\Support;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 use Kompo\Auth\Models\Plugins\HasSecurity;
+use Kompo\Auth\Models\Plugins\Services\SecurityServiceFactory;
+use Kompo\Auth\Models\Teams\Permission;
+use Kompo\Auth\Models\Teams\Roles\Role;
+use Kompo\Auth\Models\Teams\Team;
+use Kompo\Auth\Models\Teams\TeamRole;
+use Kompo\Auth\Tests\Stubs\TestSecuredModel;
 
 /**
  * Secured Model Collection
@@ -21,6 +27,11 @@ class SecuredModelCollection extends Collection
      * Flag to control whether auto-batching should run
      */
     protected static $autoBatchEnabled = true;
+
+    /**
+     * Flag to prevent infinite loops during processing
+     */
+    protected static $processing = false;
 
     /**
      * Create a new collection.
@@ -43,10 +54,26 @@ class SecuredModelCollection extends Collection
      */
     protected function autoBatchLoadPermissions(): void
     {
+        // Set processing flag to prevent infinite loops
+        static::$processing = true;
+
         try {
+            $securityFactory = app(SecurityServiceFactory::class);
+
+            if ($this->count() == 1) {
+                $model = $this->first();
+                $fieldProtectionService = $securityFactory->createFieldProtectionService(get_class($model));
+
+                $fieldProtectionService->processFieldProtection($model, class_basename(get_class($model)));
+
+                $this->items = [$model];
+            }
+            
             // Only batch if we have multiple models (optimization)
-            if ($this->count() > 0) {
-                $this->items = HasSecurity::batchLoadFieldProtectionPermissions($this->all());
+            if ($this->count() > 1) {
+                $batchService = $securityFactory->createBatchPermissionServiceForModel(get_class($this->first()));
+
+                $this->items = $batchService->batchLoadFieldProtectionPermissions($this->all());
             }
         } catch (\Throwable $e) {
             // Log but don't break - field protection will fall back to individual checks
@@ -55,6 +82,9 @@ class SecuredModelCollection extends Collection
                 'first_model_class' => $this->first() ? $this->first() : null,
                 'error' => $e->getMessage(),
             ]);
+        } finally {
+            // Always reset processing flag
+            static::$processing = false;
         }
     }
 
@@ -81,5 +111,13 @@ class SecuredModelCollection extends Collection
     public static function isAutoBatchingEnabled(): bool
     {
         return static::$autoBatchEnabled;
+    }
+
+    /**
+     * Check if currently processing (to prevent infinite loops)
+     */
+    public static function isProcessing(): bool
+    {
+        return static::$processing;
     }
 }

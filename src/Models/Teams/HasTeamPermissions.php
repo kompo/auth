@@ -65,14 +65,14 @@ trait HasTeamPermissions
     ): bool {
         $cacheKey = "permission_{$permissionKey}_{$type->value}_" . md5(serialize($teamIds));
 
-        return $this->getPermissionRequestCache($cacheKey, function () use ($permissionKey, $type, $teamIds) {
+        // return $this->getPermissionRequestCache($cacheKey, function () use ($permissionKey, $type, $teamIds) {
             return $this->getPermissionResolver()->userHasPermission(
                 $this->id,
                 $permissionKey,
                 $type,
                 $teamIds
             );
-        });
+        // });
     }
 
     /**

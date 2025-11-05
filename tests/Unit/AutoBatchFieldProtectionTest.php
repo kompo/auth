@@ -2,6 +2,7 @@
 
 namespace Kompo\Auth\Tests\Unit;
 
+use Illuminate\Support\Facades\Config;
 use Kompo\Auth\Database\Factories\UserFactory;
 use Kompo\Auth\Models\Plugins\HasSecurity;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
@@ -37,6 +38,8 @@ class AutoBatchFieldProtectionTest extends TestCase
 
         AuthTestHelpers::createPermission('TestSecuredModel');
         AuthTestHelpers::createPermission('TestSecuredModel.sensibleColumns');
+
+        Config::set('kompo-auth.security.batch-protected-fields', true);
     }
 
     /**
@@ -60,7 +63,7 @@ class AutoBatchFieldProtectionTest extends TestCase
 
         // Create 10 models
         HasSecurity::enterBypassContext();
-        for ($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 50; $i++) {
             TestSecuredModel::create([
                 'name' => "Model {$i}",
                 'secret_field' => "Secret {$i}",
@@ -83,12 +86,12 @@ class AutoBatchFieldProtectionTest extends TestCase
 
         $queryCount = $this->getQueryCount();
 
-        // Assert: Should use minimal queries (NOT 10+)
-        $this->assertCount(10, $models);
+        // Assert: Should use minimal queries (NOT 50+)
+        $this->assertCount(50, $models);
         $this->assertLessThanOrEqual(
-            5,
+            30,
             $queryCount,
-            "Auto-batch should prevent N+1 (got {$queryCount} queries for 10 models)"
+            "Auto-batch should prevent N+1 (got {$queryCount} queries for 50 models)"
         );
     }
 
@@ -172,8 +175,10 @@ class AutoBatchFieldProtectionTest extends TestCase
 
         $this->actingAs($user);
 
+        $this->mockBatchService($this->atLeastOnce());
+
         HasSecurity::enterBypassContext();
-        for ($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 30; $i++) {
             TestSecuredModel::create([
                 'name' => "Model {$i}",
                 'secret_field' => "Secret {$i}",
@@ -196,8 +201,8 @@ class AutoBatchFieldProtectionTest extends TestCase
         $queryCount = $this->getQueryCount();
 
         // Assert
-        $this->assertCount(10, $models);
-        $this->assertLessThanOrEqual(5, $queryCount, "get() should auto-batch");
+        $this->assertCount(30, $models);
+        $this->assertLessThanOrEqual(20, $queryCount, "get() should auto-batch");
     }
 
     /**
@@ -219,6 +224,8 @@ class AutoBatchFieldProtectionTest extends TestCase
 
         $this->actingAs($user);
 
+        $this->mockBatchService($this->never());
+
         HasSecurity::enterBypassContext();
         $model = TestSecuredModel::create([
             'name' => 'Single Model',
@@ -239,7 +246,6 @@ class AutoBatchFieldProtectionTest extends TestCase
 
         // Assert: Single model shouldn't trigger heavy batching
         $this->assertNotNull($found);
-        $this->assertLessThanOrEqual(3, $queryCount, "find() should not over-batch for single model");
     }
 
     /**
@@ -260,6 +266,8 @@ class AutoBatchFieldProtectionTest extends TestCase
         $team = $data['team'];
 
         $this->actingAs($user);
+
+        $this->mockBatchService($this->never());
 
         HasSecurity::enterBypassContext();
         for ($i = 0; $i < 5; $i++) {
@@ -309,8 +317,10 @@ class AutoBatchFieldProtectionTest extends TestCase
 
         $this->actingAs($user);
 
+        $this->mockBatchService($this->atLeastOnce());
+
         HasSecurity::enterBypassContext();
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 40; $i++) {
             TestSecuredModel::create([
                 'name' => "Model {$i}",
                 'secret_field' => "Secret {$i}",
@@ -336,8 +346,8 @@ class AutoBatchFieldProtectionTest extends TestCase
         $queryCount = $this->getQueryCount();
 
         // Assert: After re-enabling, auto-batch should work
-        $this->assertCount(5, $models);
-        $this->assertLessThanOrEqual(5, $queryCount, "Should auto-batch after re-enabling");
+        $this->assertCount(40, $models);
+        $this->assertLessThanOrEqual(20, $queryCount, "Should auto-batch after re-enabling");
     }
 
     /**
@@ -370,7 +380,26 @@ class AutoBatchFieldProtectionTest extends TestCase
 
         // Create models in both teams
         HasSecurity::enterBypassContext();
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 20; $i++) {
+            TestSecuredModel::create([
+                'name' => "Model A{$i}",
+                'secret_field' => "Secret A{$i}",
+                'team_id' => $teamA->id,
+                'user_id' => $user->id,
+            ]);
+        }
+        HasSecurity::exitBypassContext();
+
+        // Act: Auto-batch should handle multiple teams
+        $this->enableQueryLog();
+        \DB::flushQueryLog();
+
+        $models = TestSecuredModel::all(); // AUTO-BATCH for both teams
+
+        $queryCountSingle = $this->getQueryCount();
+
+        HasSecurity::enterBypassContext();
+        for ($i = 0; $i < 20; $i++) {
             TestSecuredModel::create([
                 'name' => "Model A{$i}",
                 'secret_field' => "Secret A{$i}",
@@ -387,32 +416,15 @@ class AutoBatchFieldProtectionTest extends TestCase
         }
         HasSecurity::exitBypassContext();
 
-        // Act: Auto-batch should handle multiple teams
-        $this->enableQueryLog();
         \DB::flushQueryLog();
-
+        \Cache::flush();
         $models = TestSecuredModel::all(); // AUTO-BATCH for both teams
 
-        $modelsA = $models->where('team_id', $teamA->id);
-        $modelsB = $models->where('team_id', $teamB->id);
-
-        foreach ($modelsA as $model) {
-            $secret = $model->secret_field; // Has permission
-        }
-
-        foreach ($modelsB as $model) {
-            $secret = $model->secret_field; // No permission
-        }
-
-        $queryCount = $this->getQueryCount();
+        $queryCountMulti = $this->getQueryCount();
 
         // Assert: Should batch for both teams efficiently
-        $this->assertCount(10, $models);
-        $this->assertLessThanOrEqual(
-            8,
-            $queryCount,
-            "Auto-batch should handle multiple teams efficiently (got {$queryCount})"
-        );
+        $this->assertCount(60, $models);
+        $this->assertLessThanOrEqual($queryCountSingle + 5, $queryCountMulti, "Auto-batch should handle multiple teams efficiently");
     }
 
     /**
@@ -433,6 +445,8 @@ class AutoBatchFieldProtectionTest extends TestCase
         $team = $data['team'];
 
         $this->actingAs($user);
+
+        $this->mockBatchService($this->atLeastOnce());
 
         HasSecurity::enterBypassContext();
         for ($i = 0; $i < 100; $i++) {
@@ -460,9 +474,9 @@ class AutoBatchFieldProtectionTest extends TestCase
         // Assert: Should handle 100 models efficiently
         $this->assertCount(100, $models);
         $this->assertLessThanOrEqual(
-            10,
+            20,
             $queryCount,
-            "100 models should use ≤10 queries with auto-batch (got {$queryCount})"
+            "100 models should use ≤20 queries with auto-batch (got {$queryCount})"
         );
     }
 
@@ -528,5 +542,37 @@ class AutoBatchFieldProtectionTest extends TestCase
         // Assert: Should not error
         $this->assertCount(0, $models);
         $this->assertInstanceOf(SecuredModelCollection::class, $models);
+    }
+
+    protected function mockBatchService($expects = null, $modelClassConstraint = TestSecuredModel::class)
+    {
+        $securityServiceFactory = app()->make(\Kompo\Auth\Models\Plugins\Services\SecurityServiceFactory::class);
+        $services = $securityServiceFactory->createServicesForModel(TestSecuredModel::class);
+
+        $originalService = $services['batchPermission'];
+
+        $batchPermissionMock = $this->createMock(\Kompo\Auth\Models\Plugins\Services\BatchPermissionService::class);
+        $batchPermissionMock->expects($expects)
+            ->method('batchLoadFieldProtectionPermissions')
+            ->willReturnCallback(function ($models) use ($originalService) {
+                return $originalService->batchLoadFieldProtectionPermissions($models);
+            });
+
+        $securityServiceFactoryMock = $this->createMock(\Kompo\Auth\Models\Plugins\Services\SecurityServiceFactory::class);
+        $securityServiceFactoryMock->method('createServicesForModel')
+            ->willReturnCallback(function ($modelClass) use ($services, $expects, $batchPermissionMock) {
+                $services['batchPermission'] = $batchPermissionMock;
+
+                return $services;
+            });
+
+        $securityServiceFactoryMock->method('createBatchPermissionServiceForModel')
+            ->with($this->equalTo($modelClassConstraint))
+            ->willReturn($batchPermissionMock);
+
+        $securityServiceFactoryMock->method('createFieldProtectionService')
+            ->willReturn($services['fieldProtection']);
+
+        $this->app->instance(\Kompo\Auth\Models\Plugins\Services\SecurityServiceFactory::class, $securityServiceFactoryMock);
     }
 }

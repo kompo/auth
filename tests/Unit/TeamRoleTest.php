@@ -174,7 +174,7 @@ class TeamRoleTest extends TestCase
 
         // Assert: Should be a query
         $this->assertInstanceOf(
-            \Illuminate\Database\Query\Builder::class,
+            \Illuminate\Database\Eloquent\Builder::class,
             $query
         );
 
@@ -575,11 +575,11 @@ class TeamRoleTest extends TestCase
 
         // validPermissions relation
         $validPerms = $teamRole->validPermissions;
-        $this->assertInstanceOf(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class, $validPerms);
+        $this->assertInstanceOf(\Illuminate\Database\Eloquent\Collection::class, $validPerms);
 
         // deniedPermissions relation
         $deniedPerms = $teamRole->deniedPermissions;
-        $this->assertInstanceOf(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class, $deniedPerms);
+        $this->assertInstanceOf(\Illuminate\Database\Eloquent\Collection::class, $deniedPerms);
     }
 
     /**

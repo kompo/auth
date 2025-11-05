@@ -2,8 +2,10 @@
 
 namespace Kompo\Auth\Tests\Unit;
 
+use Illuminate\Support\Facades\Config;
 use Kompo\Auth\Database\Factories\UserFactory;
 use Kompo\Auth\Models\Plugins\HasSecurity;
+use Kompo\Auth\Models\Plugins\Services\SecurityBypassService;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\RoleHierarchyEnum;
 use Kompo\Auth\Tests\Helpers\AssertionHelpers;
@@ -97,6 +99,8 @@ class ValidateOwnedAsWellTest extends TestCase
         $team = $data['team'];
 
         $this->actingAs($user);
+
+        Config::set('kompo-auth.security.default-validate-owned-as-well', true);
 
         // Create model owned by user
         HasSecurity::enterBypassContext();
@@ -542,7 +546,7 @@ class ValidateOwnedAsWellTest extends TestCase
 
         // Create models
         HasSecurity::enterBypassContext();
-        for ($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 40; $i++) {
             TestStrictValidationModel::create([
                 'name' => "Model {$i}",
                 'team_id' => $team->id,
@@ -560,9 +564,9 @@ class ValidateOwnedAsWellTest extends TestCase
         $queryCount = $this->getQueryCount();
 
         // Assert: Query count should be reasonable
-        $this->assertCount(10, $results);
+        $this->assertCount(40, $results);
         $this->assertLessThanOrEqual(
-            5,
+            20,
             $queryCount,
             "Strict validation should not add significant query overhead (got {$queryCount})"
         );

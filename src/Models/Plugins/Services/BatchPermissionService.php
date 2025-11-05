@@ -37,10 +37,7 @@ class BatchPermissionService
     public function batchLoadFieldProtectionPermissions($models): array
     {
         if (empty($models)) {
-            return collect($models)->map(function ($model) {
-                $sensibleColumns = $this->fieldProtectionService->getSensibleColumns($model);
-                return $this->fieldProtectionService->hideSensitiveFields($model, $sensibleColumns);
-            })->all();
+            return [];
         }
 
         $user = auth()->user();
@@ -49,7 +46,9 @@ class BatchPermissionService
         if (!$user) {
             return collect($models)->map(function ($model) {
                 $sensibleColumns = $this->fieldProtectionService->getSensibleColumns($model);
-                return $this->fieldProtectionService->hideSensitiveFields($model, $sensibleColumns);
+                $this->fieldProtectionService->hideSensitiveFields($model, $sensibleColumns);
+
+                return $model;
             })->all();
         }
 
@@ -68,7 +67,7 @@ class BatchPermissionService
 
         // Check if permission exists
         if (!permissionMustBeAuthorized($sensibleColumnsKey)) {
-            return $models;
+            return collect($models)->all();
         }
 
         // Set context for cache lookups
@@ -87,6 +86,11 @@ class BatchPermissionService
      */
     protected function batchLoadWithTeamIntersections($modelsCollection, string $sensibleColumnsKey, int $userId, $user): array
     {
+        if (!count($this->fieldProtectionService->getSensibleColumns($modelsCollection->first()))) {
+            // No sensible columns to protect
+            return $modelsCollection->all();
+        }
+
         // Step 1: Group models by their team associations
         $teamModelMap = $this->groupModelsByTeams($modelsCollection);
 

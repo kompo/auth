@@ -3,6 +3,7 @@
 namespace Kompo\Auth\Tests\Unit;
 
 use Kompo\Auth\Database\Factories\UserFactory;
+use Kompo\Auth\Models\Plugins\HasSecurity;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\RoleHierarchyEnum;
 use Kompo\Auth\Tests\Helpers\AuthTestHelpers;
@@ -237,9 +238,13 @@ class ConfigurationMatrixTest extends TestCase
         $user1 = $data1['user'];
         $team1 = $data1['team'];
 
+        HasSecurity::enterBypassContext();
+
         // Create model in different team
         $otherTeam = AuthTestHelpers::createTeam(['team_name' => 'Other'], $user1);
         TestSecuredModel::create(['name' => 'Other Team Model', 'team_id' => $otherTeam->id, 'user_id' => UserFactory::new()->create()->id]);
+        
+        HasSecurity::exitBypassContext();
 
         $this->actingAs($user1);
 

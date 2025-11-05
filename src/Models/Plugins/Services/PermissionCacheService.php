@@ -57,7 +57,7 @@ class PermissionCacheService
     /**
      * Get or set batch permission cache
      */
-    public function getBatchPermission(string $cacheKey): ?bool
+    public function getBatchPermission(string $cacheKey): mixed
     {
         return static::$batchPermissionCache[$cacheKey] ?? null;
     }
@@ -65,7 +65,7 @@ class PermissionCacheService
     /**
      * Set batch permission cache
      */
-    public function setBatchPermission(string $cacheKey, bool $value): void
+    public function setBatchPermission(string $cacheKey, mixed $value): void
     {
         static::$batchPermissionCache[$cacheKey] = $value;
     }
@@ -73,7 +73,7 @@ class PermissionCacheService
     /**
      * Get or set permission check cache
      */
-    public function getPermissionCheck(string $cacheKey): ?bool
+    public function getPermissionCheck(string $cacheKey): mixed
     {
         return static::$permissionCheckCache[$cacheKey] ?? null;
     }
@@ -81,7 +81,7 @@ class PermissionCacheService
     /**
      * Set permission check cache
      */
-    public function setPermissionCheck(string $cacheKey, bool $value): void
+    public function setPermissionCheck(string $cacheKey, mixed $value): void
     {
         static::$permissionCheckCache[$cacheKey] = $value;
     }

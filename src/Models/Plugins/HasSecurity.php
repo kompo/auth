@@ -86,7 +86,12 @@ class HasSecurity extends ModelPlugin
 
         // If security is globally disabled, exit early
         if ($this->bypassService->isGloballyBypassed()) {
-            $this->setupBypassEvents();
+            // The next line is complicated because when we exit the bypass context,
+            // we need to ensure that any models booted during this time are properly tracked.
+            // But we can't remove that saving/deleting events entirely. So we still bypass them (that's an error).
+            // I think we don't need this anymore anyway (we have the bypass context everything using a service now).
+            // $this->setupBypassEvents();
+
             SecurityBypassService::trackModelBootedDuringBypass($this->modelClass);
             return;
         }
@@ -128,7 +133,7 @@ class HasSecurity extends ModelPlugin
      */
     protected function setupFieldProtectionSafe(string $permissionKey): void
     {
-        if (config('kompo-auth.security.lazy-protected-fields') || config('kompo-auth.security.batch-protected-fields')) {
+        if ($this->fieldProtectionService->hasLazyProtectedFields(new ($this->modelClass)) || $this->fieldProtectionService->hasBatchProtectedFields(new ($this->modelClass))) {
             return;
         }
 
@@ -151,7 +156,13 @@ class HasSecurity extends ModelPlugin
      */
     public function newCollection($model, array $models = [])
     {
-        if (!config('kompo-auth.security.batch-protected-fields')) {
+        $fieldProtectionService = app(SecurityServiceFactory::class)->createFieldProtectionService(get_class($model));
+
+        if (
+            !$fieldProtectionService->hasBatchProtectedFields($model)
+            || $fieldProtectionService->hasLazyProtectedFields($model)
+            || \Kompo\Auth\Support\SecuredModelCollection::isProcessing()
+        ) {
             return new \Illuminate\Database\Eloquent\Collection($models);
         }
 
@@ -197,15 +208,17 @@ class HasSecurity extends ModelPlugin
     }
 
     /**
+     * @deprecated You should use the batch service directly
      * Batch load field protection permissions - delegate to BatchPermissionService
      */
     public static function batchLoadFieldProtectionPermissions($models)
     {
-        $batchService = app()->makeWith(BatchPermissionService::class, [
-            'cacheService' => app(PermissionCacheService::class),
-            'teamService' => null, // Will be initialized inside
-            'fieldProtectionService' => null // Will be initialized inside
-        ]);
+        if (!isset($models[0])) {
+            return [];
+        }
+
+        $factory = app(SecurityServiceFactory::class);
+        $batchService = $factory->createBatchPermissionServiceForModel(get_class($models[0] ?? null));
 
         return $batchService->batchLoadFieldProtectionPermissions($models);
     }

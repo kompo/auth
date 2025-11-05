@@ -9,7 +9,7 @@ trait BelongsToUserTrait
     /* RELATIONS */
     public function user()
     {
-        return $this->belongsTo(UserModel::class);
+        return $this->belongsTo(UserModel::getClass());
     }
 
     /* ACTIONS */

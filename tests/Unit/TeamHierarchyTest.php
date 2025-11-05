@@ -383,7 +383,7 @@ class TeamHierarchyTest extends TestCase
     {
         // Arrange
         $teams = AuthTestHelpers::createTeamHierarchy(2);
-        $user = UserFactory::new()->create();
+        $user = UserFactory::new()->withoutTeamRole()->create();
 
         $role = AuthTestHelpers::createRole('Hierarchical Role', [
             'TestSecuredModel' => PermissionTypeEnum::READ,

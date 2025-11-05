@@ -108,6 +108,7 @@ class CacheAuthorizationTest extends TestCase
         // Cache should be invalidated automatically when TeamRole is saved
         // Force refresh user from DB
         $user = $user->fresh();
+        $user->clearPermissionCache(); // This is just in runtime. so in another request will be automatically cleaned
 
         // Act: Check permission again (should reflect new DENY)
         $hasPermissionAfter = $user->hasPermission('CachedResource', PermissionTypeEnum::READ);
@@ -191,6 +192,9 @@ class CacheAuthorizationTest extends TestCase
         // Enable query log
         $this->enableQueryLog();
         DB::flushQueryLog();
+
+        $user1->clearPermissionCache(); // This is just in runtime. so in another request will be automatically cleaned
+        $user2->clearPermissionCache(); // This is just in runtime. so in another request will be automatically cleaned
 
         // Check permissions again
         $user1->hasPermission('CachedResource', PermissionTypeEnum::READ);
@@ -341,6 +345,7 @@ class CacheAuthorizationTest extends TestCase
 
         // Refresh user
         $user = $user->fresh();
+        $user->clearPermissionCache(); // This is just in runtime. so in another request will be automatically cleaned
 
         // Enable query log
         $this->enableQueryLog();
@@ -390,6 +395,7 @@ class CacheAuthorizationTest extends TestCase
 
         // Refresh user
         $user = $user->fresh();
+        $user->clearPermissionCache(); // This is just in runtime. so in another request will be automatically cleaned
 
         // Enable query log
         $this->enableQueryLog();

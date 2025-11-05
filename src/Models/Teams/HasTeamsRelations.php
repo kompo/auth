@@ -72,7 +72,9 @@ trait HasTeamsRelations
                 $q->withoutGlobalScope('authUserHasPermissions');
             })
         );
-    }    /* CALCULATED FIELDS - Basic getters only */
+    }    
+    
+    /* CALCULATED FIELDS - Basic getters only */
     public function getRelatedTeamRoles($teamId = null)
     {
         return $this->teamRoles()->relatedToTeam($teamId)->get();

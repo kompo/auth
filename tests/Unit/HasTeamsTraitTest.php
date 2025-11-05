@@ -236,104 +236,6 @@ class HasTeamsTraitTest extends TestCase
     }
 
     /**
-     * INVARIANT: validateTeamSetup() checks user team configuration
-     * 
-     * @test
-     */
-    public function test_validate_team_setup()
-    {
-        // Arrange: User with valid setup
-        $data = AuthTestHelpers::createUserWithRole(
-            ['TestResource' => PermissionTypeEnum::READ],
-            null,
-            RoleHierarchyEnum::DIRECT
-        );
-
-        $user = $data['user'];
-
-        // Act: Validate setup
-        $validation = $user->validateTeamSetup();
-
-        // Assert: Should be valid
-        $this->assertIsArray($validation);
-        $this->assertArrayHasKey('valid', $validation);
-        $this->assertTrue($validation['valid'], 'Setup should be valid');
-        $this->assertEmpty($validation['issues'], 'Should have no issues');
-    }
-
-    /**
-     * INVARIANT: validateTeamSetup() detects issues
-     * 
-     * @test
-     */
-    public function test_validate_team_setup_detects_issues()
-    {
-        // Arrange: User with no teams
-        $user = UserFactory::new()->create();
-
-        // Act: Validate setup
-        $validation = $user->validateTeamSetup();
-
-        // Assert: Should be invalid
-        $this->assertFalse($validation['valid'], 'Should be invalid without teams');
-        $this->assertNotEmpty($validation['issues'], 'Should have issues');
-    }
-
-    /**
-     * INVARIANT: cleanupTeamSetup() fixes issues
-     * 
-     * @test
-     */
-    public function test_cleanup_team_setup()
-    {
-        // Arrange: User with no teams
-        $user = UserFactory::new()->create();
-
-        // Verify has issues
-        $validation = $user->validateTeamSetup();
-        $this->assertFalse($validation['valid']);
-
-        // Act: Cleanup
-        $fixed = $user->cleanupTeamSetup();
-
-        // Assert: Should fix issues
-        $this->assertIsArray($fixed);
-        $this->assertNotEmpty($fixed, 'Should report fixes made');
-
-        // Verify now valid
-        $validationAfter = $user->validateTeamSetup();
-        $this->assertTrue($validationAfter['valid'], 'Should be valid after cleanup');
-    }
-
-    /**
-     * INVARIANT: getTeamDebugInfo() returns debug data
-     * 
-     * @test
-     */
-    public function test_get_team_debug_info()
-    {
-        // Arrange
-        $data = AuthTestHelpers::createUserWithRole(
-            ['TestResource' => PermissionTypeEnum::READ],
-            null,
-            RoleHierarchyEnum::DIRECT
-        );
-
-        $user = $data['user'];
-
-        // Act: Get debug info
-        $debugInfo = $user->getTeamDebugInfo();
-
-        // Assert: Should have expected keys
-        $this->assertIsArray($debugInfo);
-        $this->assertArrayHasKey('user_id', $debugInfo);
-        $this->assertArrayHasKey('current_team_role_id', $debugInfo);
-        $this->assertArrayHasKey('teams', $debugInfo);
-        $this->assertArrayHasKey('team_roles', $debugInfo);
-        $this->assertArrayHasKey('validation', $debugInfo);
-    }
-
-    /**
      * INVARIANT: Relations work correctly
      * 
      * @test
@@ -366,11 +268,11 @@ class HasTeamsTraitTest extends TestCase
 
         // activeTeamRoles relation
         $activeTeamRoles = $user->activeTeamRoles;
-        $this->assertInstanceOf(\Illuminate\Database\Eloquent\Relations\HasMany::class, $activeTeamRoles);
+        $this->assertInstanceOf(\Illuminate\Database\Eloquent\Collection::class, $activeTeamRoles);
 
         // ownedTeams relation
         $ownedTeams = $user->ownedTeams;
-        $this->assertInstanceOf(\Illuminate\Database\Eloquent\Relations\HasMany::class, $ownedTeams);
+        $this->assertInstanceOf(\Illuminate\Database\Eloquent\Collection::class, $ownedTeams);
     }
 
     /**
@@ -391,6 +293,8 @@ class HasTeamsTraitTest extends TestCase
         $teamRole1 = $data['teamRoles'][0];
         $teamRole2 = $data['teamRoles'][1];
 
+        $countTeamRoles = $user->teamRoles()->count();
+
         // Terminate one
         $teamRole1->terminate();
 
@@ -398,8 +302,8 @@ class HasTeamsTraitTest extends TestCase
         $activeTeamRoles = $user->activeTeamRoles()->get();
 
         // Assert: Should only include non-terminated
-        $this->assertEquals(1, $activeTeamRoles->count(), 'Should only show active (non-terminated) team roles');
-        $this->assertEquals($teamRole2->id, $activeTeamRoles->first()->id);
+        $this->assertEquals($countTeamRoles - 1, $activeTeamRoles->count(), 'Should only show active (non-terminated) team roles');
+        $this->assertContains($teamRole2->id, $activeTeamRoles->pluck('id'));
     }
 
     /**
@@ -419,6 +323,8 @@ class HasTeamsTraitTest extends TestCase
         $user = $data['user'];
         $teamRole1 = $data['teamRoles'][0];
 
+        $countTeamRoles = $user->teamRoles()->count();
+
         // Suspend one
         $teamRole1->suspend();
 
@@ -426,7 +332,7 @@ class HasTeamsTraitTest extends TestCase
         $activeTeamRoles = $user->activeTeamRoles()->get();
 
         // Assert: Should only include non-suspended
-        $this->assertEquals(1, $activeTeamRoles->count(), 'Should only show non-suspended team roles');
+        $this->assertEquals($countTeamRoles - 1, $activeTeamRoles->count(), 'Should only show non-suspended team roles');
     }
 
     /**

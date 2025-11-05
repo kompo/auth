@@ -207,6 +207,8 @@ class WriteSecurityService
      */
     protected function performSave($model): bool
     {
-        return $model->save();
+        $model->save();
+
+        return true;
     }
 }

@@ -277,7 +277,7 @@ class TeamRole extends Model
             $teams = $teams->concat($siblings);
         }
 
-        return $teams;
+        return $teams->unique();
     }
 
     public function getAllHierarchyTeamsIds($search = '', $limit = null)

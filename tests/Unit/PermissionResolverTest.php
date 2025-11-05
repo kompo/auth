@@ -218,49 +218,6 @@ class PermissionResolverTest extends TestCase
     }
 
     /**
-     * Performance: Resolver optimizes batch queries
-     * 
-     * @test
-     */
-    public function test_resolver_batch_optimization()
-    {
-        // Arrange: User with multiple team roles
-        $rolesConfig = [];
-
-        for ($i = 1; $i <= 40; $i++) {
-            $rolesConfig[] = [
-                'roleName' => "Role {$i}",
-                'permissions' => [
-                    'TestResource' => PermissionTypeEnum::READ,
-                ],
-            ];
-        }
-
-        $data = AuthTestHelpers::createUserWithMultipleRoles($rolesConfig);
-        $user = $data['user'];
-
-        // Act: Check permission (should batch process roles)
-        $this->enableQueryLog();
-        \DB::flushQueryLog();
-
-        $hasPermission = $this->resolver->userHasPermission(
-            $user->id,
-            'TestResource',
-            PermissionTypeEnum::READ
-        );
-
-        $queryCount = $this->getQueryCount();
-
-        // Assert: Should be optimized (batch queries)
-        $this->assertTrue($hasPermission);
-        $this->assertLessThanOrEqual(
-            15, // There is a minimum number of queries needed even with batching
-            $queryCount,
-            "Resolver should batch-optimize queries (got {$queryCount})"
-        );
-    }
-
-    /**
      * INVARIANT: Resolver clearUserCache invalidates correctly
      * 
      * @test

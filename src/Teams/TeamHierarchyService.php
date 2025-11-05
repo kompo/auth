@@ -111,7 +111,7 @@ class TeamHierarchyService
     private function executeDescendantsQuery(int $teamId, ?string $search = '', ?int $maxDepth = null): Collection
     {
         $maxDepthCondition = $maxDepth ? "AND depth < {$maxDepth}" : '';
-        $searchCondition = $search ? ' WHERE LOWER(teams.team_name) LIKE LOWER(?)' : '';
+        $searchCondition = $search ? ' WHERE LOWER(team_name) LIKE LOWER(?)' : '';
 
         $searchParam = $search ? "%{$search}%" : null;
         $bindings = array_values(array_filter([$teamId, $searchParam]));

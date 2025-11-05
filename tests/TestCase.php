@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Kompo\Auth\Database\Factories\UserFactory;
 use Kompo\Auth\KompoAuthServiceProvider;
+use Kompo\Auth\Models\Plugins\Services\PermissionCacheService;
 use Kompo\KompoServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
@@ -46,6 +47,8 @@ abstract class TestCase extends Orchestra
 
         // Clear all caches before each test
         Cache::flush();
+
+        app(PermissionCacheService::class)->clearAllCaches();
     }
 
     /**
@@ -74,7 +77,8 @@ abstract class TestCase extends Orchestra
         Config::set('kompo-auth.superadmin-emails', []);
         Config::set('kompo-auth.cache.ttl', 900);
         Config::set('kompo-auth.cache.tags_enabled', true);
-        Config::set('kompo-auth.security.lazy-protected-fields', true);
+        Config::set('kompo-auth.security.lazy-protected-fields', false);
+        Config::set('kompo-auth.security.batch-protected-fields', true);
 
         // Overriding the bypass function because by default it bypass when running in console
         $this->app->singleton('kompo-auth.security-bypass', function ($app) {

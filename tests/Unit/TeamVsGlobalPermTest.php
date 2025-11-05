@@ -3,6 +3,7 @@
 namespace Kompo\Auth\Tests\Unit;
 
 use Kompo\Auth\Database\Factories\UserFactory;
+use Kompo\Auth\Models\Plugins\HasSecurity;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\RoleHierarchyEnum;
 use Kompo\Auth\Tests\Helpers\AssertionHelpers;
@@ -56,6 +57,7 @@ class TeamVsGlobalPermTest extends TestCase
 
         $this->actingAs($user);
 
+        HasSecurity::enterBypassContext();
         // Create models in both teams
         $modelA = TestSecuredModel::create([
             'name' => 'Model in Team A',
@@ -68,6 +70,8 @@ class TeamVsGlobalPermTest extends TestCase
             'team_id' => $teamB->id,
             'user_id' => UserFactory::new()->create()->id, // Different user to avoid owner bypass
         ]);
+
+        HasSecurity::exitBypassContext();
 
         // Act: Query all models
         $results = TestSecuredModel::all();
@@ -235,10 +239,12 @@ class TeamVsGlobalPermTest extends TestCase
         $this->actingAs($user);
 
         // Create models in all teams
+        HasSecurity::enterBypassContext();
         $modelA1 = TestSecuredModel::create(['name' => 'A1', 'team_id' => $teamA->id, 'user_id' => $user->id]);
         $modelA2 = TestSecuredModel::create(['name' => 'A2', 'team_id' => $teamA->id, 'user_id' => $user->id]);
         $modelB1 = TestSecuredModel::create(['name' => 'B1', 'team_id' => $teamB->id, 'user_id' => UserFactory::new()->create()->id]);
         $modelC1 = TestSecuredModel::create(['name' => 'C1', 'team_id' => $teamC->id, 'user_id' => UserFactory::new()->create()->id]);
+        HasSecurity::exitBypassContext();
 
         // Act: Query all
         $results = TestSecuredModel::all();

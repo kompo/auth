@@ -151,6 +151,11 @@ trait HasTeamPermissions
         );
     }
 
+    public function hasRole(string $role)
+    {
+        return $this->getActiveTeamRolesOptimized($role)->count() > 0;
+    }
+
     /**
      * Get active team roles with optimized loading
      */

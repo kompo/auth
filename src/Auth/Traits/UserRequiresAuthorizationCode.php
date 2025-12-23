@@ -50,7 +50,7 @@ trait UserRequiresAuthorizationCode
         $via = collect($availableVias)->firstWhere('value', $preferredVia) ?? $availableVias[0];
 
         if (! $via) {
-            abort(422, __('translate.error.no-valid-contact-method'));
+            abort(422, __('error-no-valid-contact-method'));
         }
 
         $service->sendCode(via: $via);
@@ -64,20 +64,20 @@ trait UserRequiresAuthorizationCode
 
     protected function codeSentResponse($destination)
     {
-        return _Html(__('translate.with-values-code-sent-to', ['destination' => $destination]))->class('text-white opacity-50');
+        return _Html(__('auth-with-values-code-sent-to', ['destination' => $destination]))->class('text-white opacity-50');
     }
 
     protected function authorizationElement()
     {
         return _Rows(
             _Card(
-                _Html('translate.confirm-your-identity')->class('text-level2 confirm-identity-text mb-2'),
+                _Html('auth-confirm-your-identity')->class('text-level2 confirm-identity-text mb-2'),
                 _Rows(
                     _Rows(
                         $this->sendAuthorizationCodeButtons(),
                     ),
                     _Panel()->id('authorization-code-panel'),
-                    _Input()->placeholder('translate.enter-code')->name('authorization_code', false)->class('w-full darkgreen-input text-white !mb-0'),
+                    _Input()->placeholder('auth-enter-code')->name('authorization_code', false)->class('w-full darkgreen-input text-white !mb-0'),
                 )->class('gap-2'),
             )->class(property_exists($this, 'authorizationCodeContainerClass') ? $this->authorizationCodeContainerClass : 'px-6 py-4 bg-greendark border-none'),
         );
@@ -91,8 +91,8 @@ trait UserRequiresAuthorizationCode
 
         if ($this->allowMultipleVias && count($availableVias) > 1) {
             return [
-                _Button2Outlined('translate.send-code')->selfPost('sendCode')->inPanel('authorization-code-panel')->class('authorization-send-btn'),
-                _ButtonGroupSisc2('translate.by')->name('via')->options(
+                _Button2Outlined('auth-send-code')->selfPost('sendCode')->inPanel('authorization-code-panel')->class('authorization-send-btn'),
+                _ButtonGroupSisc2('auth-by')->name('via')->options(
                     collect($availableVias)->mapWithKeys(fn ($case) => [$case->value => $case->label()]),
                 )->default($defaultVia->value),
             ];
@@ -100,6 +100,6 @@ trait UserRequiresAuthorizationCode
 
         $via = $availableVias[0] ?? $defaultVia;
 
-        return _Button2Outlined(__('translate.send-code-type', ['type' => $via->label()]))->selfPost('sendCode')->inPanel('authorization-code-panel')->class('authorization-send-btn');
+        return _Button2Outlined(__('auth-send-code-type', ['type' => $via->label()]))->selfPost('sendCode')->inPanel('authorization-code-panel')->class('authorization-send-btn');
     }
 }

@@ -20,7 +20,7 @@ trait HasAuthorizationCode
         $verification = AuthorizationCode::verify($this->id, $code, $type);
 
         if (!$verification) {
-            abort(403, __('error.invalid-authorization-code'));
+            abort(403, __('error-invalid-authorization-code'));
         }
     }
 }

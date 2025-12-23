@@ -45,7 +45,7 @@ trait UserRequiresAuthorizationCode
     {
         $service = $this->getFilledService();
         $availableVias = $service->getAvailableVias();
-        $preferredVia = request('via') ?? config('kompo-auth.default_authorization_via');
+        $preferredVia = request('via') ?? config('kompo-auth.default_authorization_via')->value;
 
         $via = collect($availableVias)->firstWhere('value', $preferredVia) ?? $availableVias[0];
 
@@ -79,7 +79,7 @@ trait UserRequiresAuthorizationCode
                     _Panel()->id('authorization-code-panel'),
                     _Input()->placeholder('translate.enter-code')->name('authorization_code', false)->class('w-full darkgreen-input text-white !mb-0'),
                 )->class('gap-2'),
-            )->class(property_exists($this, 'authorizationCodeContainerClass') ? $this->authorizationCodeContainerClass : 'px-6 py-4 bg-darkgreen border-none'),
+            )->class(property_exists($this, 'authorizationCodeContainerClass') ? $this->authorizationCodeContainerClass : 'px-6 py-4 bg-greendark border-none'),
         );
     }
 
@@ -100,6 +100,6 @@ trait UserRequiresAuthorizationCode
 
         $via = $availableVias[0] ?? $defaultVia;
 
-        return _Button(__('translate.send-code-type', ['type' => $via->label()]))->outlined()->selfPost('sendCode')->inPanel('authorization-code-panel')->class('authorization-send-btn');
+        return _Button2Outlined(__('translate.send-code-type', ['type' => $via->label()]))->selfPost('sendCode')->inPanel('authorization-code-panel')->class('authorization-send-btn');
     }
 }

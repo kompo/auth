@@ -32,7 +32,9 @@ class KompoAuthServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        $this->loadHelpers();
+        if (config('kompo-auth.load-helpers', true)) {
+            $this->loadHelpers();
+        }
         $this->registerPolicies();
         $this->extendRouting();
 
@@ -75,7 +77,7 @@ class KompoAuthServiceProvider extends ServiceProvider
         });
 
         // Bind user model
-        $this->app->bind(USER_MODEL_KEY, function () {
+        $this->app->bind(defined('USER_MODEL_KEY') ? USER_MODEL_KEY : 'user-model-namespace', function () {
             return new (config('kompo-auth.user-model-namespace'));
         });
     }
@@ -85,9 +87,11 @@ class KompoAuthServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->loadHelpers();
+        if (config('kompo-auth.load-helpers', true)) {
+            $this->loadHelpers();
+        }
 
-        if (config('kompo-auth.root-security', false)) {
+        if (config('kompo-auth.root-security', true)) {
             // Register model plugins
             ModelBase::setPlugins([HasSecurity::class]);
             Query::setPlugins([HasAuthorizationUtils::class]);
@@ -100,10 +104,12 @@ class KompoAuthServiceProvider extends ServiceProvider
             $this->registerSecurityServices();
         }
 
-        // Register route loading
-        $this->booted(function () {
-            \Route::middleware('web')->group(__DIR__ . '/../routes/web.php');
-        });
+        if (config('kompo-auth.include-auth-routes', true)) {
+            // Register route loading
+            $this->booted(function () {
+                \Route::middleware('web')->group(__DIR__ . '/../routes/web.php');
+            });
+        }
     }
 
     /**
@@ -427,6 +433,10 @@ class KompoAuthServiceProvider extends ServiceProvider
      */
     protected function loadCrons(): void
     {
+        if (!config('kompo-auth.root-security', true)) {
+            return;
+        }
+
         $this->app->booted(function () {
             $schedule = $this->app->make(Schedule::class);
 

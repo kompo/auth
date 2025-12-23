@@ -82,5 +82,5 @@ return [
     'default-added-by-modified-by' => 1,
     'profile-enum' => getAppClass(App\Models\Teams\ProfileEnum::class, Kompo\Auth\Models\Teams\ProfileEnum::class),
 
-    USER_MODEL_KEY . '-namespace' => getAppClass(App\Models\User::class, \Kompo\Auth\Models\User::class),
+    'user-model-namespace' => getAppClass(App\Models\User::class, \Kompo\Auth\Models\User::class),
 ];

@@ -37,7 +37,11 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->extendRouting();
 
         $this->loadJSONTranslationsFrom(__DIR__ . '/../resources/lang');
-        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+
+        if (config('kompo-auth.load-migrations', true)) {
+            $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+        }
+        
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'kompo-auth');
 
         $this->publishes([
@@ -83,16 +87,18 @@ class KompoAuthServiceProvider extends ServiceProvider
     {
         $this->loadHelpers();
 
-        // Register model plugins
-        ModelBase::setPlugins([HasSecurity::class]);
-        Query::setPlugins([HasAuthorizationUtils::class]);
-        Form::setPlugins([HasAuthorizationUtils::class]);
-        Modal::setPlugins([HasAuthorizationUtils::class]);
+        if (config('kompo-auth.root-security', false)) {
+            // Register model plugins
+            ModelBase::setPlugins([HasSecurity::class]);
+            Query::setPlugins([HasAuthorizationUtils::class]);
+            Form::setPlugins([HasAuthorizationUtils::class]);
+            Modal::setPlugins([HasAuthorizationUtils::class]);
 
-        // Register core services in correct order
-        $this->registerCoreServices();
-        $this->registerOptimizedPermissionServices();
-        $this->registerSecurityServices();
+            // Register core services in correct order
+            $this->registerCoreServices();
+            $this->registerOptimizedPermissionServices();
+            $this->registerSecurityServices();
+        }
 
         // Register route loading
         $this->booted(function () {

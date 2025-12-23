@@ -1,9 +1,15 @@
 <?php
 
+use Kompo\Auth\Models\NotifiableMethodsEnum;
+
 return [
     'breadcrumbs' => [
         'clickeable-action' => true,
     ],
+
+    'root-security' => true,
+
+    'load-migrations' => true,
 
     'security' => [
         'bypass-security' => env('BYPASS_SECURITY', false),
@@ -27,6 +33,8 @@ return [
     'notifications' => [
         'default_notification_button_handler' => \Kompo\Auth\Models\Monitoring\DefaultNotificationButtonHandler::class,
     ],
+
+    'default_authorization_via' => NotifiableMethodsEnum::SMS,
 
     // Performance monitoring
     'monitor-performance' => env('KOMPO_AUTH_MONITOR_PERFORMANCE', false),

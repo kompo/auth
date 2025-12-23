@@ -429,6 +429,10 @@ if (!function_exists('endPermissionTimer')) {
 if (!function_exists('registerRules')) {
     function registerRules(): array
     {
+        if (config('kompo-auth.register-rules')) {
+            return config('kompo-auth.register-rules');
+        }
+
         return array_merge(namesRules(), [
                 'password' => passwordRules(),
                 'terms' => ['required', 'accepted'],

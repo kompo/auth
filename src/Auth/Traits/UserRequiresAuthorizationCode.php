@@ -71,7 +71,7 @@ trait UserRequiresAuthorizationCode
     {
         return _Rows(
             _Card(
-                _Html('auth-confirm-your-identity')->class('text-level2 confirm-identity-text mb-2'),
+                _Html('auth-confirm-your-identity')->class('confirm-identity-text mb-2'),
                 _Rows(
                     _Rows(
                         $this->sendAuthorizationCodeButtons(),

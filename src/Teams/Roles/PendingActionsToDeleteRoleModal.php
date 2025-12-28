@@ -17,7 +17,8 @@ class PendingActionsToDeleteRoleModal extends Modal
         return _Rows(
             _Rows($this->model->pendingActionsToDeleteEls()),
 
-            _Button('auth-close')->class('mt-4'),
+            _Button('auth-close')->class('mt-4')
+                ->closeModal(),
         );
     }
 }

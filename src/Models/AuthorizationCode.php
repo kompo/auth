@@ -134,7 +134,7 @@ class AuthorizationCode extends Model
 
     protected function sendSmsDirectly()
     {
-        $content = __('translate.auth.your-authorization-code-is', ['code' => $this->code]);
+        $content = __('auth-your-coolecto-authorization-code-is', ['code' => $this->code]);
         $content = mb_convert_encoding($content, 'UTF-8', 'UTF-8');
 
         $vonage = app(\Vonage\Client::class);

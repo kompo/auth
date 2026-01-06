@@ -20,14 +20,14 @@ if (!function_exists('authId')) {
 }
 
 /* ROLES */
-if (!function_exists('isTeamOwner')) {
+if (!function_exists('isTeamOwner') && config('kompo-auth.root-security', false)) {
 	function isTeamOwner()
 	{
 		return authUser()?->isTeamOwner();
 	}
 }
 
-if (!function_exists('isSuperAdmin')) {
+if (!function_exists('isSuperAdmin') && config('kompo-auth.root-security', false)) {
 	function isSuperAdmin()
 	{
 		return authUser()?->isSuperAdmin();
@@ -35,7 +35,7 @@ if (!function_exists('isSuperAdmin')) {
 }
 
 /* OTHER HELPERS */
-if (!function_exists('isImpersonated')) {
+if (!function_exists('isImpersonated') && config('kompo-auth.root-security', false)) {
 	function isImpersonated()
 	{
 		return authUser()?->isImpersonated();

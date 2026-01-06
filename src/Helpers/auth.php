@@ -372,14 +372,14 @@ if (!function_exists('authId')) {
 /**
  * Memory-efficient role checking
  */
-if (!function_exists('isTeamOwner')) {
+if (!function_exists('isTeamOwner') && config('kompo-auth.root-security', false)) {
     function isTeamOwner(): bool
     {
         return authUser()?->isTeamOwner() ?? false;
     }
 }
 
-if (!function_exists('isSuperAdmin')) {
+if (!function_exists('isSuperAdmin') && config('kompo-auth.root-security', false)) {
     function isSuperAdmin(): bool
     {
         return authUser()?->isSuperAdmin() ?? false;
@@ -426,7 +426,7 @@ if (!function_exists('endPermissionTimer')) {
 /**
  * Enhanced validation rule functions
  */
-if (!function_exists('registerRules')) {
+if (!function_exists('registerRules') && config('kompo-auth.root-security', false)) {
     function registerRules(): array
     {
         if (config('kompo-auth.register-rules')) {
@@ -440,7 +440,7 @@ if (!function_exists('registerRules')) {
     }
 }
 
-if (!function_exists('namesRules')) {
+if (!function_exists('namesRules') && config('kompo-auth.root-security', false)) {
     function namesRules(): array
     {
         return config('kompo-auth.register_with_first_last_name') ? [
@@ -452,7 +452,7 @@ if (!function_exists('namesRules')) {
     }
 }
 
-if (!function_exists('passwordRules')) {
+if (!function_exists('passwordRules') && config('kompo-auth.root-security', false)) {
     function passwordRules(): array
     {
         $passwordRules = new \Laravel\Fortify\Rules\Password();
@@ -467,7 +467,7 @@ if (!function_exists('passwordRules')) {
     }
 }
 
-if (!function_exists('baseEmailRules')) {
+if (!function_exists('baseEmailRules') && config('kompo-auth.root-security', false)) {
     function baseEmailRules(): array
     {
         return ['required', 'string', 'email', 'max:255'];
@@ -477,7 +477,7 @@ if (!function_exists('baseEmailRules')) {
 /**
  * Optimize memory by using more efficient caching for frequently called functions
  */
-if (!function_exists('currentTeamRoleId')) {
+if (!function_exists('currentTeamRoleId') && config('kompo-auth.root-security', false)) {
     function currentTeamRoleId()
     {
         return currentTeamRole()?->id;

@@ -147,7 +147,7 @@ if (!function_exists('bypassSecurityInThisRunningContext')) {
 /**
  * Optimized current team role retrieval
  */
-if (!function_exists('currentTeamRole') && config('kompo-auth.root-security', false)) {
+if (!function_exists('currentTeamRole') && config('kompo-auth.root-security', true)) {
     function currentTeamRole()
     {
         if (!auth()->user()) {
@@ -175,7 +175,7 @@ if (!function_exists('currentTeamRole') && config('kompo-auth.root-security', fa
 /**
  * Optimized current team retrieval
  */
-if (!function_exists('currentTeam') && config('kompo-auth.root-security', false)) {
+if (!function_exists('currentTeam') && config('kompo-auth.root-security', true)) {
     function currentTeam()
     {
         if (!auth()->user()) {
@@ -200,10 +200,11 @@ if (!function_exists('currentTeam') && config('kompo-auth.root-security', false)
     }
 }
 
+
 /**
  * Optimized current team ID retrieval
  */
-if (!function_exists('currentTeamId') && config('kompo-auth.root-security', false)) {
+if (!function_exists('currentTeamId') && config('kompo-auth.root-security', true)) {
     function currentTeamId()
     {
         return currentTeam()?->id;
@@ -213,7 +214,7 @@ if (!function_exists('currentTeamId') && config('kompo-auth.root-security', fals
 /**
  * Check if current user is super admin with caching
  */
-if (!function_exists('isAppSuperAdmin') && config('kompo-auth.root-security', false)) {
+if (!function_exists('isAppSuperAdmin') && config('kompo-auth.root-security', true)) {
     function isAppSuperAdmin(): bool
     {
         if (!auth()->user()) {
@@ -372,14 +373,14 @@ if (!function_exists('authId')) {
 /**
  * Memory-efficient role checking
  */
-if (!function_exists('isTeamOwner') && config('kompo-auth.root-security', false)) {
+if (!function_exists('isTeamOwner') && config('kompo-auth.root-security', true)) {
     function isTeamOwner(): bool
     {
         return authUser()?->isTeamOwner() ?? false;
     }
 }
 
-if (!function_exists('isSuperAdmin') && config('kompo-auth.root-security', false)) {
+if (!function_exists('isSuperAdmin') && config('kompo-auth.root-security', true)) {
     function isSuperAdmin(): bool
     {
         return authUser()?->isSuperAdmin() ?? false;
@@ -426,7 +427,7 @@ if (!function_exists('endPermissionTimer')) {
 /**
  * Enhanced validation rule functions
  */
-if (!function_exists('registerRules') && config('kompo-auth.root-security', false)) {
+if (!function_exists('registerRules') && config('kompo-auth.root-security', true)) {
     function registerRules(): array
     {
         if (config('kompo-auth.register-rules')) {
@@ -440,7 +441,7 @@ if (!function_exists('registerRules') && config('kompo-auth.root-security', fals
     }
 }
 
-if (!function_exists('namesRules') && config('kompo-auth.root-security', false)) {
+if (!function_exists('namesRules') && config('kompo-auth.root-security', true)) {
     function namesRules(): array
     {
         return config('kompo-auth.register_with_first_last_name') ? [
@@ -452,7 +453,7 @@ if (!function_exists('namesRules') && config('kompo-auth.root-security', false))
     }
 }
 
-if (!function_exists('passwordRules') && config('kompo-auth.root-security', false)) {
+if (!function_exists('passwordRules') && config('kompo-auth.root-security', true)) {
     function passwordRules(): array
     {
         $passwordRules = new \Laravel\Fortify\Rules\Password();
@@ -467,7 +468,7 @@ if (!function_exists('passwordRules') && config('kompo-auth.root-security', fals
     }
 }
 
-if (!function_exists('baseEmailRules') && config('kompo-auth.root-security', false)) {
+if (!function_exists('baseEmailRules') && config('kompo-auth.root-security', true)) {
     function baseEmailRules(): array
     {
         return ['required', 'string', 'email', 'max:255'];
@@ -477,7 +478,7 @@ if (!function_exists('baseEmailRules') && config('kompo-auth.root-security', fal
 /**
  * Optimize memory by using more efficient caching for frequently called functions
  */
-if (!function_exists('currentTeamRoleId') && config('kompo-auth.root-security', false)) {
+if (!function_exists('currentTeamRoleId') && config('kompo-auth.root-security', true)) {
     function currentTeamRoleId()
     {
         return currentTeamRole()?->id;

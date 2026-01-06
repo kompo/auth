@@ -43,7 +43,7 @@ class OptionsRolesSwitcher extends Form
                 collect($roleIds)->filter(fn($rId) => !currentTeamRole()
                 || currentTeamRole()->team_id != $teamId || currentTeamRole()->role != $rId
                 )->map(fn($roleId) =>
-                    $this->getTeamRoleLabel($teams[$teamId], $roles[$roleId])
+                    $this->getTeamRoleLabel($teams[$teamId], $roles[$roleId] ?? null)
                         ->selfPost('switchToTeamRole', ['team_id' => $teamId, 'role_id' => $roleId])->redirect()
                 )
             );
@@ -59,7 +59,7 @@ class OptionsRolesSwitcher extends Form
         return _FlexBetween(
             _Rows(
                 _Html($team->team_name)->class('text-sm font-medium'),
-                _Html($role->name)->class('text-sm text-greenmain opacity-70'),
+                _Html($role?->name ?: 'Unknown')->class('text-sm text-greenmain opacity-70'),
             ),
 
             $team->rolePill(),

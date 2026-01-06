@@ -66,7 +66,9 @@ class SecuredModelCollection extends Collection
 
                 $fieldProtectionService->processFieldProtection($model, class_basename(get_class($model)));
 
-                $this->items = [$model];
+                // We must keep the same index => value
+                $key = $this->keys()->first();
+                $this->items = [$key => $model];
             }
             
             // Only batch if we have multiple models (optimization)

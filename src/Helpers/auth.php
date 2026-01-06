@@ -147,7 +147,7 @@ if (!function_exists('bypassSecurityInThisRunningContext')) {
 /**
  * Optimized current team role retrieval
  */
-if (!function_exists('currentTeamRole')) {
+if (!function_exists('currentTeamRole') && config('kompo-auth.root-security', false)) {
     function currentTeamRole()
     {
         if (!auth()->user()) {
@@ -155,7 +155,7 @@ if (!function_exists('currentTeamRole')) {
         }
 
         if (!auth()->user()->currentTeamRole || !auth()->user()->currentTeamRole->roleRelation) {
-            auth()->user()->switchToFirstTeamRole();
+            if(method_exists(auth()->user(), 'switchToFirstTeamRole')) auth()->user()->switchToFirstTeamRole();
         }
 
         $cacheKey = CacheKeyBuilder::currentTeamRole(auth()->id());
@@ -175,7 +175,7 @@ if (!function_exists('currentTeamRole')) {
 /**
  * Optimized current team retrieval
  */
-if (!function_exists('currentTeam')) {
+if (!function_exists('currentTeam') && config('kompo-auth.root-security', false)) {
     function currentTeam()
     {
         if (!auth()->user()) {
@@ -193,7 +193,7 @@ if (!function_exists('currentTeam')) {
         );
 
         if (!$currentTeam) {
-            auth()->user()->resetToValidTeamRole();
+            if (method_exists(auth()->user(), 'resetToValidTeamRole')) auth()->user()->resetToValidTeamRole();
         }
 
         return $currentTeam;
@@ -203,7 +203,7 @@ if (!function_exists('currentTeam')) {
 /**
  * Optimized current team ID retrieval
  */
-if (!function_exists('currentTeamId')) {
+if (!function_exists('currentTeamId') && config('kompo-auth.root-security', false)) {
     function currentTeamId()
     {
         return currentTeam()?->id;
@@ -213,7 +213,7 @@ if (!function_exists('currentTeamId')) {
 /**
  * Check if current user is super admin with caching
  */
-if (!function_exists('isAppSuperAdmin')) {
+if (!function_exists('isAppSuperAdmin') && config('kompo-auth.root-security', false)) {
     function isAppSuperAdmin(): bool
     {
         if (!auth()->user()) {

@@ -72,7 +72,7 @@ trait UserRequiresAuthorizationCode
 
     protected function codeSentResponse($destination)
     {
-        return _Html(__('auth-with-values-code-sent-to', ['destination' => $destination]))->class('text-white opacity-50');
+        return _Html(__('auth-with-values-code-sent-to', ['destination' => $destination]))->class('code-sent text-white opacity-50');
     }
 
     protected function authorizationElement()

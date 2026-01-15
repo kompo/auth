@@ -51,7 +51,7 @@
 	"auth-reset-password": "Reset password",
 	"auth-roles": "Roles",
 	"auth-save": "Save",
-	"auth-send-code": "Send code",
+	"auth-send-code": "Send code to",
 	"auth-send-code-type": "Send code :type",
 	"auth-send-password-reset-link": "Send password reset link",
 	"auth-sso": "SSO",

@@ -51,7 +51,7 @@
 	"auth-reset-password": "Réinitialiser le mot de passe",
 	"auth-roles": "Rôles",
 	"auth-save": "Sauvegarder",
-	"auth-send-code": "Envoyer le code",
+	"auth-send-code": "Envoyer le code par",
 	"auth-send-code-type": "Envoyer le code :type",
 	"auth-send-password-reset-link": "Envoyer le lien de réinitialisation du mot de passe",
 	"auth-sso": "SSO",

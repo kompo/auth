@@ -14,7 +14,10 @@ class AuthorizationCodeService
     public function getAvailableVias()
     {
         if ($this->user) {
-            return NotifiableMethodsEnum::cases();
+            return collect(NotifiableMethodsEnum::cases())
+                ->filter(function ($method) {
+                    return $method->destination($this->user);
+                })->toArray();
         }
 
         $vias = [];

@@ -10,11 +10,19 @@ trait UserRequiresAuthorizationCode
 
     protected function getAuthorizationEmail()
     {
+        if (property_exists($this, 'email') && $this->email) {
+            return $this->email;
+        }
+
         return request('email'); // Default but it will probably overridden
     }
 
     protected function getAuthorizationPhone()
     {
+        if (property_exists($this, 'phone') && $this->phone) {
+            return $this->phone;
+        }
+
         return request('phone'); // Default but it will probably overridden
     }
 

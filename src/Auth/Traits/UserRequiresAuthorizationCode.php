@@ -77,7 +77,7 @@ trait UserRequiresAuthorizationCode
                         $this->sendAuthorizationCodeButtons(),
                     ),
                     _Panel()->id('authorization-code-panel'),
-                    _Input()->placeholder('auth-enter-code')->name('authorization_code', false)->class('w-full darkgreen-input text-white !mb-0'),
+                    _Input()->placeholder('auth-enter-code')->name('authorization_code', false)->class('bigInput w-full darkgreen-input text-white !mb-0'),
                 )->class('gap-2'),
             )->class(property_exists($this, 'authorizationCodeContainerClass') ? $this->authorizationCodeContainerClass : 'px-6 py-4 bg-greendark border-none'),
         );

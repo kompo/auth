@@ -52,6 +52,15 @@ class BaseEmailForm extends ImgFormLayout
         ];
 	}
 
+    public function localeSwitcher()
+    {
+        if (function_exists('_LoginRightTopOverride')) {
+            return _LoginRightTopOverride();
+        }
+
+        return parent::localeSwitcher();
+    }
+
     public function rules()
     {
         return [

@@ -58,6 +58,7 @@ class TeamForm extends Modal
 
     protected function contactFormPart()
     {
+        // dd($this->model->phones);
         return [
             $this->addressInput(),
             _InputEmail('team-email')->name('email', false)->default($this->model->getFirstValidEmailLabel())->class('mb-2'),

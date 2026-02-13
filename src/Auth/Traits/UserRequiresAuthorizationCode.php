@@ -75,14 +75,14 @@ trait UserRequiresAuthorizationCode
         return _Html(__('auth-with-values-code-sent-to', ['destination' => $destination]))->class('code-sent text-white opacity-50');
     }
 
-    protected function authorizationElement()
+    protected function authorizationElement($preferredVia = null)
     {
         return _Rows(
             _Card(
                 _Html('auth-confirm-your-identity')->class('confirm-identity-text mb-2'),
                 _Rows(
                     _Rows(
-                        $this->sendAuthorizationCodeButtons(),
+                        $this->sendAuthorizationCodeButtons(preferredVia: $preferredVia),
                     ),
                     _Panel()->id('authorization-code-panel'),
                     _Input()->placeholder('auth-enter-code')->name('authorization_code', false)->class('bigInput w-full darkgreen-input text-white !mb-0'),
@@ -91,23 +91,29 @@ trait UserRequiresAuthorizationCode
         );
     }
 
-    public function sendAuthorizationCodeButtons($user = null)
+    public function sendAuthorizationCodeButtons($user = null, $preferredVia = null)
     {
         $service = $this->getFilledService();
         $defaultVia = config('kompo-auth.default_authorization_via');
         $availableVias = $service->getAvailableVias();
+        $preferredVia = $preferredVia ?: request('via') ?: $defaultVia->value;
 
         if ($this->allowMultipleVias && count($availableVias) > 1) {
             return [
-                _Button2Outlined('auth-send-code')->selfPost('sendCode')->inPanel('authorization-code-panel')->class('authorization-send-btn'),
-                _ButtonGroupSisc2('auth-by')->name('via')->options(
-                    collect($availableVias)->mapWithKeys(fn ($case) => [$case->value => $case->label()]),
-                )->default($defaultVia->value),
+                _Button2Outlined('auth-send-code')->selfPost('sendCode')->withAllFormValues()->inPanel('authorization-code-panel')->class('authorization-send-btn'),
+                _ButtonGroup('auth-by')->name('via')
+                    ->optionClass('px-4 py-2 text-center cursor-pointer')
+                    ->selectedClass('bg-level3 text-white font-medium', 'bg-gray-100 text-level3 font-medium')
+                    ->options(
+                        collect($availableVias)->mapWithKeys(fn ($case) => [$case->value => $case->label()]),
+                    )->default($preferredVia),
             ];
         }
 
-        $via = $availableVias[0] ?? $defaultVia;
+        $via = collect($availableVias)->firstWhere('value', $preferredVia) ?? $availableVias[0];
 
-        return _Button2Outlined(__('auth-send-code-type', ['type' => $via->label()]))->selfPost('sendCode')->inPanel('authorization-code-panel')->class('authorization-send-btn');
+        return _Button2Outlined(__('auth-send-code-type', ['type' => $via->label()]))->selfPost('sendCode', [
+            'via' => $via->value,
+        ])->inPanel('authorization-code-panel')->class('authorization-send-btn');
     }
 }

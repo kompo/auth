@@ -101,7 +101,7 @@ trait UserRequiresAuthorizationCode
         if ($this->allowMultipleVias && count($availableVias) > 1) {
             return [
                 _Button2Outlined('auth-send-code')->selfPost('sendCode')->withAllFormValues()->inPanel('authorization-code-panel')->class('authorization-send-btn'),
-                _ButtonGroup('auth-by')->name('via')
+                _ButtonGroup('auth-by')->name('via', false)
                     ->optionClass('px-4 py-2 text-center cursor-pointer')
                     ->selectedClass('bg-level3 text-white font-medium', 'bg-gray-100 text-level3 font-medium')
                     ->options(

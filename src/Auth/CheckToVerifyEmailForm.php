@@ -7,7 +7,7 @@ use Kompo\Auth\Models\Teams\EmailRequest;
 
 class CheckToVerifyEmailForm extends ImgFormLayout
 {
-    protected $imgUrl = 'images/verify-email-image.png';
+    protected $imgUrl = 'images/verify-email-image.webp';
 
     public $model = EmailRequest::class;
 

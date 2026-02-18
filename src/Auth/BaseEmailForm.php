@@ -9,7 +9,7 @@ use Kompo\Auth\Models\Teams\EmailRequest;
 
 class BaseEmailForm extends ImgFormLayout
 {
-    protected $imgUrl = 'images/base-email-image.png';
+    protected $imgUrl = 'images/base-email-image.webp';
 
     public function handle()
     {

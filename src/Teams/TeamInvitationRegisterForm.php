@@ -8,7 +8,7 @@ use Kompo\Auth\Models\User;
 
 class TeamInvitationRegisterForm extends ImgFormLayout
 {
-    protected $imgUrl = 'images/register-image.png';
+    protected $imgUrl = 'images/register-image.webp';
 
     public $model = User::class;
 

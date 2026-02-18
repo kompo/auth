@@ -8,7 +8,7 @@ class LoginForm extends ImgFormLayout
 {
     public $submitTo = 'login';
 
-    protected $imgUrl = 'images/login-image.png';
+    protected $imgUrl = 'images/login-image.webp';
 
     protected $email;
     

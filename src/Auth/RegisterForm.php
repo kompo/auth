@@ -10,7 +10,7 @@ class RegisterForm extends ImgFormLayout
 {
     public $model = UserModel::class;
 
-    protected $imgUrl = 'images/register-image.png';
+    protected $imgUrl = 'images/register-image.webp';
 
     public function created()
     {

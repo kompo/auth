@@ -23,7 +23,7 @@ class EnsureResetPasswordWhenRequired
             auth()->logout();
 
             return redirect()->route('password.reset', compact(['token', 'email']))
-                ->with('status', __('translate.password-reset-required'));
+                ->with('status', __('auth-password-reset-required'));
         }
 
         return $next($request);

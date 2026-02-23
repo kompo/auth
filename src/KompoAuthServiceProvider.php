@@ -22,6 +22,8 @@ use Kompo\Auth\Http\Middleware\MonitorPermissionPerformance;
 use Kompo\Auth\Teams\PermissionCacheManager;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Teams\PermissionResolver;
+use Kompo\Auth\Http\Middleware\EnsureResetPasswordWhenRequired;
+
 
 class KompoAuthServiceProvider extends ServiceProvider
 {
@@ -543,6 +545,14 @@ class KompoAuthServiceProvider extends ServiceProvider
 
         foreach ($middlewares as $alias => $class) {
             $this->app['router']->aliasMiddleware($alias, $class);
+        }
+
+        try {
+        // Add EnsureResetPasswordWhenRequired to web routes
+        $this->app['router']->pushMiddlewareToGroup('web', EnsureResetPasswordWhenRequired::class);
+
+        } catch (\Exception $e) {
+            dd($e);
         }
     }
 

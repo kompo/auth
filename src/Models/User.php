@@ -56,6 +56,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'must_reset_password_at' => 'datetime',
     ];
 
     public static function booted()
@@ -145,6 +146,13 @@ class User extends Authenticatable
     {
         $this->banned_at = null;
         $this->save();
+    }
+
+    public function setMustResetPasswordAt()
+    {
+        $forceResetAfterXDays = config('kompo-auth.force-to-reset-password-after-x-days', null);
+
+        $this->must_reset_password_at = !$forceResetAfterXDays ? null : now()->addDays($forceResetAfterXDays);
     }
 
     /* IMPERSONATE PACKAGE */

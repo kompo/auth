@@ -10,11 +10,12 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Kompo\Form;
 use Laravel\Fortify\Fortify;
+use Condoedge\Utils\Kompo\Common\ImgFormLayout;
 
-class ResetPasswordForm extends Form
+
+class ResetPasswordForm extends ImgFormLayout
 {
-    public $containerClass = 'container min-h-screen flex flex-col sm:justify-center items-center';
-    public $class = 'sm:mx-auto sm:w-full sm:max-w-md';
+    protected $imgUrl = 'images/login-image.webp';
 
     protected $token;
 
@@ -37,7 +38,8 @@ class ResetPasswordForm extends Form
                 ])->save();
 
                 $user->setRememberToken(Str::random(60));
-
+                $user->setMustResetPasswordAt();
+                
                 $user->save();
 
                 event(new PasswordReset($user));
@@ -56,11 +58,14 @@ class ResetPasswordForm extends Form
         ]);
     }
 
-	public function render()
+	public function rightColumnBody()
 	{
 		return [
+            _StatusNotice()?->class('ErrorCard'),
+
 			_Hidden('token')->value($this->token)->required(),
-            _Input('auth-email')->name('email')->value(request('email'))->required(),
+            _Input('auth-email')->name('email')->value(request('email'))->required()
+                ->when(request('email'), fn($e) => $e->disabled()->attr(["disabled" => "disabled"])->class('opacity-70')),
             _PasswordInput('auth-password')->name('password'),
             _PasswordInput('auth-password-confirmation')->name('password_confirmation'),
 			_FlexEnd(

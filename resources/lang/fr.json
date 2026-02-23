@@ -38,7 +38,7 @@
 	"auth-not-set": "Non défini",
 	"auth-number-of-ways": "Nombre de façons",
 	"auth-password": "Mot de passe",
-	"auth-password-confirmation": "Confirmation du courriel",
+	"auth-password-confirmation": "Confirmation de passe",
 	"auth-pending-actions-to-delete-role": "Actions en attente pour supprimer le rôle",
 	"auth-permission": "Permission",
 	"auth-permission-description": "Description",

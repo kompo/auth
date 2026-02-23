@@ -35,6 +35,8 @@ class RegisterForm extends ImgFormLayout
         $this->model->email = $this->emailRequest->getEmailForVerification();
         
         $this->model->handleRegisterNames();
+
+        $this->model->setMustResetPasswordAt();
     }
 
     public function completed()

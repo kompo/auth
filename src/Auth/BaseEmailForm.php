@@ -47,6 +47,9 @@ class BaseEmailForm extends ImgFormLayout
                 _Link('register.login-with-microsoft')->button()->outlined()->class('!bg-transparent border !border-warning')
                     ->href('login.sso', ['service' => 'azure'])
             )->class('mb-8'),
+
+            _Input()->class('hidden'),
+
             _Input('auth-my-email')->name('email'),
             _SubmitButton('auth-base-email-btn'),
         ];

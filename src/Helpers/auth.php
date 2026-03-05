@@ -287,6 +287,16 @@ if (!function_exists('batchCheckPermissions')) {
     return (new ($this::class))->class('hidden');
 });
 
+\Kompo\Elements\BaseElement::macro('checkAuthAny', function (array $permissions) {
+    foreach ($permissions as $perm) {
+        if (checkAuthPermission($perm)) {
+            return $this;
+        }
+    }
+
+    return (new ($this::class))->class('hidden');
+});
+
 \Kompo\Elements\BaseElement::macro('checkAuthWrite', function ($id, $specificTeamId = null, $returnNullInstead = false, $specificModel = null) {
     return $this->checkAuth($id, PermissionTypeEnum::WRITE, $specificTeamId, $returnNullInstead, $specificModel);
 });

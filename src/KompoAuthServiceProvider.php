@@ -541,6 +541,10 @@ class KompoAuthServiceProvider extends ServiceProvider
             'sso.validate-driver' => \Kompo\Auth\Http\Middleware\ValidateSsoDriver::class,
             'monitor-permissions' => MonitorPermissionPerformance::class,
             'disable-automatic-security' => \Kompo\Auth\Http\Middleware\DisableAutomaticSecurityMiddleware::class,
+
+            'permission' => \Kompo\Auth\Http\Middleware\PermissionMiddleware::class,
+            'role' => \Kompo\Auth\Http\Middleware\RoleMiddleware::class,
+            'superadmin' => \Kompo\Auth\Http\Middleware\SuperAdminMiddleware::class,
         ];
 
         foreach ($middlewares as $alias => $class) {

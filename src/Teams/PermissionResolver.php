@@ -43,21 +43,25 @@ class PermissionResolver
         PermissionTypeEnum $type = PermissionTypeEnum::ALL, 
         $teamIds = null
     ): bool {
-        // Early bypass checks
-        if ($this->shouldBypassSecurity($userId)) {
-            return true;
-        }
+        $completeKey = $permissionKey . '|' . $type->value . '|' . ($teamIds ? (is_iterable($teamIds) ? implode(',', $teamIds) : $teamIds) : 'global');
 
-        // Get user's permission cache
-        $userPermissions = collect($this->getUserPermissionsOptimized($userId, $teamIds));
+        return $this->getRequestCache("user_permission_check.{$userId}.{$completeKey}", function() use ($userId, $permissionKey, $type, $teamIds) {
+            // Early bypass checks
+            if ($this->shouldBypassSecurity($userId)) {
+                return true;
+            }
 
-        // Check for explicit DENY first (highest priority)
-        if ($this->hasExplicitDeny($userPermissions, $permissionKey)) {
-            return false;
-        }
-        
-        // Check for required permission
-        return $this->hasRequiredPermission($userPermissions, $permissionKey, $type);
+            // Get user's permission cache
+            $userPermissions = collect($this->getUserPermissionsOptimized($userId, $teamIds));
+
+            // Check for explicit DENY first (highest priority)
+            if ($this->hasExplicitDeny($userPermissions, $permissionKey)) {
+                return false;
+            }
+            
+            // Check for required permission
+            return $this->hasRequiredPermission($userPermissions, $permissionKey, $type);
+        });
     }
 
     /**

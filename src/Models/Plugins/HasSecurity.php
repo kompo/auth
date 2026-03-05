@@ -9,7 +9,6 @@ use Kompo\Auth\Models\Plugins\Services\FieldProtectionService;
 use Condoedge\Utils\Models\Plugins\ModelPlugin;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
-use Kompo\Auth\Models\Plugins\Services\BatchPermissionService;
 
 /**
  * HasSecurity Plugin

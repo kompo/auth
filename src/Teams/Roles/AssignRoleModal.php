@@ -2,6 +2,7 @@
 
 namespace Kompo\Auth\Teams\Roles;
 
+use Condoedge\Utils\Facades\UserModel;
 use Condoedge\Utils\Kompo\Common\Modal;
 use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Facades\TeamModel;
@@ -56,22 +57,14 @@ class AssignRoleModal extends Modal
     public function body()
     {
         return _Rows(
-            _Select('permissions-team')->name('team_id')->required()
-                ->when(!$this->defaultTeamId, fn($el) => $el->searchOptions(2, 'searchTeams'))
-                ->when(
-                    $this->defaultTeamId,
-                    fn($el) => $el->disabled()->value($this->defaultTeamId)
-                        ->options([$this->defaultTeamId => TeamModel::findOrFail($this->defaultTeamId)->team_name])
-                )
-                ->onChange(fn($e) => $e->selfGet('getSelectRolesByTeam')->inPanel('roles-select-panel'))
-                ->overModal('select-team'),
+            $this->teamSelector(),
 
             _Select('permissions-user')->name('user_id')->required()
                 ->when(!$this->defaultUserId, fn($el) => $el->searchOptions(2, 'searchUsers'))
                 ->when(
                     $this->defaultUserId,
                     fn($el) => $el->disabled()->value($this->defaultUserId)
-                        ->options([$this->defaultUserId => User::findOrFail($this->defaultUserId)->name])
+                        ->options([$this->defaultUserId => UserModel::findOrFail($this->defaultUserId)->name])
                 )
                 ->overModal('select-user'),
 
@@ -100,6 +93,19 @@ class AssignRoleModal extends Modal
                     ->class('w-full'),
             )->class('gap-4')
         );
+    }
+
+    public function teamSelector()
+    {
+        return _Select('permissions-team')->name('team_id')->required()
+            ->when(!$this->defaultTeamId, fn($el) => $el->searchOptions(2, 'searchTeams'))
+            ->when(
+                $this->defaultTeamId,
+                fn($el) => $el->disabled()->value($this->defaultTeamId)
+                    ->options([$this->defaultTeamId => TeamModel::findOrFail($this->defaultTeamId)->team_name])
+            )
+            ->onChange(fn($e) => $e->selfGet('getSelectRolesByTeam')->inPanel('roles-select-panel'))
+            ->overModal('select-team');
     }
 
     public function getSelectRolesByTeam($teamId)

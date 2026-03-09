@@ -110,7 +110,11 @@ trait UserRequiresAuthorizationCode
             ];
         }
 
-        $via = collect($availableVias)->firstWhere('value', $preferredVia) ?? $availableVias[0];
+        $via = collect($availableVias)->firstWhere('value', $preferredVia) ?? $availableVias[0] ?? null;
+
+        if (!$via) {
+            return _Html('no-valid-contact-method');
+        }
 
         return _Button2Outlined(__('auth-send-code-type', ['type' => $via->label()]))->selfPost('sendCode', [
             'via' => $via->value,

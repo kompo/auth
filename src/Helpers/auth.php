@@ -128,7 +128,7 @@ if (!function_exists('routeIsByPassed')) {
                 'disable-automatic-security',
                 $currentRoute->middleware()
             );
-        } catch {
+        } catch (\Exception $e) {
             return false;
         }
     }

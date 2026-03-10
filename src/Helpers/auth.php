@@ -108,25 +108,29 @@ if (!function_exists('permissionMustBeAuthorized')) {
 if (!function_exists('routeIsByPassed')) {
     function routeIsByPassed()
     {
-        $currentRoute = request()->route();
+        try {
+            $currentRoute = request()->route();
 
-        if (!$currentRoute) {
+            if (!$currentRoute) {
+                return false;
+            }
+
+            if ($currentRoute->uri() == '_kompo') {
+                $referrerRoute = request()->headers->get('referer');
+                $currentRoute = app('router')->getRoutes()->match(app('request')->create($referrerRoute));
+            }
+
+            if (!$currentRoute) {
+                return false;
+            }
+
+            return in_array(
+                'disable-automatic-security',
+                $currentRoute->middleware()
+            );
+        } catch {
             return false;
         }
-
-        if ($currentRoute->uri() == '_kompo') {
-            $referrerRoute = request()->headers->get('referer');
-            $currentRoute = app('router')->getRoutes()->match(app('request')->create($referrerRoute));
-        }
-
-        if (!$currentRoute) {
-            return false;
-        }
-
-        return in_array(
-            'disable-automatic-security',
-            $currentRoute->middleware()
-        );
     }
 }
 

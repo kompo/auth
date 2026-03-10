@@ -55,9 +55,9 @@ trait UserRequiresAuthorizationCode
         $availableVias = $service->getAvailableVias();
         $preferredVia = request('via') ?? config('kompo-auth.default_authorization_via')->value;
 
-        $via = collect($availableVias)->firstWhere('value', $preferredVia) ?? $availableVias[0];
+        $via = collect($availableVias)->firstWhere('value', $preferredVia) ?? collect($availableVias)->first();
 
-        if (! $via) {
+        if (!$via) {
             abort(422, __('error-no-valid-contact-method'));
         }
 
@@ -110,7 +110,7 @@ trait UserRequiresAuthorizationCode
             ];
         }
 
-        $via = collect($availableVias)->firstWhere('value', $preferredVia) ?? $availableVias[0] ?? null;
+        $via = collect($availableVias)->firstWhere('value', $preferredVia) ?? collect($availableVias)->first();
 
         if (!$via) {
             return _Html('no-valid-contact-method');

@@ -75,23 +75,22 @@ class Permission extends Model
 
     public function scopeGetAllPermissionsBySections($query, $sectionId = null)
     {
+        $totalPermissionsSubquery = \DB::table('permissions as p2')
+            ->selectRaw('COUNT(p2.id)')
+            ->whereColumn('p2.permission_section_id', 'permissions.permission_section_id')
+            ->whereNull('p2.deleted_at')
+            ->toRawSql();
+
         return $query->selectRaw('
-            CONCAT_WS("|", 
-                GROUP_CONCAT(DISTINCT permission_role.permission_type SEPARATOR "|"), 
-                CASE 
-                    WHEN (' . \DB::table('permission_sections')
-                        ->selectRaw('COUNT(permissions.id) != COUNT(permissions2.id)')
-                        ->whereColumn('permission_sections.id', 'permissions.permission_section_id')
-                        ->leftJoin('permissions as permissions2', 'permission_sections.id', '=', 'permissions2.permission_section_id')
-                        ->groupBy('permission_sections.id')
-                        ->whereNull('permissions2.deleted_at')
-                        ->limit(1)
-                        ->toRawSql() . ') 
-                    THEN "0" 
+            CONCAT_WS("|",
+                GROUP_CONCAT(DISTINCT permission_role.permission_type SEPARATOR "|"),
+                CASE
+                    WHEN COUNT(DISTINCT permissions.id) < (' . $totalPermissionsSubquery . ')
+                    THEN "0"
                     ELSE NULL
                 END
-            ) as permission_type, 
-            permission_section_id, 
+            ) as permission_type,
+            permission_section_id,
             COUNT(permissions.id) as role_permissions_count'
         )
         ->when($sectionId, fn($q) => $q->where('permission_section_id', $sectionId))

@@ -62,12 +62,14 @@ enum PermissionTypeEnum: int
 
     public static function values()
     {
-        return collect(self::cases())->filter(fn($case) => $case->visibleInSelects())->pluck('value');
+        static $cached = null;
+        return $cached ??= collect(self::cases())->filter(fn($case) => $case->visibleInSelects())->pluck('value')->all();
     }
 
     public static function colors()
     {
-        return collect(self::cases())->filter(fn($case) => $case->visibleInSelects())->map(fn($case) => $case->color())->values();
+        static $cached = null;
+        return $cached ??= collect(self::cases())->filter(fn($case) => $case->visibleInSelects())->map(fn($case) => $case->color())->values()->all();
     }
 
     public static function hasPermission(self $given, self $expected)

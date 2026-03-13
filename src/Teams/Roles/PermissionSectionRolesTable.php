@@ -3,6 +3,7 @@
 namespace Kompo\Auth\Teams\Roles;
 
 use Kompo\Auth\Models\Teams\PermissionSection;
+use Kompo\Auth\Models\Teams\Roles\Role;
 use Kompo\Query;
 
 class PermissionSectionRolesTable extends Query
@@ -18,6 +19,7 @@ class PermissionSectionRolesTable extends Query
 
     protected $permissionsIds;
     protected $roles;
+    protected $permissionTypeMap;
 
     public function created()
     {
@@ -30,10 +32,22 @@ class PermissionSectionRolesTable extends Query
         $rolesIds = $this->prop('roles_ids') ? explode(',', $this->prop('roles_ids')) : null;
 
         $this->roles = getRoles()->when($rolesIds, fn($q) => $q->whereIn('id', $rolesIds))->values();
-        $this->roles->load([
-            'permissions' => fn($q) => $q->where('permission_section_id', $this->permissionSectionId),
-            'permissionsTypes' => fn($q) => $q->where('permission_section_id', $this->permissionSectionId),
-        ]);
+
+        // Memoize permissionsTypes: query runs once per role across all sections (static cache by role ID)
+        $this->roles->each(fn($role) => $role->setRelation('permissionsTypes',
+            $role->memoize('permissionsTypes', fn() => $role->permissionsTypes()->get())
+        ));
+
+        // Build permission type lookup map: 1 raw query for all roles+sections (classMemoize)
+        $roleIds = $this->roles->pluck('id');
+        $this->permissionTypeMap = Role::classMemoize(
+            'permission_type_map:' . $roleIds->sort()->implode(','),
+            fn() => \DB::table('permission_role')
+                ->whereIn('role', $roleIds)
+                ->get(['permission_id', 'role', 'permission_type'])
+                ->groupBy('permission_id')
+                ->map(fn($items) => $items->pluck('permission_type', 'role'))
+        );
 
         $this->onLoad(fn($e) => $e->run('() => { 
             $(".PermissionSectionRoleWrapper").css("display", "none");
@@ -71,7 +85,6 @@ class PermissionSectionRolesTable extends Query
     public function query()
     {
         return $this->permissionSection->getPermissions()
-            ->load(['roles' => fn($q) => $q->whereIn('roles.id', $this->roles->pluck('id'))])
             ->when(request('permission_name'), fn($q) => $q->filter(fn($p) => str_contains(strtolower($p->permission_name), strtolower(request('permission_name')))));
     }
 
@@ -83,7 +96,7 @@ class PermissionSectionRolesTable extends Query
             )->balloon($permission->permission_description, 'right')->class('bg-white border-r border-gray-300 flex-row balloon-w-150')->balloonOver()
             ->when(isAppSuperAdmin(), fn($el) => $el->selfGet('getEditPermissionInfoForm', ['permission_id' => $permission->id])->inModal()),
             ...$this->roles->map(function ($role) use ($permission) {
-                return $this->sectionRoleEl($role, $permission, $this->permissionSectionId, $this->permissionsIds, $permission->getPermissionTypeByRoleId($role->id));
+                return $this->sectionRoleEl($role, $permission, $this->permissionSectionId, $this->permissionsIds, $this->permissionTypeMap[$permission->id][$role->id] ?? null);
             }),
         )->class('roles-manager-rows w-max')->class($permission->object_type?->classes() ?? '')->attr(['data-permission-id' => $permission->id]);
     }

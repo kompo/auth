@@ -2,67 +2,74 @@
 
 function _CheckboxMultipleStates($name, $values = [], $colors = [], $default = null)
 {
-    $values = collect($values)->prepend(null);
-    $colors = collect($colors)->prepend(null);
+    $values = $values instanceof \Illuminate\Support\Collection ? $values->all() : (array) $values;
+    $colors = $colors instanceof \Illuminate\Support\Collection ? $colors->all() : (array) $colors;
 
-    $parsedOptions = collect([]);
+    $allValues = [null, ...$values];
+    $allColors = [null, ...$colors];
+    $count = count($allValues);
+    $baseClass = $name . ' border border-black rounded w-4 h-4 ';
+    $parsedOptions = [];
 
-    for ($i = 0; $i < count($values); $i++) {
-        $nextIndex = $i + 1 == $values->count() ? 0 : $i + 1;
-        $nextValue = $values->get($nextIndex);
+    for ($i = 0; $i < $count; $i++) {
+        $nextValue = ($i + 1 < $count) ? $allValues[$i + 1] : $allValues[0];
+        $color = $allColors[$i] ?? '';
+        $visibility = ($default == $allValues[$i]) ? ' perm-selected' : ' hidden';
 
-        $value = $values->get($i);
-
-        $parsedOptions->put($nextValue ?: 0, _Html()->class($name)->class('border border-black rounded w-4 h-4')
-            ->class($colors->get($i) ?: '')
-            ->when($default == $value, fn($el) => $el->class('perm-selected'))
-            ->when($default != $value, fn($el) => $el->class('hidden')));
+        $parsedOptions[$nextValue ?: 0] = _Html()->class($baseClass . $color . $visibility);
     }
 
-    return _LinkGroup()->name($name, false)->options($parsedOptions->toArray())
-        ->containerClass('')->selectedClass('x', '')
-        ->when($default, fn($el) => $el->default($default))
-        ->onChange(fn($e) => $e->run('() => {changeLinkGroupColor("' . $name . '")}'));
+    $el = _LinkGroup()->name($name, false)->options($parsedOptions)
+        ->containerClass('')->selectedClass('x', '');
+
+    if ($default) {
+        $el->default($default);
+    }
+
+    return $el->onChange(fn($e) => $e->run('() => {changeLinkGroupColor("' . $name . '")}'));
 }
 
 function _CheckboxSectionMultipleStates($name, $values = [], $colors = [], $default = null)
 {
-    $values = collect($values);
-    $colors = collect($colors);
+    $values = $values instanceof \Illuminate\Support\Collection ? $values->all() : (array) $values;
+    $colors = $colors instanceof \Illuminate\Support\Collection ? $colors->all() : (array) $colors;
 
-    $parsedOptions = collect([
-        $values[0] => _Rows(
-            _Html()->when($default && is_array($default) && !in_array(0, $default), fn($e) => $e->class('hidden'))
-                ->class('flex-1 subsection-item value-0'),
-            ...$values->map(fn($value, $i) => _Html()->class(
-                $colors->get($i) ?? ''
-            )->class($default && is_array($default) && in_array($value, $default) ? '' : 'hidden')->class('flex-1 subsection-item'))
-        )->class($name)->class('flex flex-row-reverse w-4 h-4')
-            ->when(is_array($default) || !$default, fn($el) => $el->class('perm-selected'))
-            ->when($default && !is_array($default), fn($el) => $el->class('hidden'))
-    ]);
+    $isArray = is_array($default);
+    $count = count($values);
 
-    for ($i = 0; $i < count($values); $i++) {
-        $nextIndex = $i == $values->count() ? 0 : $i + 1;
-        $nextValue = $values->get($nextIndex) ?: 0;
+    // Mixed-state option (multi-colored bars for partial coverage)
+    $subItems = [_Html()->class('flex-1 subsection-item value-0' . ($default && $isArray && !in_array(0, $default) ? ' hidden' : ''))];
 
-        $value = $values->get($i);
-
-        $option = _Html()->class($name)->class('w-4 h-4')
-            ->class($colors->get($i) ?: '')
-            ->when($default == $value && !is_array($default), fn($el) => $el->class('perm-selected'))
-            ->when($default != $value || is_array($default), fn($el) => $el->class('hidden'));
-
-        $parsedOptions->put($nextValue, $option);
+    for ($i = 0; $i < $count; $i++) {
+        $visible = $default && $isArray && in_array($values[$i], $default);
+        $subItems[] = _Html()->class(($colors[$i] ?? '') . ' flex-1 subsection-item' . ($visible ? '' : ' hidden'));
     }
 
-    return _LinkGroup()->name($name, false)->options($parsedOptions->toArray())
-        ->containerClass('checkbox-style')->selectedClass('x', '')
-        ->when($default && !is_array($default), fn($el) => $el->default($default))
-        ->onChange(fn($e) => $e->run('() => {
-            changeLinkGroupColor("' . $name . '");
-            cleanLinkGroupNullOption("' . $name . '");
-        }'));
+    $mixedVisibility = ($isArray || !$default) ? ' perm-selected' : ' hidden';
+    $parsedOptions = [
+        $values[0] => _Rows(...$subItems)->class($name . ' flex flex-row-reverse w-4 h-4' . $mixedVisibility)
+    ];
+
+    // Single-state options
+    for ($i = 0; $i < $count; $i++) {
+        $nextValue = $values[$i + 1] ?? 0;
+        $color = $colors[$i] ?? '';
+        $isSelected = !$isArray && $default == $values[$i];
+
+        $parsedOptions[$nextValue] = _Html()->class($name . ' w-4 h-4 ' . $color . ($isSelected ? ' perm-selected' : ' hidden'));
+    }
+
+    $el = _LinkGroup()->name($name, false)->options($parsedOptions)
+        ->containerClass('checkbox-style')->selectedClass('x', '');
+
+    if ($default && !$isArray) {
+        $el->default($default);
+    }
+
+    return $el->onChange(fn($e) => $e->run('() => {
+        changeLinkGroupColor("' . $name . '");
+        cleanLinkGroupNullOption("' . $name . '");
+    }'));
 }
 
 if (!function_exists('_ProfileImg')) {

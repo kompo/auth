@@ -9,10 +9,12 @@ use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Models\Traits\BelongsToManyPivotlessTrait;
 use Kompo\Auth\Teams\PermissionCacheManager;
+use Condoedge\Utils\Models\Traits\MemoizesResults;
 
 class Role extends Model
 {
     use BelongsToManyPivotlessTrait;
+    use MemoizesResults;
 
     protected $casts = [
         'icon' => 'array',
@@ -74,12 +76,16 @@ class Role extends Model
     // CALCULATED FIELDS 
     public function getPermissionTypeByPermissionId($permissionId)
     {
-        return $this->permissions->first(fn($p) => $p->id == $permissionId)?->pivot?->permission_type;
+        return $this->memoize('permission_types_by_id', function () {
+            return $this->permissions->pluck('pivot.permission_type', 'id');
+        })[$permissionId] ?? null;
     }
 
     public function getFirstPermissionTypeOfSection($sectionId)
     {
-        return $this->permissions()->forSection($sectionId)->first()?->pivot?->permission_type;
+        return $this->memoize('first_permission_type_of_section:' . $sectionId, function () use ($sectionId) {
+            return $this->permissions()->forSection($sectionId)->first()?->pivot?->permission_type;
+        });
     }
 
     public function validPermissionsQuery()

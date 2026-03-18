@@ -73,6 +73,20 @@ class TeamSecurityService
                 $teamIds = callPrivateMethod($model, 'securityRelatedTeamIds');
                 SecurityBypassService::exitBypassContext();
 
+                if ($teamIds instanceof \Illuminate\Support\Collection) {
+                    $teamIds = $teamIds->all();
+                } elseif (is_array($teamIds)) {
+                    // Ensure it's an array
+                    $teamIds = array_values($teamIds);
+                } else {
+                    Log::warning('securityRelatedTeamIds method did not return an array or collection', [
+                        'model_class' => get_class($model),
+                        'model_id' => $model->getKey(),
+                        'returned_type' => gettype($teamIds)
+                    ]);
+                    return null;
+                }
+
                 return $teamIds;
             }
 

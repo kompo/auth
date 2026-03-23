@@ -15,7 +15,7 @@ class MenuRolesSwitcherDropdown extends Form
             _Dropdown(currentTeamRole()->getRoleName())
                 ->submenu(
                     new OptionsRolesSwitcher(),
-                )->alignRight()->class('scrollableDropdown'),
+                )->alignRight(),
         );
     }
 }

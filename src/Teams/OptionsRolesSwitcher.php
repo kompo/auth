@@ -2,56 +2,89 @@
 
 namespace Kompo\Auth\Teams;
 
-use Condoedge\Utils\Kompo\Common\Form;
+use Condoedge\Utils\Kompo\Common\Query;
 use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Facades\TeamModel;
 use Kompo\Auth\Models\Teams\TeamRole;
 
-class OptionsRolesSwitcher extends Form
+class OptionsRolesSwitcher extends Query
 {
-    public function render()
+    public $paginationType = 'Scroll';
+    public $perPage = 10;
+
+    public $itemsWrapperClass = 'overflow-y-auto mini-scroll';
+    public $itemsWrapperStyle = 'max-height: 350px';
+
+    public $class = 'p-4';
+    public $style = 'min-width: 22rem;';
+
+    private $pageTeams = null;
+    private $pageRoles = null;
+
+    public function query()
+    {
+        $user = auth()->user();
+        $profile = request('profile') ?? 1;
+        $search = request('search');
+        $page = $this->currentPage() ?: 1;
+        $offset = ($page - 1) * $this->perPage;
+
+        // Get only the current page's team IDs (sliced from cache)
+        $teamsIdsWithRoles = collect($user->getAllTeamIdsWithRolesCached(
+            $profile, $search, limit: $this->perPage, offset: $offset
+        ));
+
+        $items = $teamsIdsWithRoles->sort()
+            ->flatMap(fn($roleIds, $teamId) =>
+                collect($roleIds)->filter(fn($rId) => $this->isCurrentRole($rId, $teamId))->map(fn($roleId) => (object)[
+                    'id' => $teamId . '_' . $roleId,
+                    'team_id' => $teamId,
+                    'role_id' => $roleId,
+                ])
+            )->values();
+
+        // Total count for pagination (cached separately)
+        $total = $user->countTeamIdsWithRolesPairs($profile, $search);
+
+        return PaginatedCollection::fromItems($items, $total);
+    }
+
+    public function top()
     {
         return _Rows(
-            _Rows(
-                _Select()->class('max-w-2xl min-w-[260px]')->options(config('kompo-auth.profile-enum')::optionsWithLabels())->default(currentTeamRole()?->role?->profile ?? 1)->name('profile')
-                    ->selfPost('roleOptions')->withAllFormValues()->inPanel('role-switcher'),
-                _Input()->placeholder('auth.search-placeholder')->name('search')
-                    ->selfPost('roleOptions')->withAllFormValues()->inPanel('role-switcher'),
-            )->p4()->class('!pb-0'),
-            _Panel(
-                $this->roleOptions()
-            )->id('role-switcher')
+            _Select()->class('max-w-2xl min-w-[260px]')->options(config('kompo-auth.profile-enum')::optionsWithLabels())
+                ->default(currentTeamRole()?->role?->profile ?? 1)->name('profile', false)
+                ->serverFilter(),
+            _Input()->placeholder('auth.search-placeholder')->name('search', false)
+                ->serverFilter(),
         );
     }
 
-    public function roleOptions() 
-    {        
-        // We want to show all virtual teams roles that the user has access to. also using hierarchy
-        $teamsIdsWithRoles = collect(auth()->user()->getAllTeamIdsWithRolesCached(request('profile') ?? 1, request('search'), limit: 10))->take(10);
+    public function render($item)
+    {
+        $this->preloadModelsForPage();
 
-        // Using this to avoid querying the database for each team and role
-        $teams = TeamModel::whereIn('teams.id', $teamsIdsWithRoles->keys())->get()->mapWithKeys(function ($team) {
-            return [$team->id => $team];
-        });
-        $roles = RoleModel::whereIn('roles.id', $teamsIdsWithRoles->values()->flatten(1))->get()->mapWithKeys(function ($role) {
-            return [$role->id => $role];
-        });
+        $team = $this->pageTeams->get($item->team_id);
+        $role = $this->pageRoles->get($item->role_id);
 
-        // getAllTeamIdsWithRoles now returns team_id => [role_ids] array, so we need to flatten it
-        $rolesSelectors = $teamsIdsWithRoles->sort()
-            ->flatMap(fn($roleIds, $teamId) => 
-                collect($roleIds)->filter(fn($rId) => !currentTeamRole()
-                || currentTeamRole()->team_id != $teamId || currentTeamRole()->role != $rId
-                )->map(fn($roleId) =>
-                    $this->getTeamRoleLabel($teams[$teamId], $roles[$roleId] ?? null)
-                        ->selfPost('switchToTeamRole', ['team_id' => $teamId, 'role_id' => $roleId])->redirect()
-                )
-            );
+        if (!$team) {
+            return null;
+        }
 
-        return _Rows(
-            !$rolesSelectors->count() ? _Html('permissions-no-roles-in-this-profile')->class('text-center text-gray-500 text-sm p-4 !pt-0') : null,
-            ...$rolesSelectors,
-        );
+        return $this->getTeamRoleLabel($team, $role)
+            ->selfPost('switchToTeamRole', ['team_id' => $team->id, 'role_id' => $role->id])->redirect();
+    }
+
+    private function preloadModelsForPage(): void
+    {
+        if ($this->pageTeams !== null) {
+            return;
+        }
+
+        // Load Team/Role models only for the current page's items (~10)
+        $pageItems = collect($this->query->items());
+        $this->pageTeams = TeamModel::whereIn('teams.id', $pageItems->pluck('team_id')->unique())->get()->keyBy('id');
+        $this->pageRoles = RoleModel::whereIn('roles.id', $pageItems->pluck('role_id')->unique())->get()->keyBy('id');
     }
 
     protected function getTeamRoleLabel($team, $role)
@@ -64,6 +97,12 @@ class OptionsRolesSwitcher extends Form
 
             $team->rolePill(),
         )->class('w-72 px-4 py-2 gap-4');
+    }
+
+    protected function isCurrentRole($rId, $teamId)
+    {
+        return !currentTeamRole()
+                || currentTeamRole()->team_id != $teamId || currentTeamRole()->role != $rId;
     }
 
     public function switchToTeamRole($teamId, $roleId)

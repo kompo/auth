@@ -176,27 +176,61 @@ trait HasTeamPermissions
 
     /**
      * Get all team IDs with roles (optimized for role switcher)
+     * Caches the full result and slices from cache when limit/offset are provided.
      */
-    public function getAllTeamIdsWithRolesCached($profile = 1, $search = '', $limit = null)
+    public function getAllTeamIdsWithRolesCached($profile = 1, $search = '', $limit = null, $offset = 0)
     {
         // Don't cache searches to avoid memory bloat
         if ($search) {
-            return $this->getAllTeamIdsWithRoles($profile, $search, $limit);
+            $result = $this->getAllTeamIdsWithRoles($profile, $search);
+
+            return $this->sliceTeamIdsResult($result, $limit, $offset);
+        }
+
+        $all = Cache::rememberWithTags(
+            ['permissions-v2'],
+            "allTeamIdsWithRoles.{$this->id}.{$profile}",
+            180,
+            fn() => $this->getAllTeamIdsWithRoles($profile)
+        );
+
+        return $this->sliceTeamIdsResult($all, $limit, $offset);
+    }
+
+    /**
+     * Count team-role pairs the user has access to (cached for non-search).
+     */
+    public function countTeamIdsWithRolesPairs($profile = 1, $search = '')
+    {
+        if ($search) {
+            $data = $this->getAllTeamIdsWithRoles($profile, $search);
+
+            return collect($data)->sum(fn($roles) => is_array($roles) ? count($roles) : 1);
         }
 
         return Cache::rememberWithTags(
             ['permissions-v2'],
-            "allTeamIdsWithRoles.{$this->id}.{$profile}.{$limit}",
+            "countTeamIdsWithRolesPairs.{$this->id}.{$profile}",
             180,
-            fn() => $this->getAllTeamIdsWithRoles($profile, '', $limit)
+            fn() => collect($this->getAllTeamIdsWithRolesCached($profile))
+                ->sum(fn($roles) => is_array($roles) ? count($roles) : 1)
         );
+    }
+
+    private function sliceTeamIdsResult(array $data, ?int $limit, int $offset): array
+    {
+        if ($limit === null && $offset === 0) {
+            return $data;
+        }
+
+        return array_slice($data, $offset, $limit, true);
     }
 
     /**
      * Get team IDs with roles using optimized batch processing
      * Groups team roles by hierarchy type and processes each group efficiently
      */
-    public function getAllTeamIdsWithRoles($profile = 1, $search = '', $limit = null)
+    public function getAllTeamIdsWithRoles($profile = 1, $search = '', $limit = null, $offset = 0)
     {
         $teamRoles = $this->activeTeamRoles()
             ->with(['roleRelation', 'team'])
@@ -208,32 +242,31 @@ trait HasTeamPermissions
         }
 
         $result = collect();
-        $quantityLeft = $limit;
         $hierarchyService = app(TeamHierarchyService::class);
+
+        // Cap each sub-query to offset+limit for performance (we need at least that many before slicing)
+        $fetchLimit = ($limit !== null) ? $limit + $offset : null;
 
         // Group team roles by hierarchy type for batch processing
         $groupedTeamRoles = $this->groupTeamRolesByHierarchy($teamRoles);
 
         // Process each hierarchy group with batch operations
         foreach ($groupedTeamRoles as $hierarchyType => $roleGroup) {
-            if ($quantityLeft !== null && $quantityLeft <= 0) {
-                break; // Early termination when limit reached
-            }
-
             $batchResults = $this->processBatchHierarchyGroup(
-                $hierarchyType, 
-                $roleGroup, 
-                $search, 
-                $quantityLeft,
-                $hierarchyService
+                $hierarchyType,
+                $roleGroup,
+                $search,
+                $fetchLimit,
+                $hierarchyService,
             );
 
             // Merge batch results into final result
             $result = $this->mergeBatchResults($result, $batchResults);
+        }
 
-            if ($quantityLeft !== null) {
-                $quantityLeft -= count($batchResults);
-            }
+        // Apply pagination on the merged result
+        if ($offset > 0 || $limit !== null) {
+            $result = $result->slice($offset, $limit);
         }
 
         return $result->all();
@@ -276,11 +309,11 @@ trait HasTeamPermissions
      * Uses efficient batch queries instead of individual lookups
      */
     private function processBatchHierarchyGroup(
-        string $hierarchyType, 
-        array $teamRoles, 
-        string $search, 
+        string $hierarchyType,
+        array $teamRoles,
+        string $search,
         ?int $limit,
-        TeamHierarchyService $hierarchyService
+        TeamHierarchyService $hierarchyService,
     ): Collection {
         $batchResults = collect();
 
@@ -311,7 +344,7 @@ trait HasTeamPermissions
                 break;
         }
 
-        return $batchResults->take($limit ?? PHP_INT_MAX);
+        return $batchResults;
     }
 
     /**
@@ -349,10 +382,10 @@ trait HasTeamPermissions
      * Get descendant team access using batch operations
      */
     private function getBatchDescendantAccess(
-        array $teamRoles, 
-        string $search, 
+        array $teamRoles,
+        string $search,
         ?int $limit,
-        TeamHierarchyService $hierarchyService
+        TeamHierarchyService $hierarchyService,
     ): Collection {
         // Prepare batch input: team_id => role mapping
         $teamIdsWithRoles = [];
@@ -367,10 +400,10 @@ trait HasTeamPermissions
      * Get neighbor team access using batch operations
      */
     private function getBatchNeighborAccess(
-        array $teamRoles, 
-        string $search, 
+        array $teamRoles,
+        string $search,
         ?int $limit,
-        TeamHierarchyService $hierarchyService
+        TeamHierarchyService $hierarchyService,
     ): Collection {
         // Prepare batch input: team_id => role mapping
         $teamIdsWithRoles = [];

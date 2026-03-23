@@ -106,7 +106,7 @@ class TeamHierarchyService
     }
 
     /**
-     * Optimized query using recursive CTE for descendants
+     * Optimized query using recursive CTE for descendants. (INCLUDES INITIAL PARENT TEAM ID)
      */
     private function executeDescendantsQuery(int $teamId, ?string $search = '', ?int $maxDepth = null): Collection
     {
@@ -277,7 +277,7 @@ class TeamHierarchyService
     {
         $searchCondition = $search ? 'AND LOWER(th.team_name) LIKE LOWER(?)' : '';
         $limitQuery = $limit ? "LIMIT ?" : '';
-        
+
         // Create placeholders for IN clause
         $teamIdPlaceholders = str_repeat('?,', count($teamIdsWithRoles) - 1) . '?';
         $teamIds = array_keys($teamIdsWithRoles);
@@ -286,11 +286,11 @@ class TeamHierarchyService
             WITH RECURSIVE team_hierarchy AS (
                 -- Base case: all root teams we're interested in
                 SELECT id, parent_team_id, team_name, id as root_team_id, 0 as depth
-                FROM teams 
-                WHERE id IN ({$teamIdPlaceholders}) 
-                
+                FROM teams
+                WHERE id IN ({$teamIdPlaceholders})
+
                 UNION ALL
-                
+
                 -- Recursive case: children of already found teams
                 SELECT t.id, t.parent_team_id, t.team_name, th.root_team_id, th.depth + 1
                 FROM teams t
@@ -299,14 +299,14 @@ class TeamHierarchyService
                 AND t.deleted_at IS NULL
             )
             SELECT th.id, th.root_team_id
-            FROM team_hierarchy th 
-            WHERE th.id != th.root_team_id  -- Exclude the root teams themselves 
-            {$searchCondition} 
+            FROM team_hierarchy th
+            WHERE th.id != th.root_team_id  -- Exclude the root teams themselves
+            {$searchCondition}
             {$limitQuery}
         ";
 
         $searchParam = $search ? [wildcardSpace($search)] : [];
-        $params = array_values(array_filter(array_merge($teamIds, $searchParam, $limit ? [$limit] : [])));
+        $params = array_values(array_filter(array_merge($teamIds, $searchParam, $limit ? [$limit] : []), fn($val) => !is_null($val)));
         $results = collect(DB::select($sql, $params));
 
         // Map results back to team_id => role format
@@ -324,7 +324,7 @@ class TeamHierarchyService
     {
         $searchCondition = $search ? 'AND LOWER(t2.team_name) LIKE LOWER(?)' : '';
         $limitQuery = $limit ? "LIMIT ?" : '';
-        
+
         $teamIdPlaceholders = str_repeat('?,', count($teamIdsWithRoles) - 1) . '?';
         $teamIds = array_keys($teamIdsWithRoles);
 
@@ -340,7 +340,7 @@ class TeamHierarchyService
         ";
 
         $searchParam = $search ? [wildcardSpace($search)] : [];
-        $params = array_values(array_filter(array_merge($teamIds, $teamIds, $searchParam, $limit ? [$limit] : [])));
+        $params = array_values(array_filter(array_merge($teamIds, $teamIds, $searchParam, $limit ? [$limit] : []), fn($val) => !is_null($val)));
         $results = collect(DB::select($sql, $params));
 
         // Map results back to team_id => role format

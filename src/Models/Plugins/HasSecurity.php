@@ -89,7 +89,7 @@ class HasSecurity extends ModelPlugin
             // we need to ensure that any models booted during this time are properly tracked.
             // But we can't remove that saving/deleting events entirely. So we still bypass them (that's an error).
             // I think we don't need this anymore anyway (we have the bypass context everything using a service now).
-            // $this->setupBypassEvents();
+            $this->setupBypassEvents();
 
             SecurityBypassService::trackModelBootedDuringBypass($this->modelClass);
             return;

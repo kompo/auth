@@ -291,9 +291,9 @@ if (!function_exists('batchCheckPermissions')) {
     return (new ($this::class))->class('hidden');
 });
 
-\Kompo\Elements\BaseElement::macro('checkAuthAny', function (array $permissions) {
+\Kompo\Elements\BaseElement::macro('checkAuthAny', function (array $permissions, $specificTeamId = null) {
     foreach ($permissions as $perm) {
-        if (checkAuthPermission($perm)) {
+        if (checkAuthPermission($perm, specificTeamId: $specificTeamId)) {
             return $this;
         }
     }

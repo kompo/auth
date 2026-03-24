@@ -54,6 +54,9 @@ class Permission extends Model
         return $this->roles->firstWhere('id', $roleId)?->pivot?->permission_type;
     }
 
+    /**
+     * !IMPORTANT: We just retrieve direct permissions. we don't use hierarchy or roll down here.
+     */
     public function getUsersWithPermission($teamsIds = null)
     {
         $roleIds = $this->roles->pluck('id')->toArray();

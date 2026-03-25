@@ -5,7 +5,7 @@ namespace Kompo\Auth\Models;
 use Condoedge\Utils\Models\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Kompo\Auth\Models\Traits\BelongsToUserTrait;
-use Kompo\Auth\Notifications\AuthorizationCodeNotification;
+use Kompo\Auth\Mail\AuthorizationCodeMail;
 
 class AuthorizationCode extends Model
 {
@@ -108,43 +108,43 @@ class AuthorizationCode extends Model
     {
         $via = $via ?? ($this->email ? NotifiableMethodsEnum::EMAIL : NotifiableMethodsEnum::SMS);
 
-        if ($this->user) {
-            $this->user->notify(new AuthorizationCodeNotification($this, $via));
-            return;
-        }
-
-        $this->sendDirect($via);
-    }
-
-    protected function sendDirect($via)
-    {
-        if ($via === NotifiableMethodsEnum::EMAIL && $this->email) {
-            \Illuminate\Support\Facades\Mail::to($this->email)
-                ->send(new \Kompo\Auth\Mail\AuthorizationCodeMail($this));
-
-            return;
-        }
-
-        if ($via === NotifiableMethodsEnum::SMS && $this->phone) {
-            $this->sendSmsDirectly();
-
-            return;
+        switch ($via) {
+            case NotifiableMethodsEnum::SMS:
+                $this->sendSms();
+                break;
+            case NotifiableMethodsEnum::EMAIL:
+                $this->sendEmail();
+                break;
         }
     }
 
-    protected function sendSmsDirectly()
+    protected function sendSms()
     {
-        $content = __('auth-your-coolecto-authorization-code-is', ['code' => $this->code]);
-        $content = mb_convert_encoding($content, 'UTF-8', 'UTF-8');
+        $phone = $this->phone ?? ($this->user ? NotifiableMethodsEnum::SMS->destination($this->user) : null);
 
-        $vonage = app(\Vonage\Client::class);
+        if ($phone) {
+            $content = __('auth-your-coolecto-authorization-code-is', ['code' => $this->code]);
+            $content = mb_convert_encoding($content, 'UTF-8', 'UTF-8');
 
-        $vonage->sms()->send(
-            new \Vonage\SMS\Message\SMS(
-                $this->phone,
-                config('services.vonage.sms_from'),
-                $content
-            )
-        );
+            $vonage = app(\Vonage\Client::class);
+
+            $vonage->sms()->send(
+                new \Vonage\SMS\Message\SMS(
+                    $phone,
+                    config('services.vonage.sms_from'),
+                    $content
+                )
+            );
+        }
+    }
+
+    protected function sendEmail()
+    {
+        $email = $this->email ?? ($this->user ? NotifiableMethodsEnum::EMAIL->destination($this->user) : null);
+
+        if ($email) {
+            \Illuminate\Support\Facades\Mail::to($email)
+                ->send(new AuthorizationCodeMail($this));
+        }
     }
 }

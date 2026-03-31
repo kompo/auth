@@ -4,7 +4,6 @@ namespace Kompo\Auth\Teams\Roles;
 
 use Condoedge\Utils\Kompo\Common\Query;
 use Kompo\Auth\Models\Teams\PermissionSection;
-use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 
 class RolesAndPermissionMatrix extends Query
 {
@@ -20,6 +19,8 @@ class RolesAndPermissionMatrix extends Query
     public $itemsWrapperStyle = 'max-height:50vh; min-height:80px;';
     protected $defaultRolesIds;
     const DEFAULT_ROLES_NUM = 4;
+
+    protected $permissionKey = 'Role';
 
     public function created()
     {

@@ -41,7 +41,7 @@ class RoleForm extends Modal
     public function response()
     {
         $latestRoles = collect(session()->get('latest-roles') ?: []);
-        request()->merge(['roles' => $latestRoles->push($this->model->id)->all()]);
+        request()->merge(['roles' => $latestRoles->push($this->model->id)->unique()->all()]);
 
         return $this->getRoleUpdate();
     }

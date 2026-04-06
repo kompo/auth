@@ -43,68 +43,81 @@ class BatchPermissionService
         $user = auth()->user();
         $userId = $user?->id;
 
-        if (!$user) {
-            return collect($models)->map(function ($model) {
-                $sensibleColumns = $this->fieldProtectionService->getSensibleColumns($model);
-                $this->fieldProtectionService->hideSensitiveFields($model, $sensibleColumns);
-
-                return $model;
-            })->all();
-        }
-
         // Convert to collection if array
         $modelsCollection = collect($models);
-
-        // Get the model class from first model
         $firstModel = $modelsCollection->first();
         if (!$firstModel) {
             return [];
         }
 
         $modelClass = get_class($firstModel);
-        $permissionKey = class_basename($modelClass);
-        $sensibleColumnsKey = $permissionKey . '.sensibleColumns';
+        $permissionKey = $this->resolvePermissionKey($firstModel, $modelClass);
+        $groups = $this->fieldProtectionService->collectProtectionGroups($firstModel, $permissionKey);
 
-        // Check if permission exists
-        if (!permissionMustBeAuthorized($sensibleColumnsKey)) {
-            return collect($models)->all();
+        if (empty($groups)) {
+            return $modelsCollection->all();
         }
 
-        // Set context for cache lookups
-        PermissionCacheService::setCurrentBatchPermissionKey($sensibleColumnsKey);
+        // If no user, apply all protections (hide columns, block relationships)
+        if (!$user) {
+            foreach ($modelsCollection as $model) {
+                foreach ($groups as $group) {
+                    $this->applyGroupProtection($model, $group);
+                }
+            }
+            return $modelsCollection->all();
+        }
+
+        // Process each group using the batch team-intersection approach
+        foreach ($groups as $group) {
+            if (!permissionMustBeAuthorized($group['key'])) continue;
+            $this->batchProcessGroup($modelsCollection, $group, $userId, $user);
+        }
+
+        return $modelsCollection->all();
+    }
+
+    /**
+     * Process a single protection group across all models using team-intersection batch logic
+     */
+    protected function batchProcessGroup($modelsCollection, array $group, int $userId, $user): void
+    {
+        PermissionCacheService::setCurrentBatchPermissionKey($group['key']);
 
         try {
-            return $this->batchLoadWithTeamIntersections($modelsCollection, $sensibleColumnsKey, $userId, $user);
+            $teamModelMap = $this->groupModelsByTeams($modelsCollection);
+            $authorizedTeams = $this->getAuthorizedTeams($user, $group['key']);
+            $processingPlan = $this->calculateProcessingPlan($teamModelMap, $authorizedTeams);
+            $this->executeBatchPermissionChecks($processingPlan, $user, $group['key'], $userId);
+
+            // Apply protection to models that lack permission
+            foreach ($processingPlan['needs_check'] as $teamKey => $models) {
+                $hasPermission = $this->getPermissionFromCache($teamKey, $userId);
+                if (!$hasPermission) {
+                    foreach ($models as $model) {
+                        $this->applyGroupProtection($model, $group);
+                    }
+                }
+            }
+
+            foreach ($processingPlan['unauthorized_models'] as $model) {
+                $this->applyGroupProtection($model, $group);
+            }
         } finally {
-            // Clean up context
             PermissionCacheService::setCurrentBatchPermissionKey(null);
         }
     }
 
     /**
-     * Advanced batch loading with team intersections for optimal performance
+     * Apply the appropriate protection (column hiding or relationship blocking) for a group
      */
-    protected function batchLoadWithTeamIntersections($modelsCollection, string $sensibleColumnsKey, int $userId, $user): array
+    protected function applyGroupProtection($model, array $group): void
     {
-        if (!count($this->fieldProtectionService->getSensibleColumns($modelsCollection->first()))) {
-            // No sensible columns to protect
-            return $modelsCollection->all();
+        if ($group['type'] === 'columns') {
+            $this->fieldProtectionService->hideSensitiveFields($model, $group['fields']);
+        } else {
+            $this->fieldProtectionService->applyRelationshipBlocking($model, $group['fields']);
         }
-
-        // Step 1: Group models by their team associations
-        $teamModelMap = $this->groupModelsByTeams($modelsCollection);
-
-        // Step 2: Get teams where user has permissions (pre-filter)
-        $authorizedTeams = $this->getAuthorizedTeams($user, $sensibleColumnsKey);
-
-        // Step 3: Calculate intersections and determine which models need processing
-        $processingPlan = $this->calculateProcessingPlan($teamModelMap, $authorizedTeams);
-
-        // Step 4: Batch load only the necessary permission checks
-        $this->executeBatchPermissionChecks($processingPlan, $user, $sensibleColumnsKey, $userId);
-
-        // Step 5: Apply field protection based on the results
-        return $this->applyFieldProtectionFromPlan($modelsCollection, $processingPlan);
     }
 
     /**
@@ -246,42 +259,6 @@ class BatchPermissionService
     }
 
     /**
-     * Apply field protection based on the processing plan results
-     */
-    protected function applyFieldProtectionFromPlan($modelsCollection, array $processingPlan): array
-    {
-        $processedModels = [];
-
-        // Process authorized models (no field hiding needed)
-        foreach ($processingPlan['authorized_models'] as $model) {
-            $processedModels[] = $model; // Keep as-is, they have permission
-        }
-
-        // Process models that need individual checks
-        foreach ($processingPlan['needs_check'] as $teamKey => $models) {
-            $hasPermission = $this->getPermissionFromCache($teamKey, auth()->id());
-
-            foreach ($models as $model) {
-                if (!$hasPermission) {
-                    // Hide sensitive fields
-                    $sensibleColumns = $this->fieldProtectionService->getSensibleColumns($model);
-                    $this->fieldProtectionService->hideSensitiveFields($model, $sensibleColumns);
-                }
-                $processedModels[] = $model;
-            }
-        }
-
-        // Process unauthorized models (hide fields)
-        foreach ($processingPlan['unauthorized_models'] as $model) {
-            $sensibleColumns = $this->fieldProtectionService->getSensibleColumns($model);
-            $this->fieldProtectionService->hideSensitiveFields($model, $sensibleColumns);
-            $processedModels[] = $model;
-        }
-
-        return $processedModels;
-    }
-
-    /**
      * Get permission result from cache based on team key
      */
     protected function getPermissionFromCache(string $teamKey, int $userId): bool
@@ -296,5 +273,24 @@ class BatchPermissionService
         }
 
         return $this->cacheService->getBatchPermission($cacheKey) ?? false;
+    }
+
+    /**
+     * Resolve permission key using 3-step resolution:
+     * 1. Check if model has getPermissionKey() method
+     * 2. Check if model has $permissionKey property
+     * 3. Fall back to class_basename()
+     */
+    protected function resolvePermissionKey($model, string $modelClass): string
+    {
+        if (method_exists($model, 'getPermissionKey')) {
+            return $model->getPermissionKey();
+        }
+
+        if (property_exists($model, 'permissionKey')) {
+            return getPrivateProperty($model, 'permissionKey');
+        }
+
+        return class_basename($modelClass);
     }
 }

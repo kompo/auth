@@ -21,6 +21,7 @@ class WriteSecurityService
     protected $modelClass;
     protected $bypassService;
     protected $teamService;
+    protected $permissionKey;
 
     public function __construct(
         string $modelClass,
@@ -35,8 +36,9 @@ class WriteSecurityService
     /**
      * Setup write security event handler
      */
-    public function setupWriteSecurity(): void
+    public function setupWriteSecurity(string $permissionKey): void
     {
+        $this->permissionKey = $permissionKey;
         $this->modelClass::saving(function ($model) {
             $this->handleSavingEvent($model);
         });
@@ -96,7 +98,7 @@ class WriteSecurityService
      */
     protected function isPermissionCheckRequired(): bool
     {
-        return permissionMustBeAuthorized($this->getPermissionKey());
+        return permissionMustBeAuthorized($this->permissionKey);
     }
 
     /**
@@ -139,7 +141,7 @@ class WriteSecurityService
     protected function userHasGlobalWritePermission(): bool
     {
         return auth()->user()?->hasPermission(
-            $this->getPermissionKey(),
+            $this->permissionKey,
             PermissionTypeEnum::WRITE
         ) ?? false;
     }
@@ -150,7 +152,7 @@ class WriteSecurityService
     protected function userHasWritePermissionForTeams($teamIds): bool
     {
         return auth()->user()?->hasPermission(
-            $this->getPermissionKey(),
+            $this->permissionKey,
             PermissionTypeEnum::WRITE,
             $teamIds
         ) ?? false;
@@ -171,18 +173,10 @@ class WriteSecurityService
     {
         throw new PermissionException(
             __('permissions-you-do-not-have-write-permissions'),
-            $this->getPermissionKey(),
+            $this->permissionKey,
             PermissionTypeEnum::WRITE,
             $teamIds
         );
-    }
-
-    /**
-     * Get permission key for this model
-     */
-    protected function getPermissionKey(): string
-    {
-        return class_basename($this->modelClass);
     }
 
     /**

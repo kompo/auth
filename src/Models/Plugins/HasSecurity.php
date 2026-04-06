@@ -101,7 +101,7 @@ class HasSecurity extends ModelPlugin
         $this->readSecurityService->setupReadSecurity($permissionKey);
 
         // Apply WRITE security
-        $this->writeSecurityService->setupWriteSecurity();
+        $this->writeSecurityService->setupWriteSecurity($permissionKey);
 
         // Apply DELETE security
         $this->deleteSecurityService->setupDeleteSecurity();
@@ -181,6 +181,36 @@ class HasSecurity extends ModelPlugin
             $value,
             $this->getPermissionKey()
         );
+    }
+
+    /**
+     * Intercept relationship query creation from HasModelPlugins.
+     * Delegates to FieldProtectionService which handles all sources:
+     * flat sensibleRelationships, sensibleRelationshipsGroups, and DB-discovered.
+     */
+    public function interceptRelation($model, $relation, string $relationName)
+    {
+        $this->initializeServices();
+
+        if ($this->fieldProtectionService->isBlockedRelationship($model, $relationName, $this->getPermissionKey())) {
+            return $relation->whereRaw('1=0');
+        }
+
+        return false;
+    }
+
+    /**
+     * Intercept relationship loading via getRelationshipFromMethod.
+     */
+    public function getRelationshipFromMethod($model, $method)
+    {
+        $this->initializeServices();
+
+        if ($this->fieldProtectionService->isBlockedRelationship($model, $method, $this->getPermissionKey())) {
+            return $model->$method()->whereRaw('1=0')->getResults();
+        }
+
+        return false; // false = let the parent handle it normally
     }
 
     /**
@@ -299,10 +329,21 @@ class HasSecurity extends ModelPlugin
     }
 
     /**
-     * Get permission key for this model
+     * Get permission key for this model using 3-step resolution:
+     * 1. Check if model has getPermissionKey() method
+     * 2. Check if model has $permissionKey property
+     * 3. Fall back to class_basename()
      */
     protected function getPermissionKey(): string
     {
+        if (method_exists($this->modelClass, 'getPermissionKey')) {
+            return (new ($this->modelClass))->getPermissionKey();
+        }
+
+        if (property_exists($this->modelClass, 'permissionKey')) {
+            return getPrivateProperty(new ($this->modelClass), 'permissionKey');
+        }
+
         return class_basename($this->modelClass);
     }
 

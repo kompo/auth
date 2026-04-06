@@ -23,6 +23,7 @@ class ReadSecurityService
     protected $modelClass;
     protected $bypassService;
     protected $teamService;
+    protected $permissionKey;
 
     public function __construct(
         string $modelClass,
@@ -39,6 +40,8 @@ class ReadSecurityService
      */
     public function setupReadSecurity(string $permissionKey): void
     {
+        $this->permissionKey = $permissionKey;
+
         if (!$this->shouldApplyReadSecurity($permissionKey)) {
             return;
         }
@@ -257,7 +260,7 @@ class ReadSecurityService
     protected function userHasGlobalReadPermission(): bool
     {
         return auth()->user()?->hasPermission(
-            $this->getPermissionKey(),
+            $this->permissionKey,
             PermissionTypeEnum::READ
         ) ?? false;
     }
@@ -268,7 +271,7 @@ class ReadSecurityService
     protected function getUserTeamsQuery()
     {
         return auth()->user()?->getTeamsQueryWithPermission(
-            $this->getPermissionKey(),
+            $this->permissionKey,
             PermissionTypeEnum::READ,
             $this->getModelTable()
         );
@@ -280,16 +283,9 @@ class ReadSecurityService
     protected function getUserAuthorizedTeamIds(): \Illuminate\Support\Collection
     {
         return auth()->user()?->getTeamsIdsWithPermission(
-            $this->getPermissionKey(),
+            $this->permissionKey,
             PermissionTypeEnum::READ
         ) ?? collect();
     }
 
-    /**
-     * Get permission key for this model
-     */
-    protected function getPermissionKey(): string
-    {
-        return class_basename($this->modelClass);
-    }
 }

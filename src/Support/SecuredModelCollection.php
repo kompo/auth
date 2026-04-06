@@ -62,13 +62,9 @@ class SecuredModelCollection extends Collection
 
             if ($this->count() == 1) {
                 $model = $this->first();
-                $fieldProtectionService = $securityFactory->createFieldProtectionService(get_class($model));
+                $batchService = $securityFactory->createBatchPermissionServiceForModel(get_class($model));
 
-                $fieldProtectionService->processFieldProtection($model, class_basename(get_class($model)));
-
-                // We must keep the same index => value
-                $key = $this->keys()->first();
-                $this->items = [$key => $model];
+                $this->items = $batchService->batchLoadFieldProtectionPermissions($this->all());
             }
             
             // Only batch if we have multiple models (optimization)

@@ -23,6 +23,7 @@ use Kompo\Auth\Teams\PermissionCacheManager;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Teams\PermissionResolver;
 use Kompo\Auth\Http\Middleware\EnsureResetPasswordWhenRequired;
+use Illuminate\Support\Facades\Schema;
 
 
 class KompoAuthServiceProvider extends ServiceProvider
@@ -139,6 +140,15 @@ class KompoAuthServiceProvider extends ServiceProvider
                 }
 
                 if (routeIsByPassed()) {
+                    return true;
+                }
+
+                // When is from National (in sisc)
+                if (Schema::hasColumn('teams', 'team_level')
+                    && auth()->user()?->teamRoles()->asSystemOperation()
+                        ->whereHas('team', fn($q) => $q->where('team_level', 1))
+                        ->exists()
+                ) {
                     return true;
                 }
 

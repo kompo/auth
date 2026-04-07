@@ -192,15 +192,15 @@ class PermissionResolver
                 $accessibleTeams = collect();
                 
                 // Add target teams themselves
-                $accessibleTeams = $accessibleTeams->concat($targetTeamIds);
+                $accessibleTeams = $accessibleTeams->concat($targetTeamIds)->filter();
                 
                 // Add parent teams that could have hierarchy access
                 foreach ($targetTeamIds as $teamId) {
                     $ancestors = $this->hierarchyService->getAncestorTeamIds($teamId);
-                    $accessibleTeams = $accessibleTeams->concat($ancestors);
+                    $accessibleTeams = $accessibleTeams->concat($ancestors)->filter();
                     
                     $siblings = $this->hierarchyService->getSiblingTeamIds($teamId);
-                    $accessibleTeams = $accessibleTeams->concat($siblings);
+                    $accessibleTeams = $accessibleTeams->concat($siblings)->filter();
                 }
                 
                 return $accessibleTeams->unique();

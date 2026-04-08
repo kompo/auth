@@ -25,8 +25,6 @@ class SecurityBypassService
      */
     protected static $inBypassContext = false;
 
-    protected static $inBypassContextTrace = [];
-
     /**
      * Tracks models that were booted during bypass context and need rebooting
      */
@@ -54,7 +52,6 @@ class SecurityBypassService
     public static function enterBypassContext(): void
     {
         static::$inBypassContext = true;
-        static::$inBypassContextTrace[] = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
     }
 
     /**
@@ -63,7 +60,6 @@ class SecurityBypassService
     public static function exitBypassContext(): void
     {
         static::$inBypassContext = false;
-        static::$inBypassContextTrace = [];
 
         // Reboot models that were booted during bypass context
         foreach (static::$modelsBootedDuringBypass as $modelClass => $true) {
@@ -92,6 +88,33 @@ class SecurityBypassService
         if (static::$inBypassContext) {
             static::$modelsBootedDuringBypass[$modelClass] = true;
         }
+    }
+
+    /**
+     * Fast bypass check using only cheap O(1) checks (no DB queries).
+     * Used by batch processing to avoid N+1 query explosion from
+     * usersIdsAllowedToManage() and scopeUserOwnedRecords().
+     */
+    public function isSecurityBypassRequiredFast($model, TeamSecurityService $teamService): bool
+    {
+
+        if ($this->isGloballyBypassed()) {
+            return true;
+        }
+
+        if ($this->hasBypassByFlag($model)) {
+            return true;
+        }
+
+        if ($this->hasBypassByUserId($model, $teamService)) {
+            return true;
+        }
+
+        if ($this->hasBypassMethod($model)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -195,9 +218,8 @@ class SecurityBypassService
         }
 
         try {
-            static::enterBypassContext();
+            // Caller (isSecurityBypassRequired) already entered bypass context
             $allowedUserIds = $model->usersIdsAllowedToManage();
-            static::exitBypassContext();
 
             return collect($allowedUserIds)->contains(auth()->user()->id);
         } catch (\Throwable $e) {
@@ -226,11 +248,8 @@ class SecurityBypassService
         }
 
         try {
-            static::enterBypassContext();
-            $hasByPassMethod = $model->userOwnedRecords()->where($model->getKeyName(), $model->getKey())->exists();
-            static::exitBypassContext();
-            return $hasByPassMethod;
-
+            // Caller (isSecurityBypassRequired) already entered bypass context
+            return $model->userOwnedRecords()->where($model->getKeyName(), $model->getKey())->exists();
         } catch (\Throwable $e) {
             Log::warning('scopeUserOwnedRecords check failed', [
                 'model_class' => get_class($model),

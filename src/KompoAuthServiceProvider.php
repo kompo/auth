@@ -143,14 +143,14 @@ class KompoAuthServiceProvider extends ServiceProvider
                     return true;
                 }
 
-                // When is from National (in sisc)
-                if (Schema::hasColumn('teams', 'team_level')
-                    && auth()->user()?->teamRoles()->asSystemOperation()
-                        ->whereHas('team', fn($q) => $q->where('team_level', 1))
-                        ->exists()
-                ) {
-                    return true;
-                }
+                // // When is from National (in sisc)
+                // if (Schema::hasColumn('teams', 'team_level')
+                //     && auth()->user()?->teamRoles()->asSystemOperation()
+                //         ->whereHas('team', fn($q) => $q->where('team_level', 1))
+                //         ->exists()
+                // ) {
+                //     return true;
+                // }
 
                 return config('kompo-auth.security.bypass-security', false);
             };

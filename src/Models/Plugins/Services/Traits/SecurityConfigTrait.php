@@ -10,15 +10,17 @@ namespace Kompo\Auth\Models\Plugins\Services\Traits;
 trait SecurityConfigTrait
 {
     /**
+     * Cached config values per model class — avoids instantiating models for property checks.
+     * Format: ['App\Models\Foo' => ['read' => bool, 'save' => bool, 'delete' => bool]]
+     */
+    protected static $securityConfigCache = [];
+
+    /**
      * Check if model has read security restrictions
      */
     protected function hasReadSecurityRestrictions(): bool
     {
-        if (property_exists($this->modelClass, 'readSecurityRestrictions')) {
-            return getPrivateProperty(new ($this->modelClass), 'readSecurityRestrictions');
-        }
-
-        return config('kompo-auth.security.default-read-security-restrictions', true);
+        return $this->getCachedSecurityConfig('read', 'readSecurityRestrictions', 'default-read-security-restrictions');
     }
 
     /**
@@ -26,11 +28,7 @@ trait SecurityConfigTrait
      */
     protected function hasSaveSecurityRestrictions(): bool
     {
-        if (property_exists($this->modelClass, 'saveSecurityRestrictions')) {
-            return getPrivateProperty(new ($this->modelClass), 'saveSecurityRestrictions');
-        }
-
-        return config('kompo-auth.security.default-save-security-restrictions', true);
+        return $this->getCachedSecurityConfig('save', 'saveSecurityRestrictions', 'default-save-security-restrictions');
     }
 
     /**
@@ -38,10 +36,24 @@ trait SecurityConfigTrait
      */
     protected function hasDeleteSecurityRestrictions(): bool
     {
-        if (property_exists($this->modelClass, 'deleteSecurityRestrictions')) {
-            return getPrivateProperty(new ($this->modelClass), 'deleteSecurityRestrictions');
+        return $this->getCachedSecurityConfig('delete', 'deleteSecurityRestrictions', 'default-delete-security-restrictions');
+    }
+
+    /**
+     * Get a security config value, cached per model class and config key.
+     */
+    protected function getCachedSecurityConfig(string $cacheKey, string $property, string $configKey): bool
+    {
+        $class = $this->modelClass;
+
+        if (!isset(static::$securityConfigCache[$class][$cacheKey])) {
+            if (property_exists($class, $property)) {
+                static::$securityConfigCache[$class][$cacheKey] = getPrivateProperty(new $class, $property);
+            } else {
+                static::$securityConfigCache[$class][$cacheKey] = config("kompo-auth.security.{$configKey}", true);
+            }
         }
 
-        return config('kompo-auth.security.default-delete-security-restrictions', true);
+        return static::$securityConfigCache[$class][$cacheKey];
     }
 }

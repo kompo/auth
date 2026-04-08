@@ -10,6 +10,11 @@ namespace Kompo\Auth\Models\Plugins\Services\Traits;
 trait ModelHelperTrait
 {
     /**
+     * Cached table names per model class — avoids instantiating a model just to get the table.
+     */
+    protected static $modelTableCache = [];
+
+    /**
      * Generate a unique key for a model instance
      */
     protected function getModelKey($model): string
@@ -18,11 +23,15 @@ trait ModelHelperTrait
     }
 
     /**
-     * Get model table name
+     * Get model table name (cached per class)
      */
     protected function getModelTable(): string
     {
-        return (new ($this->modelClass))->getTable();
+        if (!isset(static::$modelTableCache[$this->modelClass])) {
+            static::$modelTableCache[$this->modelClass] = (new ($this->modelClass))->getTable();
+        }
+
+        return static::$modelTableCache[$this->modelClass];
     }
 
     /**

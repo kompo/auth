@@ -4,6 +4,7 @@ namespace Kompo\Auth\Models\Plugins;
 
 use Kompo\Auth\Models\Plugins\Services\SecurityServiceFactory;
 use Kompo\Auth\Models\Plugins\Services\SecurityBypassService;
+use Kompo\Auth\Models\Plugins\Services\SecurityMetadataRegistry;
 use Kompo\Auth\Models\Plugins\Services\PermissionCacheService;
 use Kompo\Auth\Models\Plugins\Services\FieldProtectionService;
 use Condoedge\Utils\Models\Plugins\ModelPlugin;
@@ -39,6 +40,11 @@ use Illuminate\Support\Facades\DB;
  */
 class HasSecurity extends ModelPlugin
 {
+    /**
+     * Whether the request-level cleanup callback has been registered
+     */
+    protected static $cleanupRegistered = false;
+
     // Services (using dependency injection)
     protected $bypassService;
     protected $cacheService;
@@ -111,6 +117,30 @@ class HasSecurity extends ModelPlugin
 
         // Setup cleanup events
         $this->setupCleanupEvents();
+
+        // Register request-level cleanup once (here, not in setupFieldProtectionSafe,
+        // so it runs regardless of lazy/batch mode)
+        static::registerRequestCleanup();
+    }
+
+    /**
+     * Register a single request-level cleanup callback.
+     */
+    protected static function registerRequestCleanup(): void
+    {
+        if (static::$cleanupRegistered) {
+            return;
+        }
+
+        static::$cleanupRegistered = true;
+
+        app()->terminating(function () {
+            SecurityMetadataRegistry::clearAll();
+            FieldProtectionService::clearTracking();
+            SecurityBypassService::clearTracking();
+            PermissionCacheService::clearAllCaches();
+            static::$cleanupRegistered = false;
+        });
     }
 
     /**
@@ -132,22 +162,14 @@ class HasSecurity extends ModelPlugin
      */
     protected function setupFieldProtectionSafe(string $permissionKey): void
     {
-        if ($this->fieldProtectionService->hasLazyProtectedFields(new ($this->modelClass)) || $this->fieldProtectionService->hasBatchProtectedFields(new ($this->modelClass))) {
+        $meta = SecurityMetadataRegistry::for($this->modelClass);
+        if ($meta['hasLazyProtectedFields'] || $meta['hasBatchProtectedFields']) {
             return;
         }
 
         $this->modelClass::retrieved(function ($model) use ($permissionKey) {
             $this->fieldProtectionService->handleRetrievedEvent($model, $permissionKey);
         });
-
-        // Clear tracking when request ends
-        if (function_exists('register_shutdown_function')) {
-            register_shutdown_function(function () {
-                FieldProtectionService::clearTracking();
-                SecurityBypassService::exitBypassContext();
-                PermissionCacheService::clearAllCaches();
-            });
-        }
     }
 
     /**
@@ -169,44 +191,86 @@ class HasSecurity extends ModelPlugin
     }
 
     /**
-     * Handle getAttribute - delegate to FieldProtectionService
+     * Handle getAttribute — O(1) fast path for unprotected attributes.
+     * Only calls initializeServices() in the lazy resolution path.
      */
     public function getAttribute($model, $attribute, $value)
     {
-        $this->initializeServices();
+        // 1. Primary key — never protected
+        if ($attribute === $model->getKeyName()) {
+            return $value;
+        }
 
-        return $this->fieldProtectionService->handleGetAttribute(
-            $model,
-            $attribute,
-            $value,
-            $this->getPermissionKey()
-        );
+        // 2. Get class metadata (cached, O(1) after first call)
+        $meta = SecurityMetadataRegistry::for(get_class($model));
+
+        // 3. No protection defined for this class — skip entirely
+        if (!$meta['hasProtection']) {
+            return $value;
+        }
+
+        // 4. Get instance state (on the model, no string key lookup)
+        $state = $model->getSecurityState();
+
+        // 5. Already resolved as bypassed — skip
+        if ($state->bypassed === true) {
+            return $value;
+        }
+
+        // 6. Check blocked relationship (O(1) array lookup)
+        if ($state->isRelationBlocked($attribute)) {
+            return $this->getEmptyRelationResult($model, $attribute);
+        }
+
+        // 7. Not a protected relationship or column — skip (O(1) isset)
+        if (!isset($meta['protectedRelationships'][$attribute])
+            && !isset($meta['protectedColumns'][$attribute])) {
+            return $value;
+        }
+
+        // 8. Lazy resolution (only for protected attributes on non-batch-processed models)
+        return $this->resolveProtectionLazy($model, $attribute, $value, $meta, $state);
     }
 
     /**
      * Intercept relationship query creation from HasModelPlugins.
-     * Delegates to FieldProtectionService which handles all sources:
-     * flat sensibleRelationships, sensibleRelationshipsGroups, and DB-discovered.
+     * Uses SecurityMetadataRegistry for O(1) skip of non-protected relations.
      */
     public function interceptRelation($model, $relation, string $relationName)
     {
-        $this->initializeServices();
-
-        if ($this->fieldProtectionService->isBlockedRelationship($model, $relationName, $this->getPermissionKey())) {
-            return $relation->whereRaw('1=0');
+        if (SecurityBypassService::isInBypassContext()) {
+            return false;
         }
 
-        return false;
+        $meta = SecurityMetadataRegistry::for(get_class($model));
+        if (!isset($meta['protectedRelationships'][$relationName])) {
+            return false;
+        }
+
+        $state = $model->getSecurityState();
+        if ($state->isRelationBlocked($relationName)) {
+            return $relation->withGlobalScope('blockedSensibleRelationship', function ($q) {
+                $q->whereRaw('1=0');
+            });
+        }
+
+        if ($state->bypassed === true) {
+            return false;
+        }
+
+        // Not yet resolved — do lazy check
+        return $this->resolveRelationBlockingLazy($model, $relation, $relationName, $meta, $state);
     }
 
     /**
      * Intercept relationship loading via getRelationshipFromMethod.
+     * Pure state lookup — no service initialization needed.
      */
     public function getRelationshipFromMethod($model, $method)
     {
-        $this->initializeServices();
+        $state = $model->getSecurityState();
 
-        if ($this->fieldProtectionService->isBlockedRelationship($model, $method, $this->getPermissionKey())) {
+        if ($state->isRelationBlocked($method)) {
             return $model->$method()->whereRaw('1=0')->getResults();
         }
 
@@ -214,16 +278,154 @@ class HasSecurity extends ModelPlugin
     }
 
     /**
-     * Handle getAttributes - delegate to FieldProtectionService
+     * Handle getAttributes — no-op. Field protection is handled at other layers
+     * (batch mode strips columns via setRawAttributes, lazy mode via getAttribute).
      */
     public function getAttributes($model, $attributes)
     {
+        return $attributes;
+    }
+
+    /**
+     * Lazy resolution for a protected attribute (relationship or column).
+     * Called only when the attribute is confirmed protected and not yet resolved.
+     * Initializes services only in this path — never in the O(1) fast path above.
+     */
+    protected function resolveProtectionLazy($model, string $attribute, $value, array $meta, $state)
+    {
+        // Global bypass context — skip all protection
+        if (SecurityBypassService::isInBypassContext()) {
+            return $value;
+        }
+
+        // Reentrance guard — prevent infinite loops when bypass checks access attributes
+        if ($state->processing) {
+            return $value;
+        }
+
+        $state->processing = true;
+
+        try {
+            // Initialize services only in this lazy path
+            $this->initializeServices();
+
+            // Check fast bypass (flag + user_id match) — set on state for future O(1) lookups
+            if ($this->bypassService->isSecurityBypassRequiredFast($model, $this->teamService)) {
+                $state->bypassed = true;
+                return $value;
+            }
+
+            // Handle protected relationships
+            if (isset($meta['protectedRelationships'][$attribute])) {
+                foreach ($meta['groups'] as $group) {
+                    if ($group['type'] !== 'relationships' || !in_array($attribute, $group['fields'])) {
+                        continue;
+                    }
+
+                    if (!permissionMustBeAuthorized($group['key'])) {
+                        continue;
+                    }
+
+                    if (!$this->fieldProtectionService->hasPermissionForProtectionKey($model, $group['key'])) {
+                        $state->blockRelationships($group['fields']);
+                        // Also set on model so relationLoaded() returns true
+                        foreach ($group['fields'] as $rel) {
+                            $model->setRelation($rel, $this->getEmptyRelationResult($model, $rel));
+                        }
+                        return $this->getEmptyRelationResult($model, $attribute);
+                    }
+                }
+
+                return $value;
+            }
+
+            // Handle protected columns (lazy mode only)
+            if (isset($meta['protectedColumns'][$attribute]) && $meta['hasLazyProtectedFields']) {
+                foreach ($meta['groups'] as $group) {
+                    if ($group['type'] !== 'columns' || !in_array($attribute, $group['fields'])) {
+                        continue;
+                    }
+
+                    if (!permissionMustBeAuthorized($group['key'])) {
+                        continue;
+                    }
+
+                    if (!$this->fieldProtectionService->hasPermissionForProtectionKey($model, $group['key'])) {
+                        // Column is protected and user lacks permission — hide it
+                        $this->fieldProtectionService->hideSensitiveFields($model, $group['fields']);
+                        return null;
+                    }
+                }
+            }
+
+            return $value;
+        } finally {
+            $state->processing = false;
+        }
+    }
+
+    /**
+     * Lazy resolution for relationship blocking during interceptRelation.
+     * Called only when the relation is confirmed protected and not yet resolved.
+     */
+    protected function resolveRelationBlockingLazy($model, $relation, string $relationName, array $meta, $state)
+    {
+        // Initialize services only in this lazy path
         $this->initializeServices();
-        return $this->fieldProtectionService->handleGetAttributes(
-            $model,
-            $attributes,
-            $this->getPermissionKey()
-        );
+
+        // Check fast bypass — if bypassed, set on state and allow relation
+        if ($this->bypassService->isSecurityBypassRequiredFast($model, $this->teamService)) {
+            $state->bypassed = true;
+            return false;
+        }
+
+        // Find which group(s) this relation belongs to and check permissions
+        foreach ($meta['groups'] as $group) {
+            if ($group['type'] !== 'relationships' || !in_array($relationName, $group['fields'])) {
+                continue;
+            }
+
+            if (!permissionMustBeAuthorized($group['key'])) {
+                continue;
+            }
+
+            if (!$this->fieldProtectionService->hasPermissionForProtectionKey($model, $group['key'])) {
+                // Block the relation — store on state and on model
+                $state->blockRelationships($group['fields']);
+                foreach ($group['fields'] as $rel) {
+                    $model->setRelation($rel, $this->getEmptyRelationResult($model, $rel));
+                }
+
+                return $relation->withGlobalScope('blockedSensibleRelationship', function ($q) {
+                    $q->whereRaw('1=0');
+                });
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get the type-appropriate empty result for a blocked relationship.
+     * Returns empty collection for to-many, null for to-one.
+     */
+    protected function getEmptyRelationResult($model, string $attribute)
+    {
+        if (!method_exists($model, $attribute)) {
+            return null;
+        }
+
+        $relation = $model->{$attribute}();
+
+        if ($relation instanceof \Illuminate\Database\Eloquent\Relations\HasMany
+            || $relation instanceof \Illuminate\Database\Eloquent\Relations\BelongsToMany
+            || $relation instanceof \Illuminate\Database\Eloquent\Relations\HasManyThrough
+            || $relation instanceof \Illuminate\Database\Eloquent\Relations\MorphMany
+            || $relation instanceof \Illuminate\Database\Eloquent\Relations\MorphToMany) {
+            return $model->newCollection();
+        }
+
+        return null;
     }
 
     /**
@@ -268,7 +470,7 @@ class HasSecurity extends ModelPlugin
 
         foreach ($securityBypassReasons as $methodName) {
             Builder::macro($methodName, function () {
-                return $this->withoutGlobalScopes(['authUserHasPermissions'])
+                return $this->withoutGlobalScopes(['authUserHasPermissions', 'blockedSensibleRelationship'])
                     ->addSelect(DB::raw('true as _bypassSecurity'))
                     ->selectRaw($this->model->getTable() . '.*');
             });
@@ -380,7 +582,6 @@ class HasSecurity extends ModelPlugin
     public function getFieldProtectionDebugInfo(): array
     {
         return [
-            'field_protection_in_progress' => FieldProtectionService::getInProgressCount(),
             'in_bypass_context' => SecurityBypassService::isInBypassContext(),
             'bypassed_count' => SecurityBypassService::getBypassedCount(),
             'permission_cache_count' => PermissionCacheService::getPermissionCacheCount(),

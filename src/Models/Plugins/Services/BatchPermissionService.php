@@ -3,6 +3,7 @@
 namespace Kompo\Auth\Models\Plugins\Services;
 
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+use Kompo\Auth\Models\Plugins\Services\SecurityMetadataRegistry;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -19,20 +20,24 @@ class BatchPermissionService
     protected $cacheService;
     protected $teamService;
     protected $fieldProtectionService;
+    protected $bypassService;
 
     public function __construct(
         PermissionCacheService $cacheService,
         TeamSecurityService $teamService,
-        FieldProtectionService $fieldProtectionService
+        FieldProtectionService $fieldProtectionService,
+        SecurityBypassService $bypassService
     ) {
         $this->cacheService = $cacheService;
         $this->teamService = $teamService;
         $this->fieldProtectionService = $fieldProtectionService;
+        $this->bypassService = $bypassService;
     }
 
     /**
-     * Batch load field protection permissions for a collection of models
-     * This prevents N+1 queries when retrieving collections
+     * Batch load field protection permissions for a collection of models.
+     * Uses SecurityMetadataRegistry for class-level metadata and ModelSecurityState
+     * for per-instance state instead of static arrays.
      */
     public function batchLoadFieldProtectionPermissions($models): array
     {
@@ -50,20 +55,28 @@ class BatchPermissionService
             return [];
         }
 
-        $modelClass = get_class($firstModel);
-        $permissionKey = $this->resolvePermissionKey($firstModel, $modelClass);
-        $groups = $this->fieldProtectionService->collectProtectionGroups($firstModel, $permissionKey);
+        // Use SecurityMetadataRegistry for class-level metadata (cached, O(1))
+        $meta = SecurityMetadataRegistry::for(get_class($firstModel));
+        $groups = $meta['groups'];
 
         if (empty($groups)) {
+            // Mark all models as resolved even when no groups
+            foreach ($modelsCollection as $model) {
+                $model->getSecurityState()->protectionResolved = true;
+            }
             return $modelsCollection->all();
         }
 
-        // If no user, apply all protections (hide columns, block relationships)
+        // If no user, apply protections only to non-bypassed models
         if (!$user) {
             foreach ($modelsCollection as $model) {
+                if ($this->isModelBypassed($model)) {
+                    continue;
+                }
                 foreach ($groups as $group) {
                     $this->applyGroupProtection($model, $group);
                 }
+                $model->getSecurityState()->protectionResolved = true;
             }
             return $modelsCollection->all();
         }
@@ -72,6 +85,11 @@ class BatchPermissionService
         foreach ($groups as $group) {
             if (!permissionMustBeAuthorized($group['key'])) continue;
             $this->batchProcessGroup($modelsCollection, $group, $userId, $user);
+        }
+
+        // Mark all models as protection-resolved
+        foreach ($modelsCollection as $model) {
+            $model->getSecurityState()->protectionResolved = true;
         }
 
         return $modelsCollection->all();
@@ -90,18 +108,22 @@ class BatchPermissionService
             $processingPlan = $this->calculateProcessingPlan($teamModelMap, $authorizedTeams);
             $this->executeBatchPermissionChecks($processingPlan, $user, $group['key'], $userId);
 
-            // Apply protection to models that lack permission
+            // Apply protection to models that lack permission AND are not bypassed (owners, etc.)
             foreach ($processingPlan['needs_check'] as $teamKey => $models) {
                 $hasPermission = $this->getPermissionFromCache($teamKey, $userId);
                 if (!$hasPermission) {
                     foreach ($models as $model) {
-                        $this->applyGroupProtection($model, $group);
+                        if (!$this->isModelBypassed($model)) {
+                            $this->applyGroupProtection($model, $group);
+                        }
                     }
                 }
             }
 
             foreach ($processingPlan['unauthorized_models'] as $model) {
-                $this->applyGroupProtection($model, $group);
+                if (!$this->isModelBypassed($model)) {
+                    $this->applyGroupProtection($model, $group);
+                }
             }
         } finally {
             PermissionCacheService::setCurrentBatchPermissionKey(null);
@@ -109,13 +131,16 @@ class BatchPermissionService
     }
 
     /**
-     * Apply the appropriate protection (column hiding or relationship blocking) for a group
+     * Apply the appropriate protection (column hiding or relationship blocking) for a group.
+     * For relationships, writes to ModelSecurityState AND sets relation on model.
      */
     protected function applyGroupProtection($model, array $group): void
     {
         if ($group['type'] === 'columns') {
             $this->fieldProtectionService->hideSensitiveFields($model, $group['fields']);
         } else {
+            // applyRelationshipBlocking writes to both ModelSecurityState AND static registry,
+            // and sets relations on model so relationLoaded() returns true
             $this->fieldProtectionService->applyRelationshipBlocking($model, $group['fields']);
         }
     }
@@ -276,21 +301,24 @@ class BatchPermissionService
     }
 
     /**
-     * Resolve permission key using 3-step resolution:
-     * 1. Check if model has getPermissionKey() method
-     * 2. Check if model has $permissionKey property
-     * 3. Fall back to class_basename()
+     * Check if a model is bypassed using fast O(1) checks only (flag + user_id match).
+     * Writes result to ModelSecurityState for O(1) lookups in getAttribute/interceptRelation.
+     * Does NOT call usersIdsAllowedToManage() or scopeUserOwnedRecords() which cause
+     * N+1 query explosions (10+ queries per model). Those expensive checks run lazily
+     * when individual attributes are accessed.
      */
-    protected function resolvePermissionKey($model, string $modelClass): string
+    protected function isModelBypassed($model): bool
     {
-        if (method_exists($model, 'getPermissionKey')) {
-            return $model->getPermissionKey();
+        $state = $model->getSecurityState();
+
+        if ($state->bypassed !== null) {
+            return $state->bypassed;
         }
 
-        if (property_exists($model, 'permissionKey')) {
-            return getPrivateProperty($model, 'permissionKey');
-        }
+        $bypassed = $this->bypassService->isSecurityBypassRequiredFast($model, $this->teamService);
+        $state->bypassed = $bypassed;
 
-        return class_basename($modelClass);
+        return $bypassed;
     }
+
 }

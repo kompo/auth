@@ -33,6 +33,7 @@ class TeamSecurityService
      */
     public function getTeamOwnersIdsSafe($model)
     {
+
         try {
             // Use cached result if available for this model instance
             $modelKey = $this->getModelKey($model);
@@ -69,9 +70,9 @@ class TeamSecurityService
         try {
             // Strategy 1: Custom method
             if ($this->modelHasMethod($model, 'securityRelatedTeamIds')) {
-                SecurityBypassService::enterBypassContext();
+                // Outer bypass context already active — no need for inner enter/exit
+                // which would prematurely clear tracking via exitBypassContext().
                 $teamIds = callPrivateMethod($model, 'securityRelatedTeamIds');
-                SecurityBypassService::exitBypassContext();
 
                 if ($teamIds instanceof \Illuminate\Support\Collection) {
                     $teamIds = $teamIds->all();

@@ -4,13 +4,8 @@ namespace Kompo\Auth\Support;
 
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
-use Kompo\Auth\Models\Plugins\HasSecurity;
+use Kompo\Auth\Models\Plugins\Services\FieldProtectionService;
 use Kompo\Auth\Models\Plugins\Services\SecurityServiceFactory;
-use Kompo\Auth\Models\Teams\Permission;
-use Kompo\Auth\Models\Teams\Roles\Role;
-use Kompo\Auth\Models\Teams\Team;
-use Kompo\Auth\Models\Teams\TeamRole;
-use Kompo\Auth\Tests\Stubs\TestSecuredModel;
 
 /**
  * Secured Model Collection
@@ -54,30 +49,31 @@ class SecuredModelCollection extends Collection
      */
     protected function autoBatchLoadPermissions(): void
     {
+        // Guard: only process collections of Eloquent model instances
+        $first = $this->first();
+        if (!is_object($first)) {
+            return;
+        }
+
         // Set processing flag to prevent infinite loops
         static::$processing = true;
 
         try {
             $securityFactory = app(SecurityServiceFactory::class);
+            $batchService = $securityFactory->createBatchPermissionServiceForModel(get_class($first));
 
-            if ($this->count() == 1) {
-                $model = $this->first();
-                $batchService = $securityFactory->createBatchPermissionServiceForModel(get_class($model));
+            $this->items = $batchService->batchLoadFieldProtectionPermissions($this->all());
 
-                $this->items = $batchService->batchLoadFieldProtectionPermissions($this->all());
-            }
-            
-            // Only batch if we have multiple models (optimization)
-            if ($this->count() > 1) {
-                $batchService = $securityFactory->createBatchPermissionServiceForModel(get_class($this->first()));
-
-                $this->items = $batchService->batchLoadFieldProtectionPermissions($this->all());
-            }
+            // Clean up fieldProtectionInProgress entries that accumulated during batch processing.
+            // We do NOT clear $blockedRelationshipsRegistry here because it's still needed
+            // for the fast-path lookup in isBlockedRelationship() during attribute access.
+            // The request-level cleanup (HasSecurity::registerRequestCleanup) handles full cleanup.
+            FieldProtectionService::clearInProgressTracking();
         } catch (\Throwable $e) {
             // Log but don't break - field protection will fall back to individual checks
             Log::warning('Auto-batch field protection loading failed', [
                 'collection_count' => $this->count(),
-                'first_model_class' => $this->first() ? $this->first() : null,
+                'first_model_class' => $this->first() && is_object($this->first()) ? get_class($this->first()) : null,
                 'error' => $e->getMessage(),
             ]);
         } finally {

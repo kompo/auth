@@ -25,6 +25,7 @@ class ReadSecurityService
     protected $teamService;
     protected $permissionKey;
 
+
     public function __construct(
         string $modelClass,
         SecurityBypassService $bypassService,
@@ -68,7 +69,18 @@ class ReadSecurityService
      */
     protected function shouldBypassSecurityForQuery(): bool
     {
-        return $this->bypassService->isSecurityBypassRequired(
+
+        // If already in bypass context, skip to prevent recursion.
+        if (SecurityBypassService::isInBypassContext()) {
+            return true;
+        }
+
+        // Only use cheap/global checks for query-level bypass.
+        // Do NOT call isSecurityBypassRequired(new Model()) — it runs ownership checks
+        // (scopeUserOwnedRecords, usersIdsAllowedToManage) on an EMPTY model, which is
+        // meaningless and triggers expensive/broken queries (e.g. morphTo whereHas on Phone).
+        // Per-record ownership is already handled by addOwnedRecordsAlternative in the scope itself.
+        return $this->bypassService->isSecurityBypassRequiredFast(
             new ($this->modelClass),
             $this->teamService
         );
@@ -217,11 +229,24 @@ class ReadSecurityService
      */
     protected function applyUserOwnedRecordsScope(Builder $query): void
     {
-        $query->orWhere(function ($sq) {
-            SecurityBypassService::enterBypassContext();
-            $sq->userOwnedRecords();
+        try {
+            $query->orWhere(function ($sq) {
+                SecurityBypassService::enterBypassContext();
+                $sq->userOwnedRecords();
+                SecurityBypassService::exitBypassContext();
+            });
+        } catch (\Throwable $e) {
+            // Gracefully handle broken scopeUserOwnedRecords (e.g. whereHas on MorphTo).
+            // Fall back to user_id column if available, otherwise skip owned records alternative.
             SecurityBypassService::exitBypassContext();
-        });
+
+            \Log::warning('scopeUserOwnedRecords failed, falling back to user_id', [
+                'model' => $this->modelClass,
+                'error' => $e->getMessage(),
+            ]);
+
+            $this->applyUserIdFallback($query);
+        }
     }
 
     /**

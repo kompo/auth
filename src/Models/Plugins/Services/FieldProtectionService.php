@@ -3,8 +3,10 @@
 namespace Kompo\Auth\Models\Plugins\Services;
 
 use Kompo\Auth\Models\Plugins\Services\Traits\ModelHelperTrait;
+use Kompo\Auth\Models\Plugins\Services\SecurityMetadataRegistry;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Illuminate\Support\Facades\Log;
+use Kompo\Auth\Models\Plugins\HasSecurity;
 
 /**
  * Handles field protection and sensitive column hiding
@@ -24,12 +26,6 @@ class FieldProtectionService
      * Format: ['ModelClass_ID' => true]
      */
     protected static $fieldProtectionInProgress = [];
-
-    /**
-     * Cache of all protected columns per model class to avoid recomputation.
-     * Format: ['App\Models\SomeModel' => ['column1', 'column2', ...]]
-     */
-    protected static $protectedColumnsCache = [];
 
     /**
      * Registry of blocked relationships per model instance.
@@ -138,83 +134,8 @@ class FieldProtectionService
      */
     public function collectProtectionGroups($model, string $basePermissionKey): array
     {
-        $groups = [];
-
-        // 1. sensibleColumns → one group
-        $sensibleColumns = $this->getSensibleColumns($model);
-        if (!empty($sensibleColumns)) {
-            $groups[] = [
-                'key' => $this->getSensibleColumnsPermissionKey($model, $basePermissionKey),
-                'fields' => $sensibleColumns,
-                'type' => 'columns',
-            ];
-        }
-
-        // 2. sensibleColumnsGroups → one group per entry
-        $columnsGroups = $this->getSensibleColumnsGroups($model);
-        foreach ($columnsGroups as $groupName => $fields) {
-            if (!empty($fields)) {
-                $groups[] = [
-                    'key' => $basePermissionKey . '.sensibleColumnsGroups.' . $groupName,
-                    'fields' => $fields,
-                    'type' => 'columns',
-                ];
-            }
-        }
-
-        // 3. sensibleRelationships → one group
-        $sensibleRelationships = $this->getSensibleRelationships($model);
-        if (!empty($sensibleRelationships)) {
-            $groups[] = [
-                'key' => $this->getSensibleRelationshipsPermissionKey($model, $basePermissionKey),
-                'fields' => $sensibleRelationships,
-                'type' => 'relationships',
-            ];
-        }
-
-        // 4. sensibleRelationshipsGroups → one group per entry
-        $relationshipsGroups = $this->getSensibleRelationshipsGroups($model);
-        foreach ($relationshipsGroups as $groupName => $fields) {
-            if (!empty($fields)) {
-                $groups[] = [
-                    'key' => $basePermissionKey . '.sensibleRelationshipsGroups.' . $groupName,
-                    'fields' => $fields,
-                    'type' => 'relationships',
-                ];
-            }
-        }
-
-        // 5. DB-discovered groups (opt-in)
-        if ($this->shouldDiscoverFromDb($model)) {
-            $groups = array_merge($groups, $this->discoverDbProtectionGroups($model, $basePermissionKey));
-        }
-
-        return $groups;
-    }
-
-    /**
-     * Get all protected column names from all column-type protection groups.
-     * Uses a static cache per model class to avoid recomputation.
-     */
-    public function getAllProtectedColumns($model, string $basePermissionKey): array
-    {
-        $modelClass = get_class($model);
-
-        if (isset(static::$protectedColumnsCache[$modelClass])) {
-            return static::$protectedColumnsCache[$modelClass];
-        }
-
-        $groups = $this->collectProtectionGroups($model, $basePermissionKey);
-        $columns = [];
-
-        foreach ($groups as $group) {
-            if ($group['type'] === 'columns') {
-                $columns = array_merge($columns, $group['fields']);
-            }
-        }
-
-        static::$protectedColumnsCache[$modelClass] = array_unique($columns);
-        return static::$protectedColumnsCache[$modelClass];
+        // Delegate to SecurityMetadataRegistry (cached per class, computed once)
+        return SecurityMetadataRegistry::for(get_class($model))['groups'];
     }
 
     /**
@@ -223,15 +144,19 @@ class FieldProtectionService
      */
     public function applyRelationshipBlocking($model, array $relationships): void
     {
+        // Write to instance state (new approach)
+        $model->getSecurityState()->blockRelationships($relationships);
+
+        // Also write to static registry for backward compatibility with handleRetrievedEvent path
         $modelKey = $this->getModelKey($model);
-        static::$blockedRelationshipsRegistry[$modelKey] = array_merge(
+        static::$blockedRelationshipsRegistry[$modelKey] = array_unique(array_merge(
             static::$blockedRelationshipsRegistry[$modelKey] ?? [], $relationships
-        );
+        ));
 
         foreach ($relationships as $relation) {
-            if ($model->relationLoaded($relation)) {
-                $model->unsetRelation($relation);
-            }
+            // Set to empty result instead of unsetting. This way relationLoaded() returns true,
+            // preventing code like hasActiveBan() from re-querying blocked relations.
+            $model->setRelation($relation, $this->getEmptyRelationResult($model, $relation));
         }
     }
 
@@ -279,37 +204,43 @@ class FieldProtectionService
      */
     public function handleGetAttribute($model, string $attribute, $value, string $permissionKey)
     {
-        if ($attribute == $model->getKeyName() || !empty(static::$fieldProtectionInProgress[$this->getModelKey($model)])) {
+        // Skip all field protection when in bypass context (prevents deep recursion
+        // when isSecurityBypassRequired loads related models during ownership checks)
+        if (SecurityBypassService::isInBypassContext()) {
             return $value;
         }
 
-        static::$fieldProtectionInProgress[$this->getModelKey($model)] = true;
+        $modelKey = $this->getModelKey($model);
 
-        // Intercept blocked sensible relationships regardless of lazy/batch mode.
-        // Uses inline permission check — doesn't rely on _blockedSensibleRelationships flag
-        // which may not be set if batch/retrieved event didn't process this model.
-        if ($this->isBlockedRelationship($model, $attribute, $permissionKey)) {
-            static::$fieldProtectionInProgress[$this->getModelKey($model)] = false;
-            return $this->getEmptyRelationResult($model, $attribute);
-        }
-
-        if (!$this->hasLazyProtectedFields($model)) {
-            static::$fieldProtectionInProgress[$this->getModelKey($model)] = false;
+        if ($attribute == $model->getKeyName() || !empty(static::$fieldProtectionInProgress[$modelKey])) {
             return $value;
         }
 
-        // Apply field protection logic here
-        $this->processFieldProtection($model, $permissionKey);
+        static::$fieldProtectionInProgress[$modelKey] = true;
 
-        if (in_array($attribute, $this->getAllProtectedColumns($model, $permissionKey))
-            && !array_key_exists($attribute, $model->getRawOriginal())) {
-            static::$fieldProtectionInProgress[$this->getModelKey($model)] = false;
-            return null;
+        try {
+            // Intercept blocked sensible relationships regardless of lazy/batch mode.
+            if ($this->isBlockedRelationship($model, $attribute, $permissionKey)) {
+                return $this->getEmptyRelationResult($model, $attribute);
+            }
+
+            if (!$this->hasLazyProtectedFields($model)) {
+                return $value;
+            }
+
+            // Apply field protection logic here
+            $this->processFieldProtection($model, $permissionKey);
+
+            $protectedColumns = SecurityMetadataRegistry::for(get_class($model))['protectedColumns'];
+            if (in_array($attribute, $protectedColumns)
+                && !array_key_exists($attribute, $model->getRawOriginal())) {
+                return null;
+            }
+
+            return $value;
+        } finally {
+            unset(static::$fieldProtectionInProgress[$modelKey]);
         }
-
-        static::$fieldProtectionInProgress[$this->getModelKey($model)] = false;
-
-        return $value;
     }
 
     /**
@@ -318,21 +249,24 @@ class FieldProtectionService
      */
     public function isBlockedRelationship($model, string $attribute, string $permissionKey): bool
     {
-        // Fast path: already resolved by a previous check on this instance
-        // $modelKey = $this->getModelKey($model);
-        // if (isset(static::$blockedRelationshipsRegistry[$modelKey])
-        //     && in_array($attribute, static::$blockedRelationshipsRegistry[$modelKey])) {
-        //     return true;
-        // }
+        // Fast path: already resolved by batch processing or a previous check.
+        // Safe to use because BatchPermissionService now excludes owners before blocking.
+        $modelKey = $this->getModelKey($model);
+        if (isset(static::$blockedRelationshipsRegistry[$modelKey])
+            && in_array($attribute, static::$blockedRelationshipsRegistry[$modelKey])) {
+            return true;
+        }
 
-        // Check if attribute is in any protected relationship group (cached per class)
-        $allProtectedRelationships = $this->getAllProtectedRelationships($model, $permissionKey);
-        if (empty($allProtectedRelationships) || !in_array($attribute, $allProtectedRelationships)) {
+        // Check if attribute is in any protected relationship group (cached per class via registry)
+        $protectedRelationships = SecurityMetadataRegistry::for(get_class($model))['protectedRelationships'];
+        if (empty($protectedRelationships) || !in_array($attribute, $protectedRelationships)) {
             return false;
         }
 
-        // Check bypass (owner, system operation, etc.)
-        if ($this->bypassService->isSecurityBypassRequired($model, $this->teamService)) {
+        // Fast bypass check only (flag + user_id match). Does NOT call usersIdsAllowedToManage()
+        // or scopeUserOwnedRecords() which trigger expensive/recursive DB queries on every
+        // attribute access. Full ownership checks run lazily only when strictly needed.
+        if ($this->bypassService->isSecurityBypassRequiredFast($model, $this->teamService)) {
             return false;
         }
 
@@ -353,33 +287,6 @@ class FieldProtectionService
         }
 
         return false;
-    }
-
-    /**
-     * Get all protected relationship names from all relationship-type protection groups.
-     * Uses a static cache per model class.
-     */
-    protected static $protectedRelationshipsCache = [];
-
-    public function getAllProtectedRelationships($model, string $basePermissionKey): array
-    {
-        $modelClass = get_class($model);
-
-        if (isset(static::$protectedRelationshipsCache[$modelClass])) {
-            return static::$protectedRelationshipsCache[$modelClass];
-        }
-
-        $groups = $this->collectProtectionGroups($model, $basePermissionKey);
-        $relationships = [];
-
-        foreach ($groups as $group) {
-            if ($group['type'] === 'relationships') {
-                $relationships = array_merge($relationships, $group['fields']);
-            }
-        }
-
-        static::$protectedRelationshipsCache[$modelClass] = array_unique($relationships);
-        return static::$protectedRelationshipsCache[$modelClass];
     }
 
     /**
@@ -406,42 +313,6 @@ class FieldProtectionService
     }
 
     /**
-     * Handle getAttributes with lazy field protection
-     */
-    public function handleGetAttributes($model, array $attributes, string $permissionKey): array
-    {
-        if (!empty(static::$fieldProtectionInProgress[class_basename($model)])) {
-            return $attributes;
-        }
-
-        static::$fieldProtectionInProgress[class_basename($model)] = true;
-
-        if (!$this->hasLazyProtectedFields($model)) {
-            static::$fieldProtectionInProgress[class_basename($model)] = false;
-            return $attributes;
-        }
-
-        $sensibleColumnsKey = $this->getSensibleColumnsPermissionKey($model, $permissionKey);
-
-        // Early exit if no sensible columns permission exists
-        if (!permissionMustBeAuthorized($sensibleColumnsKey)) {
-            return $attributes;
-        }
-
-        // Skip if security bypass is required (simple check)
-        if ($this->bypassService->isSecurityBypassRequired($model, $this->teamService)) {
-            return $attributes;
-        }
-
-        // Apply field protection logic here
-        $this->processFieldProtection($model, $permissionKey);
-
-        static::$fieldProtectionInProgress[class_basename($model)] = false;
-
-        return $attributes;
-    }
-
-    /**
      * Process field protection for a model using unified protection groups.
      */
     public function processFieldProtection($model, string $permissionKey): void
@@ -450,7 +321,7 @@ class FieldProtectionService
 
         foreach ($groups as $group) {
             if (!permissionMustBeAuthorized($group['key'])) continue;
-            if ($this->bypassService->isSecurityBypassRequired($model, $this->teamService)) continue;
+            if ($this->bypassService->isSecurityBypassRequiredFast($model, $this->teamService)) continue;
             if ($this->hasPermissionForProtectionKey($model, $group['key'])) continue;
 
             if ($group['type'] === 'columns') {
@@ -626,47 +497,22 @@ class FieldProtectionService
     }
 
     /**
-     * Clear field protection tracking
+     * Clear all field protection tracking (called at request end)
      */
-    /**
-     * Check if a model instance has any blocked relationships.
-     * Used by HasModelPlugins to decide whether to run backtrace check.
-     */
-    public static function hasBlockedRelationships(string $modelKey): bool
-    {
-        return !empty(static::$blockedRelationshipsRegistry[$modelKey]);
-    }
-
-    /**
-     * Check if a specific relationship is blocked for a model instance.
-     */
-    public static function isRelationBlocked(string $modelKey, string $relation): bool
-    {
-        return in_array($relation, static::$blockedRelationshipsRegistry[$modelKey] ?? []);
-    }
-
-    /**
-     * Build a model key from a model instance (static version for external use).
-     */
-    public static function buildModelKey($model): string
-    {
-        return get_class($model) . '_' . ($model->getKey() ?? spl_object_hash($model));
-    }
-
     public static function clearTracking(): void
     {
         static::$fieldProtectionInProgress = [];
-        static::$protectedColumnsCache = [];
-        static::$protectedRelationshipsCache = [];
         static::$blockedRelationshipsRegistry = [];
     }
 
     /**
-     * Get field protection in progress count
+     * Clear only fieldProtectionInProgress entries.
+     * Used after batch processing to free memory while keeping blockedRelationshipsRegistry
+     * intact for subsequent fast-path lookups during attribute access.
      */
-    public static function getInProgressCount(): int
+    public static function clearInProgressTracking(): void
     {
-        return count(static::$fieldProtectionInProgress);
+        static::$fieldProtectionInProgress = [];
     }
 
     /**
@@ -675,5 +521,6 @@ class FieldProtectionService
     public function cleanupModelTracking(string $modelKey): void
     {
         unset(static::$fieldProtectionInProgress[$modelKey]);
+        unset(static::$blockedRelationshipsRegistry[$modelKey]);
     }
 }

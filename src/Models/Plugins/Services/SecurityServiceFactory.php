@@ -46,7 +46,8 @@ class SecurityServiceFactory
         $batchPermissionService = new BatchPermissionService(
             $this->cacheService,
             $teamService,
-            $fieldProtectionService
+            $fieldProtectionService,
+            $this->bypassService
         );
 
         // Create read security service
@@ -92,14 +93,15 @@ class SecurityServiceFactory
         );
     }
 
-    public function createBatchPermissionServiceForModel(string $modelClass,): BatchPermissionService
+    public function createBatchPermissionServiceForModel(string $modelClass): BatchPermissionService
     {
-        $teamService = $teamService ?? $this->createTeamSecurityServiceForModel($modelClass);
+        $teamService = $this->createTeamSecurityServiceForModel($modelClass);
 
         return new BatchPermissionService(
             $this->cacheService,
             $teamService,
-            $this->createFieldProtectionService($modelClass, $teamService)
+            $this->createFieldProtectionService($modelClass, $teamService),
+            $this->bypassService
         );
     }
 

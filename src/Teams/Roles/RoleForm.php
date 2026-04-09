@@ -4,6 +4,7 @@ namespace Kompo\Auth\Teams\Roles;
 
 use Condoedge\Utils\Kompo\Common\Modal;
 use Kompo\Auth\Facades\RoleModel;
+use Kompo\Auth\Rules\MaxTranslatable;
 
 class RoleForm extends Modal
 {
@@ -108,8 +109,8 @@ class RoleForm extends Modal
     public function rules()
     {
         return [
-            'name' => 'required|string|max:60|unique:roles,name,' . $this->model->id,
-            'description' => 'required|string|max:255',
+            'name' => ['required', new MaxTranslatable(100), 'unique:roles,name,' . $this->model->id],
+            'description' => ['nullable', new MaxTranslatable(1000)],
             'icon' => 'nullable',
             'profile' => 'required|string|in:' . implode(',', array_keys($this->profileOptions()->all())),
             'accept_roll_to_child' => 'required|boolean',

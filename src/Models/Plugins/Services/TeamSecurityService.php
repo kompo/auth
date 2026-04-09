@@ -93,7 +93,7 @@ class TeamSecurityService
 
             // Strategy 2: Direct team model check
             if ($model::class == TeamModel::getClass()) {
-                return [$model->getKey()];
+                return array_filter([$model->getKey(), $model->parent_team_id]);
             }
 
             // Strategy 3: Team ID column (safest, no relations)

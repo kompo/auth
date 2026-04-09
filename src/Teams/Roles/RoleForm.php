@@ -49,8 +49,8 @@ class RoleForm extends Modal
     public function body()
     {
         return _Rows(
-            _Input('permissions-role-name')->name('name')->required(),
-            _Textarea('permissions-role-description')->name('description'),
+            _Translatable('permissions-role-name')->name('name')->required(),
+            _TranslatableEditor('permissions-role-description')->name('description')->toolbar([]),
             _Image('permissions-role-icon')->name('icon'),
 
             _Rows($this->extraFields()),

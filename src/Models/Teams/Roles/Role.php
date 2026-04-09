@@ -10,16 +10,20 @@ use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Models\Traits\BelongsToManyPivotlessTrait;
 use Kompo\Auth\Teams\PermissionCacheManager;
 use Condoedge\Utils\Models\Traits\MemoizesResults;
+use Kompo\Database\HasTranslations;
 
 class Role extends Model
 {
     use BelongsToManyPivotlessTrait;
     use MemoizesResults;
+    use HasTranslations;
 
     protected $casts = [
         'icon' => 'array',
         'id' => 'string',
     ];
+
+    protected $translatable = ['name', 'description'];
 
     // It's impossible to set this kind of restriction because we read the role to get the permissions it would be getting a infinite loop.
     protected $readSecurityRestrictions = false;

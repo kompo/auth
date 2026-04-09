@@ -193,7 +193,8 @@ class PermissionResolver
                 
                 // Add target teams themselves
                 $accessibleTeams = $accessibleTeams->concat($targetTeamIds)->filter();
-                
+                $targetTeamIds = $targetTeamIds->unique()->filter();
+
                 // Add parent teams that could have hierarchy access
                 foreach ($targetTeamIds as $teamId) {
                     $ancestors = $this->hierarchyService->getAncestorTeamIds($teamId);

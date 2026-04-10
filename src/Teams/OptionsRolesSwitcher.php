@@ -56,9 +56,9 @@ class OptionsRolesSwitcher extends Query
         return _Rows(
             _Select()->class('max-w-2xl min-w-[260px]')->options(config('kompo-auth.profile-enum')::optionsWithLabels())
                 ->default(currentTeamRole()?->role?->profile ?? 1)->name('profile', false)
-                ->filter(),
+                ->serverFilter(),
             _Input()->placeholder('auth.search-placeholder')->name('search', false)
-                ->filter()
+                ->serverFilter()
                 ->debounce(800),
         );
     }

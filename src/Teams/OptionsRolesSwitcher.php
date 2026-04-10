@@ -12,6 +12,8 @@ class OptionsRolesSwitcher extends Query
     public $paginationType = 'Scroll';
     public $perPage = 10;
 
+    public $id = 'kompo-teams-roles-switcher';
+
     public $itemsWrapperClass = 'overflow-y-auto mini-scroll';
     public $itemsWrapperStyle = 'max-height: 350px';
 
@@ -54,9 +56,10 @@ class OptionsRolesSwitcher extends Query
         return _Rows(
             _Select()->class('max-w-2xl min-w-[260px]')->options(config('kompo-auth.profile-enum')::optionsWithLabels())
                 ->default(currentTeamRole()?->role?->profile ?? 1)->name('profile', false)
-                ->serverFilter(),
+                ->filter(),
             _Input()->placeholder('auth.search-placeholder')->name('search', false)
-                ->serverFilter(),
+                ->filter()
+                ->debounce(800),
         );
     }
 

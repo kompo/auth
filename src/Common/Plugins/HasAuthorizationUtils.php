@@ -84,16 +84,27 @@ class HasAuthorizationUtils extends ComponentPlugin
         // Get configuration for permission checking
         $this->checkIfUserHasPermission = 
             config('kompo-auth.security.default-read-security-restrictions') || 
-            $this->getComponentProperty('checkIfUserHasPermission');
+            $this->getComponentProperty('checkIfUserHasPermission');   
+            
+        if (!$this->checkIfUserHasPermission || !permissionMustBeAuthorized(static::getPermissionKey())) {
+            return true;
+        }
 
-        // Perform permission check if enabled and permission exists
-        if($this->checkIfUserHasPermission && 
-           permissionMustBeAuthorized(static::getPermissionKey()) && 
-           !auth()->user()?->hasPermission(
-               static::getPermissionKey(), 
-               $type, 
-               $this->getComponentProperty('specificPermissionTeamId'))
-        ) {
+        try {
+            if ($this->component->model?->isSecurityBypassRequired()) {
+                return true;
+            }
+        } catch (\Exception $e) {
+            // Handle any exceptions that occur during permission checking
+        }
+
+        $userHasPermission = !auth()->user()?->hasPermission(
+            static::getPermissionKey(), 
+            $type, 
+            $this->getComponentProperty('specificPermissionTeamId')
+        );
+
+        if($userHasPermission) {
             return false;
         }
 

@@ -2,8 +2,6 @@
 
 namespace Kompo\Auth\Models\Monitoring;
 
-use Illuminate\Support\Facades\URL;
-
 class DefaultNotificationButtonHandler
 {
     protected $notification;
@@ -16,7 +14,6 @@ class DefaultNotificationButtonHandler
     public function getButton()
     {
         return _Link2Button($this->notification->custom_button_text)->button()
-            ->post(URL::signedRoute('notifications.mark-seen', ['id' => $this->notification->id]))
-            ->redirect($this->notification->custom_button_href);
+            ->get('notifications.button-action', ['id' => $this->notification->id]);
     }
 }

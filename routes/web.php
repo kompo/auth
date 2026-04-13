@@ -3,8 +3,6 @@
 use Illuminate\Support\Facades\Route;
 use Kompo\Auth\Facades\NotificationModel;
 use Kompo\Auth\Http\Controllers\NotificationsController;
-use Kompo\Auth\Models\Monitoring\Notification;
-use Laravel\Socialite\Facades\Socialite;
 
 //PACKAGES
 Route::impersonate();
@@ -101,6 +99,7 @@ Route::middleware(['auth'])->group(function(){
     Route::get('log-me-out', fn() => auth()->user()?->logMeOut());
 
 	//Notification
+	Route::get('notification/{id}/button-action', [NotificationsController::class, 'goToButtonAction'])->name('notifications.button-action');
 	Route::post('notification-reminder/{id}/{reminder_days}', [NotificationsController::class, 'remind'])
 		->name('notifications.remind');
 	Route::delete('notification-delete/{id}', [NotificationsController::class, 'delete'])

@@ -2,7 +2,6 @@
 
 namespace Kompo\Auth\Http\Controllers;
 
-use App\Models\Notification;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Kompo\Auth\Facades\NotificationModel;
@@ -16,7 +15,7 @@ class NotificationsController extends Controller
 			abort(403);
 		}
 		$notification->markSeen();
-		return redirect($notification->custom_button_href ?? '/');
+		return response()->kompoRedirect($notification->custom_button_href ?? '/');
 	}
 	
     public function remind($id, $reminderDays)
@@ -34,7 +33,7 @@ class NotificationsController extends Controller
 
     public function delete($id)
     {
-    	$notification = Notification::findOrFail($id);
+    	$notification = NotificationModel::findOrFail($id);
 
     	if ($notification->user_id !== auth()->user()->id) {
     		abort(403);

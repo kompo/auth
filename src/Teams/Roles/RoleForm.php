@@ -18,6 +18,11 @@ class RoleForm extends Modal
 
     public $model = RoleModel::class;
 
+    public function authorize()
+    {
+        return auth()->user()->hasPermission('Role', PermissionTypeEnum::WRITE);
+    }
+
     public function beforeSave()
     {
         if (!$this->model->id) {

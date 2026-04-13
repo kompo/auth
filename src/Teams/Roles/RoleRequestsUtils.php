@@ -11,6 +11,10 @@ trait RoleRequestsUtils
     // GET REQUESTS
     public function changeRolePermissionSection()
     {
+        if (!auth()->user()->hasPermission('Role', PermissionTypeEnum::WRITE)) {
+            abort(403, 'Unauthorized');
+        }
+
         $value = (int) request('permissionSection' . request('role') . '-' . request('permissionSection'));
 
         $role = Role::findOrFail(request('role'));
@@ -35,6 +39,10 @@ trait RoleRequestsUtils
 
     public function changeRolePermission()
     {
+        if (!auth()->user()->hasPermission('Role', PermissionTypeEnum::WRITE)) {
+            abort(403, 'Unauthorized');
+        }
+
         $value = (int) request(request('role') . '-' . request('permission'));
 
         if($value) {
@@ -54,11 +62,19 @@ trait RoleRequestsUtils
 
     public function getRoleForm($id = null)
     {
+        if (!auth()->user()->hasPermission('Role', PermissionTypeEnum::WRITE)) {
+            abort(403, 'Unauthorized');
+        }
+
         return new (config('kompo-auth.role-form-namespace'))($id);
     }
 
     public function getRoleUpdate()
     {
+        if (!auth()->user()->hasPermission('Role', PermissionTypeEnum::WRITE)) {
+            abort(403, 'Unauthorized');
+        }
+
         $latestRoles = session()->get('latest-roles') ?: [];
         session()->put('latest-roles', request('roles'));
 

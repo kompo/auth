@@ -31,7 +31,7 @@ trait RoleElementsUtils
                             _Link('permissions-delete')->class('py-1 px-2 text-red-500')
                                 ->selfPost('getPendingActionsToDeleteRoleModal', ['id' => $role?->id])->inModal()
                     ),
-                )->class('absolute right-1'),
+                )->class('absolute right-1')->checkAuthWrite('Role'),
             )->class('h-full gap-2 w-full'),
         )->class('w-full relative bg-white h-full')->when($i == 0, fn($e) => $e->class('border-r border-gray-300'))->id('role-header-' . $role?->id)->attr(['data-role-id' => $role?->id]);
     }
@@ -45,37 +45,47 @@ trait RoleElementsUtils
     {
         $checkboxName = 'permissionSection' . $role->id . '-' . $permissionSectionId;
 
+        $userHasWritePermission = auth()->user()->hasPermission('Role', PermissionTypeEnum::WRITE);
+
         return _Rows(_CheckboxMultipleStates(
             $role->id . '-' . $permission->id,
             PermissionTypeEnum::values(),
             PermissionTypeEnum::colors(),
-            $default ?? $role->getPermissionTypeByPermissionId($permission->id)
+            $default ?? $role->getPermissionTypeByPermissionId($permission->id),
+            $userHasWritePermission
         )->class('!mb-0')
-            ->onChange(
-                fn($e) => $e
-                    ->selfPost('changeRolePermission', ['role' => $role->id, 'permission' => $permission->id]) &&
-                    $e->run('() => {checkMultipleLinkGroupColor("' . $checkboxName . '", "' . $role->id . '", "' . collect($permissionsIds)->implode(',') . '")}')
-            ))->attr(['data-role-id' => $role->id]);
+            ->when($userHasWritePermission,
+                fn($el) => $el->onChange(
+                    fn($e) => $e
+                        ->selfPost('changeRolePermission', ['role' => $role->id, 'permission' => $permission->id]) &&
+                        $e->run('() => {checkMultipleLinkGroupColor("' . $checkboxName . '", "' . $role->id . '", "' . collect($permissionsIds)->implode(',') . '")}')
+                )
+            )->attr(['data-role-id' => $role->id])
+        );
     }
 
     public function sectionCheckbox($role, $permissionSection, $types = [])
     {
         $role = is_string($role) ? Role::findOrFail($role) : $role;
         $checkboxName = 'permissionSection' . $role->id . '-' . $permissionSection->id;
+        $userHasWritePermission = auth()->user()->hasPermission('Role', PermissionTypeEnum::WRITE);
 
         return _Rows(_CheckboxSectionMultipleStates(
             $checkboxName,
             PermissionTypeEnum::values(),
             PermissionTypeEnum::colors(),
-            count($types) ? $types : $permissionSection->allPermissionsTypes($role)->toArray()
+            count($types) ? $types : $permissionSection->allPermissionsTypes($role)->toArray(),
+            $userHasWritePermission
         )->class('!mb-0')
-            ->onChange(
+        ->when($userHasWritePermission,
+            fn($el) => $el->onChange(
                 fn($e) => $e
                     ->selfPost('changeRolePermissionSection', ['role' => $role->id, 'permissionSection' => $permissionSection->id, 'permission_name' => request('permission_name')])->run('reduceApplyingChangesAlert') &&
                     $e->run('() => {
                         setApplyingChangesAlert(); 
                         changeMultipleLinkGroupColor("' . $checkboxName . '", "' . $role->id . '", "' . $permissionSection->getPermissions()->pluck('id')->implode(',') . '")}
                     ')
-            ))->attr(['data-role-id' => $role->id]);
+            ))->attr(['data-role-id' => $role->id])
+        );
     }
 }

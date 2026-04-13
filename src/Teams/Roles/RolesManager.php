@@ -22,7 +22,8 @@ class RolesManager extends Form
             _Rows(
                 _FlexBetween(
                     _Html('Roles')->class('text-lg font-bold'),
-                    _Link('Create Role')->selfGet('getRoleForm')->inModal(),
+                    _Link('Create Role')->selfGet('getRoleForm')->inModal()
+                        ->checkAuthWrite('Role'),
                 ),
 
                 new RolesAndPermissionMatrix(),

@@ -1,6 +1,6 @@
 <?php
 
-function _CheckboxMultipleStates($name, $values = [], $colors = [], $default = null)
+function _CheckboxMultipleStates($name, $values = [], $colors = [], $default = null, $ableToChangeIt = true)
 {
     $values = $values instanceof \Illuminate\Support\Collection ? $values->all() : (array) $values;
     $colors = $colors instanceof \Illuminate\Support\Collection ? $colors->all() : (array) $colors;
@@ -20,16 +20,20 @@ function _CheckboxMultipleStates($name, $values = [], $colors = [], $default = n
     }
 
     $el = _LinkGroup()->name($name, false)->options($parsedOptions)
-        ->containerClass('')->selectedClass('x', '');
+        ->containerClass(($ableToChangeIt ? '' : 'pointer-events-none'))->selectedClass('x', '');
 
     if ($default) {
         $el->default($default);
     }
 
+    if (!$ableToChangeIt) {
+        return $el;
+    }
+
     return $el->onChange(fn($e) => $e->run('() => {changeLinkGroupColor("' . $name . '")}'));
 }
 
-function _CheckboxSectionMultipleStates($name, $values = [], $colors = [], $default = null)
+function _CheckboxSectionMultipleStates($name, $values = [], $colors = [], $default = null, $ableToChangeIt = true)
 {
     $values = $values instanceof \Illuminate\Support\Collection ? $values->all() : (array) $values;
     $colors = $colors instanceof \Illuminate\Support\Collection ? $colors->all() : (array) $colors;
@@ -60,10 +64,14 @@ function _CheckboxSectionMultipleStates($name, $values = [], $colors = [], $defa
     }
 
     $el = _LinkGroup()->name($name, false)->options($parsedOptions)
-        ->containerClass('checkbox-style')->selectedClass('x', '');
+        ->containerClass('checkbox-style ' . ($ableToChangeIt ? '' : 'pointer-events-none'))->selectedClass('x', '');
 
     if ($default && !$isArray) {
         $el->default($default);
+    }
+
+    if (!$ableToChangeIt) {
+        return $el;
     }
 
     return $el->onChange(fn($e) => $e->run('() => {

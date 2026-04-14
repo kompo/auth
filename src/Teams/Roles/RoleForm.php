@@ -4,7 +4,9 @@ namespace Kompo\Auth\Teams\Roles;
 
 use Condoedge\Utils\Kompo\Common\Modal;
 use Kompo\Auth\Facades\RoleModel;
+use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Rules\MaxTranslatable;
+use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 
 class RoleForm extends Modal
 {
@@ -38,10 +40,7 @@ class RoleForm extends Modal
 
     public function afterSave()
     {
-        \Cache::forget('roles');
-
-        // \Cache::tags(['permissions'])->flush();
-        \Cache::flush();
+        app(PermissionCacheInvalidator::class)->roleChanged($this->model);
     }
 
     public function response()

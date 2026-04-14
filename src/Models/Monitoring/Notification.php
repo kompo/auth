@@ -5,6 +5,7 @@ namespace Kompo\Auth\Models\Monitoring;
 use Condoedge\Utils\Models\Model;
 use Kompo\Auth\Models\Teams\BelongsToTeamTrait;
 use Kompo\Auth\Models\Traits\BelongsToUserTrait;
+use Kompo\Auth\Monitoring\NotificationCache;
 
 class Notification extends Model
 {
@@ -41,7 +42,7 @@ class Notification extends Model
     /* ACTIONS */
     public function markSeen()
     {
-        \Cache::forget('discussionsNotifications'.auth()->id());
+        app(NotificationCache::class)->forgetDiscussionsNotificationsForUser(auth()->id());
 
         $this->seen_at = now();
         $this->save();

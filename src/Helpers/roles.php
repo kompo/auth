@@ -3,7 +3,7 @@
 /* GENERAL CONVENTIONS */
 
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
-use Kompo\Auth\Models\Teams\Roles\Role;
+use Kompo\Auth\Teams\Cache\PermissionDefinitionCache;
 
 if (!function_exists('authUser')) {
 	function authUser()
@@ -47,19 +47,12 @@ if (!function_exists('isImpersonated') && config('kompo-auth.root-security', tru
  */
 function getRoles()
 {
-    return \Cache::remember('roles_all', 3600, function() {
-        return \Kompo\Auth\Models\Teams\Roles\Role::orderBy('name')->get();
-    });
+    return app(PermissionDefinitionCache::class)->roles();
 }
 
 function getRolesOrderedByRelevance()
 {
-    return \Cache::remember('roles_by_relevance', 10800, function() {
-        return \Kompo\Auth\Models\Teams\Roles\Role::query()
-            ->withCount('teamRoles')
-            ->orderByDesc('team_roles_count')
-            ->get();
-    });
+    return app(PermissionDefinitionCache::class)->rolesByRelevance();
 }
 
 const PERMISSION_SEPARATOR = ':';

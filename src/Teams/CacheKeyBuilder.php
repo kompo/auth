@@ -21,6 +21,8 @@ class CacheKeyBuilder
     public const ACCESSIBLE_TEAMS = 'accessible_teams';
     
     public const ROLE_PERMISSIONS = 'role_permissions';
+    public const ROLE_DEFINITIONS = 'role_definitions';
+    public const PERMISSION_DEFINITIONS = 'permission_definitions';
     
     public const ALL_TEAM_IDS_WITH_ROLES = 'all_team_ids_with_roles';
     public const ACTIVE_TEAM_ROLES = 'active_team_roles';
@@ -209,6 +211,8 @@ class CacheKeyBuilder
             self::TEAM_ROLE_PERMISSIONS,
             self::ACCESSIBLE_TEAMS,
             self::ROLE_PERMISSIONS,
+            self::ROLE_DEFINITIONS,
+            self::PERMISSION_DEFINITIONS,
             self::ALL_TEAM_IDS_WITH_ROLES,
             self::ACTIVE_TEAM_ROLES,
             self::TEAM_DESCENDANTS,
@@ -235,6 +239,8 @@ class CacheKeyBuilder
             self::USER_ACTIVE_TEAM_ROLES,
             self::USER_SUPER_ADMIN,
             self::ACCESSIBLE_TEAMS,
+            self::ALL_TEAM_IDS_WITH_ROLES,
+            self::ACTIVE_TEAM_ROLES,
             self::CURRENT_TEAM_ROLE,
             self::CURRENT_TEAM,
             self::IS_SUPER_ADMIN,

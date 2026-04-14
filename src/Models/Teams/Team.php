@@ -4,10 +4,9 @@ namespace Kompo\Auth\Models\Teams;
 
 use Condoedge\Utils\Models\Model;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 use Kompo\Auth\Facades\UserModel;
-use Kompo\Auth\Teams\PermissionCacheManager;
-use Kompo\Auth\Teams\TeamHierarchyService;
+use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
+use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
 
 class Team extends Model
 {
@@ -30,18 +29,19 @@ class Team extends Model
         static::deleted(function ($team) {
             clearAuthStaticCache();
             
-            $team->clearCache();
+            $team->clearCache(wasDeleted: true);
         });
     }
 
-    protected function clearCache()
+    protected function clearCache(bool $wasDeleted = false)
     {
-        $cacheManager = app(PermissionCacheManager::class);
+        $invalidator = app(PermissionCacheInvalidator::class);
+        $invalidator->teamChanged([$this->id]);
         
-        if ($this->isDirty('parent_team_id')) {
-            $cacheManager->invalidateByChange('team_hierarchy_changed', [
-                'team_ids' => array_filter([$this->id, $this->parent_team_id, $this->getOriginal('parent_team_id')])
-            ]);
+        if ($wasDeleted || $this->wasChanged('parent_team_id') || $this->isDirty('parent_team_id')) {
+            $invalidator->teamHierarchyChanged(
+                array_filter([$this->id, $this->parent_team_id, $this->getOriginal('parent_team_id')])
+            );
         }
         
         if ($this->wasRecentlyCreated) {
@@ -51,9 +51,7 @@ class Team extends Model
                 $affectedTeamIds[] = $this->parent_team_id;
             }
             
-            $cacheManager->invalidateByChange('team_created', [
-                'team_ids' => $affectedTeamIds
-            ]);
+            $invalidator->teamCreated($affectedTeamIds);
 
             $this->addedBy?->clearPermissionCache();
         }
@@ -124,14 +122,14 @@ class Team extends Model
     }
 
     /**
-     * @deprecated Usar TeamHierarchyService::getDescendantTeamIds()
+     * @deprecated Usar TeamHierarchyInterface::getDescendantTeamIds()
      */
     public function getAllChildrenRawSolution($depth = null, $staticExtraSelect = null, $search = '')
     {
         // Mantener por compatibilidad pero marcar como deprecated
-        \Log::warning('getAllChildrenRawSolution is deprecated. Use TeamHierarchyService instead.');
+        \Log::warning('getAllChildrenRawSolution is deprecated. Use TeamHierarchyInterface instead.');
 
-        $service = app(TeamHierarchyService::class);
+        $service = app(TeamHierarchyInterface::class);
 
         if ($staticExtraSelect && $search) {
             return $service->getDescendantTeamsWithRole($this->id, $staticExtraSelect[0], $search);
@@ -151,27 +149,27 @@ class Team extends Model
      */
     public function getDescendants(?int $maxDepth = null): Collection
     {
-        return app(TeamHierarchyService::class)->getDescendantTeamIds($this->id, maxDepth: $maxDepth);
+        return app(TeamHierarchyInterface::class)->getDescendantTeamIds($this->id, maxDepth: $maxDepth);
     }
 
     public function getDescendantsWithRole(string $role, string $search = ''): Collection
     {
-        return app(TeamHierarchyService::class)->getDescendantTeamsWithRole($this->id, $role, $search);
+        return app(TeamHierarchyInterface::class)->getDescendantTeamsWithRole($this->id, $role, $search);
     }
 
     public function hasDescendant(int $teamId): bool
     {
-        return app(TeamHierarchyService::class)->isDescendant($this->id, $teamId);
+        return app(TeamHierarchyInterface::class)->isDescendant($this->id, $teamId);
     }
 
     public function getAncestors(): Collection
     {
-        return app(TeamHierarchyService::class)->getAncestorTeamIds($this->id);
+        return app(TeamHierarchyInterface::class)->getAncestorTeamIds($this->id);
     }
 
     public function getSiblings(): Collection
     {
-        return app(TeamHierarchyService::class)->getSiblingTeamIds($this->id);
+        return app(TeamHierarchyInterface::class)->getSiblingTeamIds($this->id);
     }
 
     /**
@@ -252,18 +250,21 @@ class Team extends Model
     /* ACTIONS */
     public function detachFromTeam($user)
     {
-        //TODO: refactor for current_team_role_id
-        if ($user->current_team_id === $this->id) {
+        $teamRoles = TeamRole::withoutGlobalScope('authUserHasPermissions')
+            ->where('team_id', $this->id)
+            ->where('user_id', $user->id)
+            ->get();
+
+        if ($teamRoles->pluck('id')->contains($user->current_team_role_id)) {
             $user->forceFill([
-                'current_team_id' => null,
+                'current_team_role_id' => null,
             ])->save();
         }
 
-        $this->users()->detach($this->user);
+        $teamRoles->each->delete();
 
-        if (!$this->user->teams()->count()) {
-            // code...
-        }
+        $user->clearPermissionCache();
+        app(PermissionCacheInvalidator::class)->userRemovedFromTeam($user, $this);
     }
 
     /* ELEMENTS */

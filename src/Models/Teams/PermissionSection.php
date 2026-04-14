@@ -3,7 +3,7 @@
 namespace Kompo\Auth\Models\Teams;
 
 use Condoedge\Utils\Models\Model;
-use Illuminate\Support\Facades\Cache;
+use Kompo\Auth\Teams\Cache\PermissionDefinitionCache;
 use Kompo\Database\HasTranslations;
 
 class PermissionSection extends Model
@@ -22,9 +22,7 @@ class PermissionSection extends Model
     // CALCULATED FIELDS
     public function getPermissions()
     {
-        return \Cache::rememberWithTags(['permissions'], 'permissions_of_section_' . $this->id, 3600, function () {
-            return $this->permissions()->get();
-        });
+        return app(PermissionDefinitionCache::class)->permissionsForSection($this);
     }
 
     public function hasAllPermissionsSameType($role)

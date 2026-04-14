@@ -3,8 +3,8 @@
 namespace Kompo\Auth\Teams\Roles;
 
 use Condoedge\Utils\Kompo\Common\Modal;
-use Illuminate\Support\Facades\Cache;
 use Kompo\Auth\Models\Teams\Permission;
+use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 use Kompo\Form;
 
 class EditPermissionInfo extends Modal
@@ -24,7 +24,11 @@ class EditPermissionInfo extends Modal
 
     public function afterSave()
     {
-        Cache::forget('permissions_of_section_' . $this->model->permission_section_id);
+        app(PermissionCacheInvalidator::class)->permissionChanged(
+            $this->model,
+            [$this->model->permission_key],
+            [$this->model->permission_section_id],
+        );
     }
 
     public function body()

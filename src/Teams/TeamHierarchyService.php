@@ -5,28 +5,19 @@ namespace Kompo\Auth\Teams;
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
-use Kompo\Auth\Teams\CacheKeyBuilder;
+use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
 
 /**
  * Dedicated service for efficiently handling team hierarchies
  */
-class TeamHierarchyService
+class TeamHierarchyService implements TeamHierarchyInterface
 {
-    private const CACHE_TTL = 3600; // 1 hour
-    private const CACHE_TAG = 'team-hierarchy';
-
     /**
      * Gets all descendant team IDs using recursive CTE (more efficient)
      */
     public function getDescendantTeamIds(int $teamId, ?string $search = null, ?int $maxDepth = null): Collection
     {
-        $cacheKey = CacheKeyBuilder::teamDescendants($teamId, $maxDepth, $search);
-        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::TEAM_DESCENDANTS);
-
-        return Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL, function () use ($teamId, $search, $maxDepth) {
-            return $this->executeDescendantsQuery($teamId, $search, $maxDepth);
-        });
+        return $this->executeDescendantsQuery($teamId, $search, $maxDepth);
     }
 
     /**
@@ -34,12 +25,7 @@ class TeamHierarchyService
      */
     public function getDescendantTeamsWithRole(int $teamId, string $role, ?string $search = '', $limit = null): Collection
     {
-        $cacheKey = CacheKeyBuilder::teamDescendantsWithRole($teamId, $role, $search, $limit);
-        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::TEAM_DESCENDANTS_WITH_ROLE);
-
-        return Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL / 2, function () use ($teamId, $role, $search, $limit) {
-            return $this->executeDescendantsWithRoleQuery($teamId, $role, $search, $limit);
-        });
+        return $this->executeDescendantsWithRoleQuery($teamId, $role, $search, $limit);
     }
 
     /**
@@ -51,12 +37,7 @@ class TeamHierarchyService
             return true;
         }
 
-        $cacheKey = CacheKeyBuilder::teamIsDescendant($parentTeamId, $childTeamId);
-        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::TEAM_IS_DESCENDANT);
-
-        return Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL, function () use ($parentTeamId, $childTeamId) {
-            return $this->executeIsDescendantQuery($parentTeamId, $childTeamId);
-        });
+        return $this->executeIsDescendantQuery($parentTeamId, $childTeamId);
     }
 
     /**
@@ -64,12 +45,7 @@ class TeamHierarchyService
      */
     public function getAncestorTeamIds(int $teamId): Collection
     {
-        $cacheKey = CacheKeyBuilder::teamAncestors($teamId);
-        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::TEAM_ANCESTORS);
-
-        return Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL, function () use ($teamId) {
-            return $this->executeAncestorsQuery($teamId);
-        });
+        return $this->executeAncestorsQuery($teamId);
     }
 
     /**
@@ -77,12 +53,7 @@ class TeamHierarchyService
      */
     public function getSiblingTeamIds(int $teamId, ?string $search = '', $limit = null): Collection
     {
-        $cacheKey = CacheKeyBuilder::teamSiblings($teamId, $search, $limit);
-        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::TEAM_SIBLINGS);
-
-        return Cache::rememberWithTags($tags, $cacheKey, self::CACHE_TTL, function () use ($teamId, $search, $limit) {
-            return $this->executeSiblingsQuery($teamId, $search, $limit);
-        });
+        return $this->executeSiblingsQuery($teamId, $search, $limit);
     }
 
     /**
@@ -90,19 +61,7 @@ class TeamHierarchyService
      */
     public function clearCache(?int $teamId = null): void
     {
-        if ($teamId) {
-            // Clear all team hierarchy cache types since any change affects all hierarchy relationships
-            $hierarchyCacheTypes = CacheKeyBuilder::getTeamHierarchyCacheTypes();
-            foreach ($hierarchyCacheTypes as $cacheType) {
-                Cache::flushTags([$cacheType]);
-            }
-        } else {
-            // Clear all hierarchy cache
-            $hierarchyCacheTypes = CacheKeyBuilder::getTeamHierarchyCacheTypes();
-            foreach ($hierarchyCacheTypes as $cacheType) {
-                Cache::flushTags([$cacheType]);
-            }
-        }
+        // Cache invalidation belongs to CachedTeamHierarchyService.
     }
 
     /**
@@ -245,6 +204,74 @@ class TeamHierarchyService
     }
 
     // NEW BATCH METHODS
+
+    /**
+     * Get ancestors for multiple teams in a single recursive query.
+     */
+    public function getBatchAncestorTeamIds(array $teamIds): Collection
+    {
+        $teamIds = collect($teamIds)->filter()->unique()->values()->all();
+
+        if (empty($teamIds)) {
+            return collect();
+        }
+
+        $placeholders = str_repeat('?,', count($teamIds) - 1) . '?';
+        $sql = "
+            WITH RECURSIVE team_ancestors AS (
+                SELECT id, parent_team_id, 0 as depth
+                FROM teams
+                WHERE id IN ({$placeholders})
+
+                UNION ALL
+
+                SELECT t.id, t.parent_team_id, ta.depth + 1
+                FROM teams t
+                INNER JOIN team_ancestors ta ON t.id = ta.parent_team_id
+                WHERE ta.depth < 50
+                  AND t.deleted_at IS NULL
+            )
+            SELECT DISTINCT id FROM team_ancestors
+        ";
+
+        return collect(DB::select($sql, $teamIds))->pluck('id');
+    }
+
+    /**
+     * Get siblings for multiple teams in a single query.
+     */
+    public function getBatchSiblingTeamIds(array $teamIds, ?string $search = '', $limit = null): Collection
+    {
+        $teamIds = collect($teamIds)->filter()->unique()->values()->all();
+
+        if (empty($teamIds)) {
+            return collect();
+        }
+
+        $placeholders = str_repeat('?,', count($teamIds) - 1) . '?';
+        $searchCondition = $search ? 'AND LOWER(t2.team_name) LIKE LOWER(?)' : '';
+        $limitCondition = $limit ? 'LIMIT ?' : '';
+
+        $sql = "
+            SELECT DISTINCT t2.id
+            FROM teams t1
+            INNER JOIN teams t2 ON t1.parent_team_id = t2.parent_team_id
+            WHERE t1.id IN ({$placeholders})
+              AND t2.id NOT IN ({$placeholders})
+              AND t2.deleted_at IS NULL
+              {$searchCondition}
+            {$limitCondition}
+        ";
+
+        $params = array_merge(
+            $teamIds,
+            $teamIds,
+            $search ? [wildcardSpace($search)] : [],
+            $limit ? [(int) $limit] : []
+        );
+
+        return collect(DB::select($sql, $params))->pluck('id');
+    }
 
     /**
      * Get descendants for multiple teams in a single query (batch operation)

@@ -4,9 +4,9 @@ namespace Kompo\Auth\Models\Teams;
 
 use Kompo\Auth\Facades\RoleModel;
 use Condoedge\Utils\Models\Model;
-use Illuminate\Support\Facades\Cache;
 use Kompo\Auth\Facades\UserModel;
-use Kompo\Auth\Models\User;
+use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
+use Kompo\Auth\Teams\Cache\PermissionDefinitionCache;
 use Kompo\Database\HasTranslations;
 
 class Permission extends Model
@@ -34,6 +34,19 @@ class Permission extends Model
 
     // It's impossible to set this kind of restriction because we read the permission it would be getting a infinite loop.
     protected $readSecurityRestrictions = false;
+
+    public static function booted()
+    {
+        parent::booted();
+
+        static::saved(function ($permission) {
+            $permission->clearCache();
+        });
+
+        static::deleted(function ($permission) {
+            $permission->clearCache();
+        });
+    }
     
     /* RELATIONS */
     public function roles()
@@ -44,9 +57,22 @@ class Permission extends Model
     /* CALCULATED FIELDS */
     public static function findByKey($permissionKey)
     {
-        return Cache::remember("permission_{$permissionKey}", 30, function () use ($permissionKey) {
-            return self::where('permission_key', $permissionKey)->first() ?? false;
-        });
+        return app(PermissionDefinitionCache::class)->permissionByKey($permissionKey);
+    }
+
+    protected function clearCache(): void
+    {
+        $permissionKeys = array_values(array_filter(array_unique([
+            $this->permission_key,
+            $this->getOriginal('permission_key'),
+        ])));
+
+        $sectionIds = array_values(array_filter(array_unique([
+            $this->permission_section_id,
+            $this->getOriginal('permission_section_id'),
+        ])));
+
+        app(PermissionCacheInvalidator::class)->permissionChanged($this, $permissionKeys, $sectionIds);
     }
 
     public function getPermissionTypeByRoleId($roleId)

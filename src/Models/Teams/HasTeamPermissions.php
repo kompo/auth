@@ -3,14 +3,14 @@
 namespace Kompo\Auth\Models\Teams;
 
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\PermissionTeamRole;
 use Kompo\Auth\Models\Teams\TeamRole;
-use Kompo\Auth\Teams\PermissionResolver;
-use Kompo\Auth\Teams\TeamHierarchyService;
-use Kompo\Auth\Teams\CacheKeyBuilder;
+use Kompo\Auth\Teams\Cache\UserContextCache;
+use Kompo\Auth\Teams\Cache\UserTeamCache;
+use Kompo\Auth\Teams\Contracts\PermissionResolverInterface;
+use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
 
 /**
  * Unified permissions trait that handles all permission logic
@@ -26,9 +26,19 @@ trait HasTeamPermissions
     /**
      * Get the permission resolver service
      */
-    private function getPermissionResolver(): PermissionResolver
+    private function getPermissionResolver(): PermissionResolverInterface
     {
-        return app(PermissionResolver::class);
+        return app(PermissionResolverInterface::class);
+    }
+
+    private function getUserTeamCache(): UserTeamCache
+    {
+        return app(UserTeamCache::class);
+    }
+
+    private function getUserContextCache(): UserContextCache
+    {
+        return app(UserContextCache::class);
     }
 
     /**
@@ -63,16 +73,12 @@ trait HasTeamPermissions
         PermissionTypeEnum $type = PermissionTypeEnum::ALL,
         $teamIds = null
     ): bool {
-        $cacheKey = "permission_{$permissionKey}_{$type->value}_" . md5(serialize($teamIds));
-
-        // return $this->getPermissionRequestCache($cacheKey, function () use ($permissionKey, $type, $teamIds) {
-            return $this->getPermissionResolver()->userHasPermission(
-                $this->id,
-                $permissionKey,
-                $type,
-                $teamIds
-            );
-        // });
+        return $this->getPermissionResolver()->userHasPermission(
+            $this->id,
+            $permissionKey,
+            $type,
+            $teamIds
+        );
     }
 
     /**
@@ -83,13 +89,10 @@ trait HasTeamPermissions
         $cacheKey = "team_access_{$teamId}_" . ($roleId ?? 'any');
 
         return $this->getPermissionRequestCache($cacheKey, function () use ($teamId, $roleId) {
-            $cacheKey = CacheKeyBuilder::userTeamAccess($this->id, $teamId, $roleId);
-            $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::USER_TEAM_ACCESS);
-            
-            return Cache::rememberWithTags(
-                $tags,
-                $cacheKey,
-                900,
+            return $this->getUserTeamCache()->userTeamAccess(
+                $this->id,
+                $teamId,
+                $roleId,
                 function () use ($teamId, $roleId) {
                     $teamRoles = $this->getActiveTeamRolesOptimized($roleId);
 
@@ -141,10 +144,8 @@ trait HasTeamPermissions
             return array_keys($this->getAllTeamIdsWithRolesCached(profile: null, search: $search, limit: $limit));
         }
         
-        return Cache::rememberWithTags(
-            ['permissions-v2'],
-            "user_all_accessible_teams.{$this->id}",
-            900,
+        return $this->getUserTeamCache()->allAccessibleTeams(
+            $this->id,
             function () use ($limit) {
                 return array_keys($this->getAllTeamIdsWithRolesCached(profile: null, search: null, limit: $limit)); 
             }   
@@ -161,10 +162,9 @@ trait HasTeamPermissions
      */
     private function getActiveTeamRolesOptimized(string $roleId = null): Collection
     {
-        return Cache::rememberWithTags(
-            ['permissions-v2'],
-            "activeTeamRoles.{$this->id}.{$roleId}",
-            900,
+        return $this->getUserTeamCache()->activeTeamRoles(
+            $this->id,
+            $roleId,
             function () use ($roleId) {
                 return $this->activeTeamRoles()
                     ->when($roleId, fn($q) => $q->where('role', $roleId))
@@ -187,10 +187,9 @@ trait HasTeamPermissions
             return $this->sliceTeamIdsResult($result, $limit, $offset);
         }
 
-        $all = Cache::rememberWithTags(
-            ['permissions-v2'],
-            "allTeamIdsWithRoles.{$this->id}.{$profile}",
-            180,
+        $all = $this->getUserTeamCache()->allTeamIdsWithRoles(
+            $this->id,
+            $profile,
             fn() => $this->getAllTeamIdsWithRoles($profile)
         );
 
@@ -208,10 +207,9 @@ trait HasTeamPermissions
             return collect($data)->sum(fn($roles) => is_array($roles) ? count($roles) : 1);
         }
 
-        return Cache::rememberWithTags(
-            ['permissions-v2'],
-            "countTeamIdsWithRolesPairs.{$this->id}.{$profile}",
-            180,
+        return $this->getUserTeamCache()->countTeamIdsWithRolesPairs(
+            $this->id,
+            $profile,
             fn() => collect($this->getAllTeamIdsWithRolesCached($profile))
                 ->sum(fn($roles) => is_array($roles) ? count($roles) : 1)
         );
@@ -242,7 +240,7 @@ trait HasTeamPermissions
         }
 
         $result = collect();
-        $hierarchyService = app(TeamHierarchyService::class);
+        $hierarchyService = app(TeamHierarchyInterface::class);
 
         // Cap each sub-query to offset+limit for performance (we need at least that many before slicing)
         $fetchLimit = ($limit !== null) ? $limit + $offset : null;
@@ -313,7 +311,7 @@ trait HasTeamPermissions
         array $teamRoles,
         string $search,
         ?int $limit,
-        TeamHierarchyService $hierarchyService,
+        TeamHierarchyInterface $hierarchyService,
     ): Collection {
         $batchResults = collect();
 
@@ -385,7 +383,7 @@ trait HasTeamPermissions
         array $teamRoles,
         string $search,
         ?int $limit,
-        TeamHierarchyService $hierarchyService,
+        TeamHierarchyInterface $hierarchyService,
     ): Collection {
         // Prepare batch input: team_id => role mapping
         $teamIdsWithRoles = [];
@@ -403,7 +401,7 @@ trait HasTeamPermissions
         array $teamRoles,
         string $search,
         ?int $limit,
-        TeamHierarchyService $hierarchyService,
+        TeamHierarchyInterface $hierarchyService,
     ): Collection {
         // Prepare batch input: team_id => role mapping
         $teamIdsWithRoles = [];
@@ -492,10 +490,8 @@ trait HasTeamPermissions
     public function getCurrentPermissionsInAllTeams(): Collection
     {
         return $this->getPermissionRequestCache('current_permissions_all_teams', function () {
-            return Cache::rememberWithTags(
-                ['permissions-v2'],
-                'currentPermissionsInAllTeams' . $this->id,
-                900,
+            return $this->getUserTeamCache()->currentPermissionsInAllTeams(
+                $this->id,
                 fn() => TeamRole::getAllPermissionsKeysForMultipleRoles($this->activeTeamRoles)
             );
         });
@@ -510,10 +506,9 @@ trait HasTeamPermissions
         $cacheKey = 'current_permission_keys_' . md5($teamIds->implode(','));
 
         return $this->getPermissionRequestCache($cacheKey, function () use ($teamIds) {
-            return Cache::rememberWithTags(
-                ['permissions-v2'],
-                'currentPermissionKeys' . $this->id . '|' . $teamIds->implode(','),
-                900,
+            return $this->getUserTeamCache()->currentPermissionKeys(
+                $this->id,
+                $teamIds,
                 fn() => TeamRole::getAllPermissionsKeysForMultipleRoles(
                     $this->activeTeamRoles->filter(fn($tr) => $tr->hasAccessToTeamOfMany($teamIds))
                 )
@@ -533,27 +528,19 @@ trait HasTeamPermissions
             $currentTeamRole = $this->currentTeamRole()->first();
 
             if ($currentTeamRole) {
-                // Pre-warm critical caches using tags
-                $teamRoleKey = CacheKeyBuilder::currentTeamRole($this->id);
-                $teamRoleTags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::CURRENT_TEAM_ROLE);
-                Cache::tags($teamRoleTags)->put($teamRoleKey, $currentTeamRole, 900);
-
-                $teamKey = CacheKeyBuilder::currentTeam($this->id);
-                $teamTags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::CURRENT_TEAM);
-                Cache::tags($teamTags)->put($teamKey, $currentTeamRole->team, 900);
-
-                $superAdminKey = CacheKeyBuilder::isSuperAdmin($this->id);
-                $superAdminTags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::IS_SUPER_ADMIN);
-                Cache::tags($superAdminTags)->put($superAdminKey, $this->isSuperAdmin(), 900);
+                $contextCache = $this->getUserContextCache();
+                $contextCache->putCurrentTeamRole($this->id, $currentTeamRole);
+                $contextCache->putCurrentTeam($this->id, $currentTeamRole->team);
+                $contextCache->putIsSuperAdmin($this->id, $this->isSuperAdmin());
 
                 // Pre-load permissions asynchronously if possible
                 if (config('queue.default') !== 'sync') {
                     dispatch(function () {
-                        app(\Kompo\Auth\Teams\PermissionCacheManager::class)->warmUserCache($this->id);
+                        app(PermissionResolverInterface::class)->batchWarmCache([$this->id]);
                     })->afterResponse();
                 } else {
                     // Synchronous pre-loading
-                    app(\Kompo\Auth\Teams\PermissionCacheManager::class)->warmUserCache($this->id);
+                    app(PermissionResolverInterface::class)->batchWarmCache([$this->id]);
                 }
             }
         } catch (\Throwable $e) {
@@ -584,11 +571,11 @@ trait HasTeamPermissions
             ->get()
             ->groupBy('user_id');
 
-        // Pre-warm permission cache for all users
-        $cacheManager = app(\Kompo\Auth\Teams\PermissionCacheManager::class);
+        // Pre-warm permission data through the resolver contract.
+        $resolver = app(PermissionResolverInterface::class);
         foreach ($userIds as $userId) {
             try {
-                $cacheManager->warmUserCache($userId);
+                $resolver->batchWarmCache([$userId]);
             } catch (\Throwable $e) {
                 \Log::warning("Failed to pre-warm permissions for user {$userId}: " . $e->getMessage());
             }

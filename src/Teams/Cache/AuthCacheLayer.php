@@ -18,7 +18,7 @@ class AuthCacheLayer
         }
 
         $tags = CacheKeyBuilder::getTagsForCacheType($tag);
-        $value = Cache::rememberWithTags($tags, $key, $ttl ?? $this->ttlForTag($tag), $compute);
+        $value = $this->cacheRememberWithTags($tags, $key, $ttl ?? $this->ttlForTag($tag), $compute);
         $this->requestCache[$key] = $value;
 
         return $value;
@@ -74,14 +74,14 @@ class AuthCacheLayer
 
     public function invalidateTag(string $tag): void
     {
-        Cache::flushTags([$tag]);
+        $this->cacheFlushTags([$tag]);
         $this->flushRequestCache();
     }
 
     public function invalidateTags(array $tags): void
     {
         foreach ($tags as $tag) {
-            Cache::flushTags([$tag]);
+            $this->cacheFlushTags([$tag]);
         }
 
         $this->flushRequestCache();
@@ -89,7 +89,7 @@ class AuthCacheLayer
 
     public function invalidateAll(): void
     {
-        Cache::flushTags([self::ROOT_TAG]);
+        $this->cacheFlushTags([self::ROOT_TAG]);
         $this->flushRequestCache();
     }
 
@@ -105,6 +105,45 @@ class AuthCacheLayer
             'request_cache_memory' => strlen(serialize($this->requestCache)),
             'cache_driver' => get_class(Cache::getStore()),
         ];
+    }
+
+    /**
+     * Remember with tags, falling back to untagged when driver doesn't support tags.
+     * Inlined to avoid dependency on Cache macros which may not be registered yet.
+     */
+    private function cacheRememberWithTags(array $tags, string $key, int $ttl, callable $callback)
+    {
+        try {
+            if (Cache::supportsTags()) {
+                return Cache::tags($tags)->remember($key, $ttl, $callback);
+            }
+
+            return Cache::remember($key, $ttl, $callback);
+        } catch (\Throwable $e) {
+            \Log::warning('Auth cache remember failed, executing callback directly', [
+                'key' => $key,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $callback();
+        }
+    }
+
+    /**
+     * Flush cache entries by tag, falling back gracefully.
+     */
+    private function cacheFlushTags(array $tags): void
+    {
+        try {
+            if (Cache::supportsTags()) {
+                Cache::tags($tags)->flush();
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Auth cache flush failed', [
+                'tags' => $tags,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function ttlForTag(string $tag): int

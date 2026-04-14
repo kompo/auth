@@ -333,10 +333,16 @@ class KompoAuthServiceProvider extends ServiceProvider
     }
 
     /**
-     * Setup cache macros for better cache management
+     * Setup cache macros for better cache management.
+     * These macros are for backward compatibility. AuthCacheLayer inlines the
+     * same logic to avoid depending on macros being registered before model boots.
      */
     private function setupCacheMacros(): void
     {
+        if (Cache::hasMacro('rememberWithTags')) {
+            return;
+        }
+
         // Enhanced cache macros with better error handling
         Cache::macro('rememberWithTags', function ($tags, $key, $ttl, $callback) {
             try {

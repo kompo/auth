@@ -4,6 +4,7 @@ namespace Kompo\Auth\Teams\Roles;
 
 use Condoedge\Utils\Kompo\Common\Modal;
 use Kompo\Auth\Facades\RoleModel;
+use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Rules\MaxTranslatable;
 
 class RoleForm extends Modal

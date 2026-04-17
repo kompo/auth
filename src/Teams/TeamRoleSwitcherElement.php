@@ -2,9 +2,9 @@
 
 namespace Kompo\Auth\Teams;
 
-use Kompo\Elements\Block;
+use Condoedge\Utils\Kompo\Elements\LazyHierarchy;
 
-class TeamRoleSwitcherElement extends Block
+class TeamRoleSwitcherElement extends LazyHierarchy
 {
     public $vueComponent = 'TeamRoleSwitcher';
 
@@ -15,58 +15,45 @@ class TeamRoleSwitcherElement extends Block
         $currentTeamRole = currentTeamRole();
         $currentTeam = currentTeam();
 
-        $this->config([
-            'bootstrapUrl' => route('team-role-switcher.bootstrap'),
-            'nodesUrl' => route('team-role-switcher.nodes'),
-            'switchUrl' => route('team-role-switcher.switch'),
-            'displayMode' => 'dropdown',
-            'actions' => [
-                'switch' => [
-                    'url' => route('team-role-switcher.switch'),
-                    'method' => 'POST',
-                    'reload' => true,
-                ],
-            ],
-            'defaultMode' => TeamAccessHierarchyBuilder::MODE_TEAMS,
-            'profile' => $currentTeamRole?->roleRelation?->profile ?? 1,
-            'current' => [
-                'teamId' => $currentTeam?->id,
-                'teamName' => $currentTeam?->team_name,
-                'roleId' => $currentTeamRole?->role,
-                'roleName' => $currentTeamRole?->getRoleName(),
-            ],
-            'labels' => [
-                'searchPlaceholder' => __('auth.search-placeholder'),
-                'teams' => __('auth.switcher-teams'),
-                'committees' => __('auth.switcher-committees'),
-                'committee' => __('auth.switcher-committee'),
-                'committeeShort' => __('auth.switcher-committee-short'),
-                'go' => __('auth.switcher-go'),
-                'loading' => __('auth.switcher-loading'),
-                'empty' => __('auth.switcher-empty'),
-                'showMore' => __('auth.switcher-show-more'),
-                'error' => __('auth.switcher-error'),
-                'switchRole' => __('auth.switcher-switch-role'),
-            ],
-            'classes' => [
-                'trigger' => '',
-                'panel' => '',
-                'searchWrapper' => '',
-                'searchInput' => '',
-                'modes' => '',
-                'mode' => '',
-                'body' => '',
-                'nodeRow' => '',
-                'nodeName' => '',
-                'committeePill' => '',
-                'levelPill' => '',
-                'rolePill' => '',
-                'goButton' => '',
-                'showMore' => '',
-            ],
-        ]);
+        $this
+            ->hierarchySource('team-role-switcher.bootstrap', 'team-role-switcher.nodes')
+            ->hierarchyPaging(20, 80)
+            ->loadDeferred()
+            ->switchAction(route('team-role-switcher.switch'), 'POST', ['reload' => true])
+            ->displayMode('dropdown')
+            ->defaultMode(TeamAccessHierarchyBuilder::MODE_TEAMS)
+            ->switcherProfile($currentTeamRole?->roleRelation?->profile ?? 1)
+            ->switcherCurrent($currentTeam, $currentTeamRole)
+            ->switcherLabels($this->defaultLabels())
+            ->switcherClasses($this->defaultClasses());
 
         $this->class('kompo-team-role-switcher-shell');
+    }
+
+    public function defaultMode(string $mode)
+    {
+        return $this->config([
+            'defaultMode' => $mode,
+        ]);
+    }
+
+    public function switcherProfile(int|string|null $profile)
+    {
+        return $this->config([
+            'profile' => $profile,
+        ]);
+    }
+
+    public function switcherCurrent($team, $teamRole)
+    {
+        return $this->config([
+            'current' => [
+                'teamId' => $team?->id,
+                'teamName' => $team?->team_name,
+                'roleId' => $teamRole?->role,
+                'roleName' => $teamRole?->getRoleName(),
+            ],
+        ]);
     }
 
     public function switcherClasses(array $classes)
@@ -113,5 +100,42 @@ class TeamRoleSwitcherElement extends Block
             'actions' => $actions,
             'switchUrl' => $url,
         ]);
+    }
+
+    protected function defaultLabels(): array
+    {
+        return [
+            'searchPlaceholder' => __('auth.search-placeholder'),
+            'teams' => __('auth.switcher-teams'),
+            'committees' => __('auth.switcher-committees'),
+            'committee' => __('auth.switcher-committee'),
+            'committeeShort' => __('auth.switcher-committee-short'),
+            'go' => __('auth.switcher-go'),
+            'loading' => __('auth.switcher-loading'),
+            'empty' => __('auth.switcher-empty'),
+            'showMore' => __('auth.switcher-show-more'),
+            'error' => __('auth.switcher-error'),
+            'switchRole' => __('auth.switcher-switch-role'),
+        ];
+    }
+
+    protected function defaultClasses(): array
+    {
+        return [
+            'trigger' => '',
+            'panel' => '',
+            'searchWrapper' => '',
+            'searchInput' => '',
+            'modes' => '',
+            'mode' => '',
+            'body' => '',
+            'nodeRow' => '',
+            'nodeName' => '',
+            'committeePill' => '',
+            'levelPill' => '',
+            'rolePill' => '',
+            'goButton' => '',
+            'showMore' => '',
+        ];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Kompo\Auth\Teams;
 
+use Condoedge\Utils\Kompo\LazyHierarchy\LazyHierarchyPayload;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,7 @@ use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
 
 class TeamRoleSwitcherNodeProvider
 {
-    private const ROOT_KEY = 'root';
+    private const ROOT_KEY = LazyHierarchyPayload::ROOT_KEY;
     private const DEFAULT_LIMIT = 20;
     private const MAX_LIMIT = 50;
     private const LOOKAHEAD_DEPTH = 1;
@@ -52,7 +53,7 @@ class TeamRoleSwitcherNodeProvider
 
         $this->appendCurrentPath($payload, $user, $profile, $mode, $limit, $currentPathIds, $nodeBudget);
 
-        return $payload;
+        return $payload->toArray();
     }
 
     public function children(
@@ -83,7 +84,7 @@ class TeamRoleSwitcherNodeProvider
             append: (int) ($cursor ?? 0) > 0,
         );
 
-        return $payload;
+        return $payload->toArray();
     }
 
     public function search($user, int|string|null $profile, string $mode, string $search, int $limit): array
@@ -123,22 +124,18 @@ class TeamRoleSwitcherNodeProvider
         }
 
         foreach ($nodes as $node) {
-            $payload['nodes'][$node['id']] = $node;
-            $payload['children'][self::ROOT_KEY][] = $node['id'];
+            $payload
+                ->addNode($node)
+                ->appendChild(self::ROOT_KEY, $node['id']);
         }
 
-        $payload['paging'][self::ROOT_KEY] = [
-            'nextCursor' => null,
-            'total' => $nodes->count(),
-            'limit' => $limit,
-            'append' => false,
-        ];
+        $payload->setPaging(self::ROOT_KEY, null, $nodes->count(), $limit);
 
-        return $payload;
+        return $payload->toArray();
     }
 
     private function appendLevel(
-        array &$payload,
+        LazyHierarchyPayload $payload,
         $user,
         int|string|null $profile,
         string $mode,
@@ -163,23 +160,14 @@ class TeamRoleSwitcherNodeProvider
                 break;
             }
 
-            $payload['nodes'][$node['id']] = $node;
+            $payload->addNode($node);
             $nodeIds[] = $node['id'];
             $nodeBudget--;
         }
 
-        if ($append && isset($payload['children'][$parentKey])) {
-            $payload['children'][$parentKey] = array_values(array_unique(array_merge($payload['children'][$parentKey], $nodeIds)));
-        } else {
-            $payload['children'][$parentKey] = $nodeIds;
-        }
-
-        $payload['paging'][$parentKey] = [
-            'nextCursor' => $page['nextCursor'],
-            'total' => $page['total'],
-            'limit' => $limit,
-            'append' => $append,
-        ];
+        $payload
+            ->setChildren($parentKey, $nodeIds, $append)
+            ->setPaging($parentKey, $page['nextCursor'], $page['total'], $limit, $append);
 
         if ($lookaheadDepth <= 0) {
             return;
@@ -254,7 +242,7 @@ class TeamRoleSwitcherNodeProvider
     }
 
     private function appendCurrentPath(
-        array &$payload,
+        LazyHierarchyPayload $payload,
         $user,
         int|string|null $profile,
         string $mode,
@@ -297,14 +285,14 @@ class TeamRoleSwitcherNodeProvider
                 continue;
             }
 
-            $payload['nodes'][$node['id']] = $node;
+            $payload->addNode($node);
 
             $parentId = $index === 0 ? null : (int) $currentPathIds[$index - 1];
             $parentKey = $this->parentKey($parentId);
-            $payload['children'][$parentKey] = $this->prependUnique($payload['children'][$parentKey] ?? [], $node['id']);
+            $payload->prependChild($parentKey, $node['id']);
 
             if ($index < count($currentPathIds) - 1) {
-                $payload['expandedIds'][] = $node['id'];
+                $payload->expand($node['id']);
                 $this->appendLevel(
                     payload: $payload,
                     user: $user,
@@ -319,8 +307,6 @@ class TeamRoleSwitcherNodeProvider
                 );
             }
         }
-
-        $payload['expandedIds'] = array_values(array_unique($payload['expandedIds']));
     }
 
     private function decorateTeams(Collection $teams, $user, int|string|null $profile, string $mode, array $currentPathIds): Collection
@@ -777,15 +763,9 @@ class TeamRoleSwitcherNodeProvider
         return $mode === TeamAccessHierarchyBuilder::MODE_COMMITTEES ? $isCommittee : !$isCommittee;
     }
 
-    private function emptyPayload(string $mode, bool $includeRoot = true): array
+    private function emptyPayload(string $mode, bool $includeRoot = true): LazyHierarchyPayload
     {
-        return [
-            'mode' => $mode,
-            'nodes' => [],
-            'children' => $includeRoot ? [self::ROOT_KEY => []] : [],
-            'paging' => [],
-            'expandedIds' => [],
-        ];
+        return LazyHierarchyPayload::make(['mode' => $mode], self::ROOT_KEY, $includeRoot);
     }
 
     private function normalizeMode(?string $mode): string
@@ -808,11 +788,6 @@ class TeamRoleSwitcherNodeProvider
     private function nodeId(int $teamId): string
     {
         return 'team-' . $teamId;
-    }
-
-    private function prependUnique(array $ids, string $id): array
-    {
-        return array_values(array_unique(array_merge([$id], $ids)));
     }
 
     private function hasCommitteeColumn(): bool

@@ -7,10 +7,11 @@ use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\PermissionTeamRole;
 use Kompo\Auth\Models\Teams\TeamRole;
+use Kompo\Auth\Teams\Cache\AuthCacheLayer;
 use Kompo\Auth\Teams\Cache\UserContextCache;
 use Kompo\Auth\Teams\Cache\UserTeamCache;
 use Kompo\Auth\Teams\Contracts\PermissionResolverInterface;
-use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
+use Kompo\Auth\Teams\TeamHierarchyRoleProcessor;
 
 /**
  * Unified permissions trait that handles all permission logic
@@ -18,11 +19,6 @@ use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
  */
 trait HasTeamPermissions
 {
-    /**
-     * Request-level cache to avoid repeated service calls
-     */
-    private array $permissionRequestCache = [];
-
     /**
      * Get the permission resolver service
      */
@@ -41,28 +37,22 @@ trait HasTeamPermissions
         return app(UserContextCache::class);
     }
 
+    private function getAuthCacheLayer(): AuthCacheLayer
+    {
+        return app(AuthCacheLayer::class);
+    }
+
+    private function getTeamHierarchyRoleProcessor(): TeamHierarchyRoleProcessor
+    {
+        return app(TeamHierarchyRoleProcessor::class);
+    }
+
     /**
      * Clear request-level permission cache
      */
     public function clearPermissionRequestCache(): void
     {
-        $this->permissionRequestCache = [];
-    }
-
-    /**
-     * Get cached data for current request to avoid repeated service calls
-     */
-    private function getPermissionRequestCache(string $key, callable $callback = null)
-    {
-        if (!isset($this->permissionRequestCache[$key])) {
-            if ($callback) {
-                $this->permissionRequestCache[$key] = $callback();
-            } else {
-                return null;
-            }
-        }
-
-        return $this->permissionRequestCache[$key];
+        $this->getAuthCacheLayer()->flushRequestCache();
     }
 
     /**
@@ -86,22 +76,17 @@ trait HasTeamPermissions
      */
     public function hasAccessToTeam(int $teamId, string $roleId = null): bool
     {
-        $cacheKey = "team_access_{$teamId}_" . ($roleId ?? 'any');
+        return $this->getUserTeamCache()->userTeamAccess(
+            $this->id,
+            $teamId,
+            $roleId,
+            function () use ($teamId, $roleId) {
+                $teamRoles = $this->getAllTeamIdsWithRolesCached();
 
-        return $this->getPermissionRequestCache($cacheKey, function () use ($teamId, $roleId) {
-            return $this->getUserTeamCache()->userTeamAccess(
-                $this->id,
-                $teamId,
-                $roleId,
-                function () use ($teamId, $roleId) {
-                    $teamRoles = $this->getActiveTeamRolesOptimized($roleId);
-
-                    return $teamRoles->some(function ($teamRole) use ($teamId) {
-                        return $teamRole->hasAccessToTeam($teamId);
-                    });
-                }
-            );
-        });
+                return isset($teamRoles[$teamId])
+                    && (!$roleId || in_array($roleId, $teamRoles[$teamId]));
+            }
+        );
     }
 
     /**
@@ -138,16 +123,16 @@ trait HasTeamPermissions
     /**
      * Get all team IDs user has access to
      */
-    public function getAllAccessibleTeamIds($search = null, $limit = null)
+    public function getAllAccessibleTeamIds($search = null)
     {
         if ($search) {
-            return array_keys($this->getAllTeamIdsWithRolesCached(profile: null, search: $search, limit: $limit));
+            return array_keys($this->getAllTeamIdsWithRolesCached(profile: null, search: $search));
         }
         
         return $this->getUserTeamCache()->allAccessibleTeams(
             $this->id,
-            function () use ($limit) {
-                return array_keys($this->getAllTeamIdsWithRolesCached(profile: null, search: null, limit: $limit)); 
+            function () {
+                return array_keys($this->getAllTeamIdsWithRolesCached(profile: null, search: null));
             }   
         );
     }
@@ -175,60 +160,27 @@ trait HasTeamPermissions
     }
 
     /**
-     * Get all team IDs with roles (optimized for role switcher)
-     * Caches the full result and slices from cache when limit/offset are provided.
+     * Get all team IDs with roles (optimized for role switcher).
      */
-    public function getAllTeamIdsWithRolesCached($profile = 1, $search = '', $limit = null, $offset = 0)
+    public function getAllTeamIdsWithRolesCached($profile = 1, $search = '')
     {
         // Don't cache searches to avoid memory bloat
         if ($search) {
-            $result = $this->getAllTeamIdsWithRoles($profile, $search);
-
-            return $this->sliceTeamIdsResult($result, $limit, $offset);
+            return $this->getAllTeamIdsWithRoles($profile, $search);
         }
 
-        $all = $this->getUserTeamCache()->allTeamIdsWithRoles(
+        return $this->getUserTeamCache()->allTeamIdsWithRoles(
             $this->id,
             $profile,
             fn() => $this->getAllTeamIdsWithRoles($profile)
         );
-
-        return $this->sliceTeamIdsResult($all, $limit, $offset);
-    }
-
-    /**
-     * Count team-role pairs the user has access to (cached for non-search).
-     */
-    public function countTeamIdsWithRolesPairs($profile = 1, $search = '')
-    {
-        if ($search) {
-            $data = $this->getAllTeamIdsWithRoles($profile, $search);
-
-            return collect($data)->sum(fn($roles) => is_array($roles) ? count($roles) : 1);
-        }
-
-        return $this->getUserTeamCache()->countTeamIdsWithRolesPairs(
-            $this->id,
-            $profile,
-            fn() => collect($this->getAllTeamIdsWithRolesCached($profile))
-                ->sum(fn($roles) => is_array($roles) ? count($roles) : 1)
-        );
-    }
-
-    private function sliceTeamIdsResult(array $data, ?int $limit, int $offset): array
-    {
-        if ($limit === null && $offset === 0) {
-            return $data;
-        }
-
-        return array_slice($data, $offset, $limit, true);
     }
 
     /**
      * Get team IDs with roles using optimized batch processing
      * Groups team roles by hierarchy type and processes each group efficiently
      */
-    public function getAllTeamIdsWithRoles($profile = 1, $search = '', $limit = null, $offset = 0)
+    public function getAllTeamIdsWithRoles($profile = 1, $search = '')
     {
         $teamRoles = $this->activeTeamRoles()
             ->with(['roleRelation', 'team'])
@@ -240,10 +192,7 @@ trait HasTeamPermissions
         }
 
         $result = collect();
-        $hierarchyService = app(TeamHierarchyInterface::class);
-
-        // Cap each sub-query to offset+limit for performance (we need at least that many before slicing)
-        $fetchLimit = ($limit !== null) ? $limit + $offset : null;
+        $roleProcessor = $this->getTeamHierarchyRoleProcessor();
 
         // Group team roles by hierarchy type for batch processing
         $groupedTeamRoles = $this->groupTeamRolesByHierarchy($teamRoles);
@@ -254,17 +203,11 @@ trait HasTeamPermissions
                 $hierarchyType,
                 $roleGroup,
                 $search,
-                $fetchLimit,
-                $hierarchyService,
+                $roleProcessor,
             );
 
             // Merge batch results into final result
             $result = $this->mergeBatchResults($result, $batchResults);
-        }
-
-        // Apply pagination on the merged result
-        if ($offset > 0 || $limit !== null) {
-            $result = $result->slice($offset, $limit);
         }
 
         return $result->all();
@@ -309,15 +252,14 @@ trait HasTeamPermissions
     private function processBatchHierarchyGroup(
         string $hierarchyType,
         array $teamRoles,
-        string $search,
-        ?int $limit,
-        TeamHierarchyInterface $hierarchyService,
+        ?string $search,
+        TeamHierarchyRoleProcessor $roleProcessor,
     ): Collection {
         $batchResults = collect();
 
         // Always include direct access (the team itself)
         $directTeams = $this->getDirectTeamAccess($teamRoles, $search);
-        $batchResults = $batchResults->union($directTeams);
+        $batchResults = $this->mergeBatchResults($batchResults, $directTeams);
 
         // Apply hierarchy-specific batch operations
         switch ($hierarchyType) {
@@ -326,19 +268,20 @@ trait HasTeamPermissions
                 break;
 
             case 'below':
-                $belowTeams = $this->getBatchDescendantAccess($teamRoles, $search, $limit, $hierarchyService);
-                $batchResults = $batchResults->union($belowTeams);
+                $belowTeams = $this->getBatchDescendantAccess($teamRoles, $search, $roleProcessor);
+                $batchResults = $this->mergeBatchResults($batchResults, $belowTeams);
                 break;
 
             case 'neighbors':
-                $neighborTeams = $this->getBatchNeighborAccess($teamRoles, $search, $limit, $hierarchyService);
-                $batchResults = $batchResults->union($neighborTeams);
+                $neighborTeams = $this->getBatchNeighborAccess($teamRoles, $search, $roleProcessor);
+                $batchResults = $this->mergeBatchResults($batchResults, $neighborTeams);
                 break;
 
             case 'below_and_neighbors':
-                $belowTeams = $this->getBatchDescendantAccess($teamRoles, $search, $limit, $hierarchyService);
-                $neighborTeams = $this->getBatchNeighborAccess($teamRoles, $search, $limit, $hierarchyService);
-                $batchResults = $batchResults->union($belowTeams)->union($neighborTeams);
+                $belowTeams = $this->getBatchDescendantAccess($teamRoles, $search, $roleProcessor);
+                $neighborTeams = $this->getBatchNeighborAccess($teamRoles, $search, $roleProcessor);
+                $batchResults = $this->mergeBatchResults($batchResults, $belowTeams);
+                $batchResults = $this->mergeBatchResults($batchResults, $neighborTeams);
                 break;
         }
 
@@ -348,7 +291,7 @@ trait HasTeamPermissions
     /**
      * Get direct team access (the teams the roles are directly assigned to)
      */
-    private function getDirectTeamAccess(array $teamRoles, string $search): Collection
+    private function getDirectTeamAccess(array $teamRoles, ?string $search): Collection
     {
         $directTeams = collect();
 
@@ -381,17 +324,19 @@ trait HasTeamPermissions
      */
     private function getBatchDescendantAccess(
         array $teamRoles,
-        string $search,
-        ?int $limit,
-        TeamHierarchyInterface $hierarchyService,
+        ?string $search,
+        TeamHierarchyRoleProcessor $roleProcessor,
     ): Collection {
         // Prepare batch input: team_id => role mapping
         $teamIdsWithRoles = [];
         foreach ($teamRoles as $teamRole) {
-            $teamIdsWithRoles[$teamRole->team->id] = $teamRole->role;
+            $teamIdsWithRoles[$teamRole->team->id] = array_values(array_unique([
+                ...($teamIdsWithRoles[$teamRole->team->id] ?? []),
+                $teamRole->role,
+            ]));
         }
 
-        return $hierarchyService->getBatchDescendantTeamsWithRoles($teamIdsWithRoles, $search, $limit);
+        return $roleProcessor->batchDescendantsWithRoles($teamIdsWithRoles, $search);
     }
 
     /**
@@ -399,17 +344,19 @@ trait HasTeamPermissions
      */
     private function getBatchNeighborAccess(
         array $teamRoles,
-        string $search,
-        ?int $limit,
-        TeamHierarchyInterface $hierarchyService,
+        ?string $search,
+        TeamHierarchyRoleProcessor $roleProcessor,
     ): Collection {
         // Prepare batch input: team_id => role mapping
         $teamIdsWithRoles = [];
         foreach ($teamRoles as $teamRole) {
-            $teamIdsWithRoles[$teamRole->team->id] = $teamRole->role;
+            $teamIdsWithRoles[$teamRole->team->id] = array_values(array_unique([
+                ...($teamIdsWithRoles[$teamRole->team->id] ?? []),
+                $teamRole->role,
+            ]));
         }
 
-        return $hierarchyService->getBatchSiblingTeamsWithRoles($teamIdsWithRoles, $search, $limit);
+        return $roleProcessor->batchSiblingsWithRoles($teamIdsWithRoles, $search);
     }
 
     /**
@@ -489,12 +436,10 @@ trait HasTeamPermissions
      */
     public function getCurrentPermissionsInAllTeams(): Collection
     {
-        return $this->getPermissionRequestCache('current_permissions_all_teams', function () {
-            return $this->getUserTeamCache()->currentPermissionsInAllTeams(
-                $this->id,
-                fn() => TeamRole::getAllPermissionsKeysForMultipleRoles($this->activeTeamRoles)
-            );
-        });
+        return $this->getUserTeamCache()->currentPermissionsInAllTeams(
+            $this->id,
+            fn() => TeamRole::getAllPermissionsKeysForMultipleRoles($this->activeTeamRoles)
+        );
     }
 
     /**
@@ -503,17 +448,14 @@ trait HasTeamPermissions
     public function getCurrentPermissionKeysInTeams($teamIds): Collection
     {
         $teamIds = collect(is_iterable($teamIds) ? $teamIds : [$teamIds]);
-        $cacheKey = 'current_permission_keys_' . md5($teamIds->implode(','));
 
-        return $this->getPermissionRequestCache($cacheKey, function () use ($teamIds) {
-            return $this->getUserTeamCache()->currentPermissionKeys(
-                $this->id,
-                $teamIds,
-                fn() => TeamRole::getAllPermissionsKeysForMultipleRoles(
-                    $this->activeTeamRoles->filter(fn($tr) => $tr->hasAccessToTeamOfMany($teamIds))
-                )
-            );
-        });
+        return $this->getUserTeamCache()->currentPermissionKeys(
+            $this->id,
+            $teamIds,
+            fn() => TeamRole::getAllPermissionsKeysForMultipleRoles(
+                $this->activeTeamRoles->filter(fn($tr) => $tr->hasAccessToTeamOfMany($teamIds))
+            )
+        );
     }
 
     /**
@@ -587,9 +529,11 @@ trait HasTeamPermissions
      */
     public function getPermissionMemoryUsage(): array
     {
+        $cacheStats = $this->getAuthCacheLayer()->stats();
+
         return [
-            'request_cache_size' => count($this->permissionRequestCache),
-            'request_cache_keys' => array_keys($this->permissionRequestCache),
+            'request_cache_size' => $cacheStats['request_cache_keys'] ?? 0,
+            'request_cache_memory' => $cacheStats['request_cache_memory'] ?? 0,
             'memory_usage' => memory_get_usage(true),
             'peak_memory' => memory_get_peak_usage(true)
         ];

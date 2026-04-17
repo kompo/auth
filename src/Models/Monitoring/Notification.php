@@ -118,7 +118,10 @@ class Notification extends Model
     {
         $content = $this->notificationContent();
 
-        return !$content ? null : _Rows($content)
+        return !$content ? null : _Rows(
+            $this->team_id ? _Html($this->team->team_name)->class('text-xs text-gray-400 mb-1') : null,
+            _Rows($content)
+        )
             ->class('mb-2 p-4 text-sm text-white bg-white bg-opacity-15 pr-12 rounded-2xl border border-white')
             ->style('backdrop-filter: blur(5px);position:relative;z-index:'.max(2, 100 - $key));
     }

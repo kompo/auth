@@ -10,6 +10,7 @@ use Kompo\Auth\Models\Teams\Roles\Role;
 use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 use Kompo\Auth\Teams\Cache\PermissionDefinitionCache;
 use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
+use Kompo\Auth\Teams\TeamHierarchyRoleProcessor;
 
 class TeamRole extends Model
 {
@@ -276,9 +277,9 @@ class TeamRole extends Model
         return $teams->unique();
     }
 
-    public function getAllHierarchyTeamsIds($search = '', $limit = null)
+    public function getAllHierarchyTeamsIds($search = '')
     {
-        $hierarchyService = app(TeamHierarchyInterface::class);
+        $roleProcessor = app(TeamHierarchyRoleProcessor::class);
         $teams = collect([$this->team->id => $this->role]);
 
         if ($search && !str_contains(strtolower($this->team->team_name), strtolower($search))) {
@@ -286,25 +287,19 @@ class TeamRole extends Model
         }
 
         if ($this->getRoleHierarchyAccessBelow()) {
-            $descendantsWithRole = $hierarchyService->getDescendantTeamsWithRole(
+            $descendantsWithRole = $roleProcessor->descendantsWithRole(
                 $this->team->id,
                 $this->role,
                 $search,
-                $limit,
             );
 
             $teams = $teams->union($descendantsWithRole);
         }
 
-        if ($limit && $teams->count() >= $limit) {
-            return $teams;
-        }
-
         if ($this->getRoleHierarchyAccessNeighbors()) {
-            $siblings = $hierarchyService->getSiblingTeamIds($this->team->id, $search, $limit);
-
-            $siblingsWithRole = $siblings->mapWithKeys(fn($id) => [$id => $this->role]);
-            $teams = $teams->union($siblingsWithRole);
+            $teams = $teams->union(
+                $roleProcessor->siblingsWithRole($this->team->id, $this->role, $search)
+            );
         }
 
         return $teams;

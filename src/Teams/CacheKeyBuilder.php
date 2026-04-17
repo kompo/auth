@@ -29,7 +29,6 @@ class CacheKeyBuilder
     
     // Team hierarchy cache types
     public const TEAM_DESCENDANTS = 'team_descendants';
-    public const TEAM_DESCENDANTS_WITH_ROLE = 'team_descendants_with_role';
     public const TEAM_IS_DESCENDANT = 'team_is_descendant';
     public const TEAM_ANCESTORS = 'team_ancestors';
     public const TEAM_SIBLINGS = 'team_siblings';
@@ -132,14 +131,6 @@ class CacheKeyBuilder
     }
 
     /**
-     * Build cache key for team descendants with role
-     */
-    public static function teamDescendantsWithRole(int|string $teamId, string $role, ?string $search = '', ?int $limit = null): string
-    {
-        return "descendants_with_role.{$teamId}.{$role}." . md5($search ?? '') . ($limit ? ".{$limit}" : '');
-    }
-
-    /**
      * Build cache key for is descendant check
      */
     public static function teamIsDescendant(int|string $parentTeamId, int|string $childTeamId): string
@@ -158,9 +149,9 @@ class CacheKeyBuilder
     /**
      * Build cache key for team siblings
      */
-    public static function teamSiblings(int|string $teamId, ?string $search = '', ?int $limit = null): string
+    public static function teamSiblings(int|string $teamId, ?string $search = ''): string
     {
-        return "siblings.{$teamId}." . md5($search ?? '') . ($limit ? ".{$limit}" : '');
+        return "siblings.{$teamId}." . md5($search ?? '');
     }
 
     /**
@@ -216,7 +207,6 @@ class CacheKeyBuilder
             self::ALL_TEAM_IDS_WITH_ROLES,
             self::ACTIVE_TEAM_ROLES,
             self::TEAM_DESCENDANTS,
-            self::TEAM_DESCENDANTS_WITH_ROLE,
             self::TEAM_IS_DESCENDANT,
             self::TEAM_ANCESTORS,
             self::TEAM_SIBLINGS,
@@ -277,7 +267,6 @@ class CacheKeyBuilder
     {
         return [
             self::TEAM_DESCENDANTS,
-            self::TEAM_DESCENDANTS_WITH_ROLE,
             self::TEAM_IS_DESCENDANT,
             self::TEAM_ANCESTORS,
             self::TEAM_SIBLINGS,

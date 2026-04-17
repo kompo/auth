@@ -21,14 +21,6 @@ class TeamHierarchyService implements TeamHierarchyInterface
     }
 
     /**
-     * Gets descendants with assigned roles (for role switcher)
-     */
-    public function getDescendantTeamsWithRole(int $teamId, string $role, ?string $search = '', $limit = null): Collection
-    {
-        return $this->executeDescendantsWithRoleQuery($teamId, $role, $search, $limit);
-    }
-
-    /**
      * Verifies if a team is descendant of another (optimized)
      */
     public function isDescendant(int $parentTeamId, int $childTeamId): bool
@@ -51,9 +43,9 @@ class TeamHierarchyService implements TeamHierarchyInterface
     /**
      * Gets teams from the same level (siblings)
      */
-    public function getSiblingTeamIds(int $teamId, ?string $search = '', $limit = null): Collection
+    public function getSiblingTeamIds(int $teamId, ?string $search = ''): Collection
     {
-        return $this->executeSiblingsQuery($teamId, $search, $limit);
+        return $this->executeSiblingsQuery($teamId, $search);
     }
 
     /**
@@ -96,39 +88,6 @@ class TeamHierarchyService implements TeamHierarchyInterface
         ";
 
         return collect(DB::select($sql, $bindings))->pluck('id');
-    }
-
-    /**
-     * Optimized query for descendants with specific role
-     */
-    private function executeDescendantsWithRoleQuery(int $teamId, string $role, ?string $search = '', $limit = null): Collection
-    {
-        $searchCondition = $search ? "AND th.team_name LIKE ?" : '';
-
-        $limitQuery = $limit ? "LIMIT ?" : '';
-        $searchParam = $search ? "%{$search}%" : null;
-        $params = array_values(array_filter([$teamId, $role, $limit, $searchParam]));
-
-        $sql = "
-            WITH RECURSIVE team_hierarchy AS (
-                SELECT id, parent_team_id, team_name, 0 as depth
-                FROM teams 
-                WHERE id = ?
-                
-                UNION ALL
-                
-                SELECT t.id, t.parent_team_id, t.team_name, th.depth + 1
-                FROM teams t
-                INNER JOIN team_hierarchy th ON t.parent_team_id = th.id
-                WHERE th.depth < 50
-                  AND t.deleted_at IS NULL
-            )
-            SELECT th.id, ? as role
-            FROM team_hierarchy th 
-            {$limitQuery} {$searchCondition}
-        ";
-
-        return collect(DB::select($sql, $params))->mapWithKeys(fn($row) => [$row->id => $row->role]);
     }
 
     /**
@@ -183,10 +142,9 @@ class TeamHierarchyService implements TeamHierarchyInterface
     /**
      * Query to get siblings (same parent_team_id)
      */
-    private function executeSiblingsQuery(int $teamId, ?string $search = '', $limit = null): Collection
+    private function executeSiblingsQuery(int $teamId, ?string $search = ''): Collection
     {
         $searchCondition = $search ? 'AND LOWER(t2.team_name) LIKE LOWER(?) ' : '';
-        $limitCondition = $limit ? "LIMIT {$limit}" : '';
 
         $sql = "
             SELECT t2.id
@@ -195,10 +153,9 @@ class TeamHierarchyService implements TeamHierarchyInterface
             WHERE t1.id = ? 
               AND t2.id != ? {$searchCondition}
               AND t2.deleted_at IS NULL
-            {$limitCondition}
         ";
 
-        $params = array_values(array_filter([$teamId, $teamId, $search ? $search : null, $limit]));
+        $params = array_values(array_filter([$teamId, $teamId, $search ? wildcardSpace($search) : null]));
 
         return collect(DB::select($sql, $params))->pluck('id');
     }
@@ -238,9 +195,53 @@ class TeamHierarchyService implements TeamHierarchyInterface
     }
 
     /**
+     * Get descendants for multiple roots while preserving each root relationship.
+     */
+    public function getBatchDescendantTeamIdsByRoot(array $teamIds, ?string $search = ''): Collection
+    {
+        $teamIds = collect($teamIds)->filter()->unique()->values()->all();
+
+        if (empty($teamIds)) {
+            return collect();
+        }
+
+        $placeholders = str_repeat('?,', count($teamIds) - 1) . '?';
+        $searchCondition = $search ? 'AND LOWER(th.team_name) LIKE LOWER(?)' : '';
+
+        $sql = "
+            WITH RECURSIVE team_hierarchy AS (
+                SELECT id, parent_team_id, team_name, id as root_team_id, 0 as depth
+                FROM teams
+                WHERE id IN ({$placeholders})
+
+                UNION ALL
+
+                SELECT t.id, t.parent_team_id, t.team_name, th.root_team_id, th.depth + 1
+                FROM teams t
+                INNER JOIN team_hierarchy th ON t.parent_team_id = th.id
+                WHERE th.depth < 100
+                  AND t.deleted_at IS NULL
+            )
+            SELECT th.id, th.root_team_id
+            FROM team_hierarchy th
+            WHERE th.id != th.root_team_id
+            {$searchCondition}
+        ";
+
+        $params = array_merge(
+            $teamIds,
+            $search ? [wildcardSpace($search)] : []
+        );
+
+        return collect(DB::select($sql, $params))
+            ->groupBy('root_team_id')
+            ->map(fn($rows) => $rows->pluck('id')->values());
+    }
+
+    /**
      * Get siblings for multiple teams in a single query.
      */
-    public function getBatchSiblingTeamIds(array $teamIds, ?string $search = '', $limit = null): Collection
+    public function getBatchSiblingTeamIds(array $teamIds, ?string $search = ''): Collection
     {
         $teamIds = collect($teamIds)->filter()->unique()->values()->all();
 
@@ -250,7 +251,6 @@ class TeamHierarchyService implements TeamHierarchyInterface
 
         $placeholders = str_repeat('?,', count($teamIds) - 1) . '?';
         $searchCondition = $search ? 'AND LOWER(t2.team_name) LIKE LOWER(?)' : '';
-        $limitCondition = $limit ? 'LIMIT ?' : '';
 
         $sql = "
             SELECT DISTINCT t2.id
@@ -260,121 +260,49 @@ class TeamHierarchyService implements TeamHierarchyInterface
               AND t2.id NOT IN ({$placeholders})
               AND t2.deleted_at IS NULL
               {$searchCondition}
-            {$limitCondition}
         ";
 
         $params = array_merge(
             $teamIds,
             $teamIds,
-            $search ? [wildcardSpace($search)] : [],
-            $limit ? [(int) $limit] : []
+            $search ? [wildcardSpace($search)] : []
         );
 
         return collect(DB::select($sql, $params))->pluck('id');
     }
 
     /**
-     * Get descendants for multiple teams in a single query (batch operation)
+     * Get siblings for multiple source teams while preserving each source relationship.
      */
-    public function getBatchDescendantTeamsWithRoles(array $teamIdsWithRoles, ?string $search = '', $limit = null): Collection
+    public function getBatchSiblingTeamIdsBySource(array $teamIds, ?string $search = ''): Collection
     {
-        if (empty($teamIdsWithRoles)) {
+        $teamIds = collect($teamIds)->filter()->unique()->values()->all();
+
+        if (empty($teamIds)) {
             return collect();
         }
 
-        return $this->executeBatchDescendantsWithRolesQuery($teamIdsWithRoles, $search, $limit);
-    }
-
-    /**
-     * Get siblings for multiple teams in a single query (batch operation)
-     */
-    public function getBatchSiblingTeamsWithRoles(array $teamIdsWithRoles, ?string $search = '', $limit = null): Collection
-    {
-        if (empty($teamIdsWithRoles)) {
-            return collect();
-        }
-
-        return $this->executeBatchSiblingsWithRolesQuery($teamIdsWithRoles, $search, $limit);
-    }
-
-    /**
-     * Batch query for descendants with roles using recursive CTE
-     */
-    private function executeBatchDescendantsWithRolesQuery(array $teamIdsWithRoles, ?string $search = '', $limit = null): Collection
-    {
-        $searchCondition = $search ? 'AND LOWER(th.team_name) LIKE LOWER(?)' : '';
-        $limitQuery = $limit ? "LIMIT ?" : '';
-
-        // Create placeholders for IN clause
-        $teamIdPlaceholders = str_repeat('?,', count($teamIdsWithRoles) - 1) . '?';
-        $teamIds = array_keys($teamIdsWithRoles);
-
-        $sql = "
-            WITH RECURSIVE team_hierarchy AS (
-                -- Base case: all root teams we're interested in
-                SELECT id, parent_team_id, team_name, id as root_team_id, 0 as depth
-                FROM teams
-                WHERE id IN ({$teamIdPlaceholders})
-
-                UNION ALL
-
-                -- Recursive case: children of already found teams
-                SELECT t.id, t.parent_team_id, t.team_name, th.root_team_id, th.depth + 1
-                FROM teams t
-                INNER JOIN team_hierarchy th ON t.parent_team_id = th.id
-                WHERE th.depth < 100
-                AND t.deleted_at IS NULL
-            )
-            SELECT th.id, th.root_team_id
-            FROM team_hierarchy th
-            WHERE th.id != th.root_team_id  -- Exclude the root teams themselves
-            {$searchCondition}
-            {$limitQuery}
-        ";
-
-        $searchParam = $search ? [wildcardSpace($search)] : [];
-        $params = array_values(array_filter(array_merge($teamIds, $searchParam, $limit ? [$limit] : []), fn($val) => !is_null($val)));
-        $results = collect(DB::select($sql, $params));
-
-        // Map results back to team_id => role format
-        return $results->mapWithKeys(function($row) use ($teamIdsWithRoles) {
-            $rootTeamId = $row->root_team_id;
-            $role = $teamIdsWithRoles[$rootTeamId] ?? null;
-            return $role ? [$row->id => $role] : [];
-        });
-    }
-
-    /**
-     * Batch query for siblings with roles
-     */
-    private function executeBatchSiblingsWithRolesQuery(array $teamIdsWithRoles, ?string $search = '', $limit = null): Collection
-    {
+        $placeholders = str_repeat('?,', count($teamIds) - 1) . '?';
         $searchCondition = $search ? 'AND LOWER(t2.team_name) LIKE LOWER(?)' : '';
-        $limitQuery = $limit ? "LIMIT ?" : '';
-
-        $teamIdPlaceholders = str_repeat('?,', count($teamIdsWithRoles) - 1) . '?';
-        $teamIds = array_keys($teamIdsWithRoles);
 
         $sql = "
-            SELECT t2.id, t1.id as source_team_id
+            SELECT DISTINCT t2.id, t1.id as source_team_id
             FROM teams t1
             INNER JOIN teams t2 ON t1.parent_team_id = t2.parent_team_id
-            WHERE t1.id IN ({$teamIdPlaceholders})
-            AND t2.id NOT IN ({$teamIdPlaceholders})  -- Exclude source teams
-            AND t2.deleted_at IS NULL
+            WHERE t1.id IN ({$placeholders})
+              AND t2.id NOT IN ({$placeholders})
+              AND t2.deleted_at IS NULL
             {$searchCondition}
-            {$limitQuery}
         ";
 
-        $searchParam = $search ? [wildcardSpace($search)] : [];
-        $params = array_values(array_filter(array_merge($teamIds, $teamIds, $searchParam, $limit ? [$limit] : []), fn($val) => !is_null($val)));
-        $results = collect(DB::select($sql, $params));
+        $params = array_merge(
+            $teamIds,
+            $teamIds,
+            $search ? [wildcardSpace($search)] : []
+        );
 
-        // Map results back to team_id => role format
-        return $results->mapWithKeys(function($row) use ($teamIdsWithRoles) {
-            $sourceTeamId = $row->source_team_id;
-            $role = $teamIdsWithRoles[$sourceTeamId] ?? null;
-            return $role ? [$row->id => $role] : [];
-        });
+        return collect(DB::select($sql, $params))
+            ->groupBy('source_team_id')
+            ->map(fn($rows) => $rows->pluck('id')->values());
     }
 }

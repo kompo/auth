@@ -17,7 +17,10 @@ use Condoedge\Utils\Kompo\Common\Form;
 use Kompo\Auth\Commands\CleanupRedundantHierarchyRoles;
 use Kompo\Auth\Commands\OptimizePermissionCacheCommand;
 use Kompo\Auth\Commands\WarmTeamHierarchyCache;
+use Kompo\Auth\Teams\TeamAccessHierarchyBuilder;
 use Kompo\Auth\Teams\TeamHierarchyService;
+use Kompo\Auth\Teams\TeamHierarchyRoleProcessor;
+use Kompo\Auth\Teams\TeamRoleSwitcherNodeProvider;
 use Kompo\Auth\Http\Middleware\MonitorPermissionPerformance;
 use Kompo\Auth\Models\Plugins\Services\DeleteSecurityService;
 use Kompo\Auth\Models\Plugins\Services\FieldProtectionService;
@@ -204,6 +207,9 @@ class KompoAuthServiceProvider extends ServiceProvider
                 $app->make(AuthCacheLayer::class),
             );
         });
+        $this->app->singleton(TeamHierarchyRoleProcessor::class);
+        $this->app->singleton(TeamAccessHierarchyBuilder::class);
+        $this->app->singleton(TeamRoleSwitcherNodeProvider::class);
 
         $this->app->singleton(UserContextCache::class);
         $this->app->singleton(PermissionDefinitionCache::class);

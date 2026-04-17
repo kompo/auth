@@ -150,7 +150,6 @@ class AuthCacheLayer
     {
         return match ($tag) {
             CacheKeyBuilder::TEAM_DESCENDANTS,
-            CacheKeyBuilder::TEAM_DESCENDANTS_WITH_ROLE,
             CacheKeyBuilder::TEAM_IS_DESCENDANT,
             CacheKeyBuilder::TEAM_ANCESTORS,
             CacheKeyBuilder::TEAM_SIBLINGS => (int) config('kompo-auth.cache.hierarchy_ttl', 3600),

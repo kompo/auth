@@ -7,6 +7,7 @@ use Illuminate\Support\Collection;
 use Kompo\Auth\Facades\UserModel;
 use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
+use Kompo\Auth\Teams\TeamHierarchyRoleProcessor;
 
 class Team extends Model
 {
@@ -132,7 +133,8 @@ class Team extends Model
         $service = app(TeamHierarchyInterface::class);
 
         if ($staticExtraSelect && $search) {
-            return $service->getDescendantTeamsWithRole($this->id, $staticExtraSelect[0], $search);
+            return app(TeamHierarchyRoleProcessor::class)
+                ->descendantsWithRole($this->id, $staticExtraSelect[0], $search);
         }
 
         $descendants = $service->getDescendantTeamIds($this->id, $search, $depth);
@@ -154,7 +156,7 @@ class Team extends Model
 
     public function getDescendantsWithRole(string $role, string $search = ''): Collection
     {
-        return app(TeamHierarchyInterface::class)->getDescendantTeamsWithRole($this->id, $role, $search);
+        return app(TeamHierarchyRoleProcessor::class)->descendantsWithRole($this->id, $role, $search);
     }
 
     public function hasDescendant(int $teamId): bool

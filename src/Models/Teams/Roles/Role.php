@@ -131,6 +131,11 @@ class Role extends Model
     // SCOPES
 
     // ACTIONS
+    public function deletable()
+    {
+        return true; // If authorization required we use internal system
+    }
+
     public function save(array $options = []): void
     {
         if ($this->from_system && !$this->_bypassSecurity) {

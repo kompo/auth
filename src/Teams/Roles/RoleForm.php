@@ -28,7 +28,8 @@ class RoleForm extends Modal
     public function beforeSave()
     {
         if (!$this->model->id) {
-            $this->model->id = \Str::snake(request('name')) . '-' . \Str::random(3);
+            $enName = request('name')['en'] ?? request('name')['fr'] ?? 'role';
+            $this->model->id = \Str::snake($enName) . '-' . \Str::random(3);
         }
 
         if (request('just_one_per_team')) {

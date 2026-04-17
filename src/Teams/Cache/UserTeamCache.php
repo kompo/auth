@@ -45,16 +45,6 @@ class UserTeamCache
         );
     }
 
-    public function countTeamIdsWithRolesPairs(int|string $userId, $profile, callable $compute): int
-    {
-        return (int) $this->cache->remember(
-            "countTeamIdsWithRolesPairs.{$userId}.{$profile}",
-            CacheKeyBuilder::ALL_TEAM_IDS_WITH_ROLES,
-            $compute,
-            (int) config('kompo-auth.cache.role_switcher_ttl', 900)
-        );
-    }
-
     public function currentPermissionsInAllTeams(int|string $userId, callable $compute)
     {
         return $this->cache->remember(

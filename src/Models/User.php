@@ -97,6 +97,16 @@ class User extends Authenticatable
         return [$this->id];
     }
 
+    public static function buildDisambiguatedOptions($users)
+    {
+        return buildDisambiguatedOptions(
+            $users, 
+            fn($user) => $user->getKey(),
+            fn($user) => $user->name,
+            fn($user) => ' (' . $user->email . ')',
+        );
+    }
+
     /* ACTIONS */
     public function handleRegisterNames()
     {

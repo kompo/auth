@@ -23,16 +23,6 @@ class CachedTeamHierarchyService implements TeamHierarchyInterface
         );
     }
 
-    public function getDescendantTeamsWithRole(int $teamId, string $role, ?string $search = '', $limit = null): Collection
-    {
-        return $this->cache->remember(
-            CacheKeyBuilder::teamDescendantsWithRole($teamId, $role, $search, $limit),
-            CacheKeyBuilder::TEAM_DESCENDANTS_WITH_ROLE,
-            fn() => $this->inner->getDescendantTeamsWithRole($teamId, $role, $search, $limit),
-            (int) (config('kompo-auth.cache.hierarchy_ttl', 3600) / 2)
-        );
-    }
-
     public function isDescendant(int $parentTeamId, int $childTeamId): bool
     {
         if ($parentTeamId === $childTeamId) {
@@ -55,12 +45,12 @@ class CachedTeamHierarchyService implements TeamHierarchyInterface
         );
     }
 
-    public function getSiblingTeamIds(int $teamId, ?string $search = '', $limit = null): Collection
+    public function getSiblingTeamIds(int $teamId, ?string $search = ''): Collection
     {
         return $this->cache->remember(
-            CacheKeyBuilder::teamSiblings($teamId, $search, $limit),
+            CacheKeyBuilder::teamSiblings($teamId, $search),
             CacheKeyBuilder::TEAM_SIBLINGS,
-            fn() => $this->inner->getSiblingTeamIds($teamId, $search, $limit)
+            fn() => $this->inner->getSiblingTeamIds($teamId, $search)
         );
     }
 
@@ -69,19 +59,19 @@ class CachedTeamHierarchyService implements TeamHierarchyInterface
         return $this->inner->getBatchAncestorTeamIds($teamIds);
     }
 
-    public function getBatchSiblingTeamIds(array $teamIds, ?string $search = '', $limit = null): Collection
+    public function getBatchDescendantTeamIdsByRoot(array $teamIds, ?string $search = ''): Collection
     {
-        return $this->inner->getBatchSiblingTeamIds($teamIds, $search, $limit);
+        return $this->inner->getBatchDescendantTeamIdsByRoot($teamIds, $search);
     }
 
-    public function getBatchDescendantTeamsWithRoles(array $teamIdsWithRoles, ?string $search = '', $limit = null): Collection
+    public function getBatchSiblingTeamIds(array $teamIds, ?string $search = ''): Collection
     {
-        return $this->inner->getBatchDescendantTeamsWithRoles($teamIdsWithRoles, $search, $limit);
+        return $this->inner->getBatchSiblingTeamIds($teamIds, $search);
     }
 
-    public function getBatchSiblingTeamsWithRoles(array $teamIdsWithRoles, ?string $search = '', $limit = null): Collection
+    public function getBatchSiblingTeamIdsBySource(array $teamIds, ?string $search = ''): Collection
     {
-        return $this->inner->getBatchSiblingTeamsWithRoles($teamIdsWithRoles, $search, $limit);
+        return $this->inner->getBatchSiblingTeamIdsBySource($teamIds, $search);
     }
 
     public function clearCache(?int $teamId = null): void

@@ -218,13 +218,18 @@ class KompoAuthServiceProvider extends ServiceProvider
 
         // Permission resolver depends on the hierarchy contract; cache is transparent.
         $this->app->singleton(PermissionResolver::class, function ($app) {
-            return new PermissionResolver($app->make(TeamHierarchyInterface::class));
+            return new PermissionResolver(
+                $app->make(TeamHierarchyInterface::class),
+                $app->make(AuthCacheLayer::class),
+                $app->make(PermissionDefinitionCache::class),
+            );
         });
 
         $this->app->singleton(PermissionResolverInterface::class, function ($app) {
             return new CachedPermissionResolver(
                 $app->make(PermissionResolver::class),
                 $app->make(AuthCacheLayer::class),
+                $app->make(UserContextCache::class),
             );
         });
 
@@ -610,6 +615,7 @@ class KompoAuthServiceProvider extends ServiceProvider
 
         // Auth events
         Event::listen(\Illuminate\Auth\Events\Login::class, \Kompo\Auth\Listeners\RecordSuccessLoginAttempt::class);
+        Event::listen(\Illuminate\Auth\Events\Login::class, \Kompo\Auth\Listeners\WarmUserCacheOnLogin::class);
         Event::listen(\Illuminate\Auth\Events\Failed::class, \Kompo\Auth\Listeners\RecordFailedLoginAttempt::class);
     }
 

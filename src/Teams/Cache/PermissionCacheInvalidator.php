@@ -115,7 +115,7 @@ class PermissionCacheInvalidator
         $this->cache->invalidateTags([
             CacheKeyBuilder::CURRENT_TEAM_ROLE,
             CacheKeyBuilder::CURRENT_TEAM,
-            CacheKeyBuilder::IS_SUPER_ADMIN,
+            CacheKeyBuilder::USER_SUPER_ADMIN,
         ]);
     }
 

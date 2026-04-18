@@ -3,7 +3,9 @@
 namespace Kompo\Auth\Teams\Contracts;
 
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Collection;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+use Kompo\Auth\Models\Teams\TeamRole;
 
 interface PermissionResolverInterface
 {
@@ -23,6 +25,16 @@ interface PermissionResolverInterface
     public function getAllAccessibleTeamsForUser(int $userId);
 
     public function getUserPermissionsOptimized(int $userId, $teamIds = null);
+
+    public function getUserActiveTeamRoles(int $userId, $teamIds = null): Collection;
+
+    public function getRolePermissions($role): array;
+
+    public function getTeamRolePermissions(TeamRole $teamRole): array;
+
+    public function getTeamRoleAccessibleTeams(TeamRole $teamRole): array;
+
+    public function getAccessibleTeamIds(Collection $targetTeamIds): Collection;
 
     public function clearRequestCache(): void;
 

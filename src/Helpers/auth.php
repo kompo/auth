@@ -218,7 +218,7 @@ if (!function_exists('isAppSuperAdmin') && config('kompo-auth.root-security', tr
 
         $isSuperAdmin = app(UserContextCache::class)->isSuperAdmin(
             auth()->id(),
-            fn() => isSuperAdmin() || auth()->user()->isSuperAdmin()
+            fn() => auth()->user()->isSuperAdmin()
         );
 
         return $isSuperAdmin;
@@ -372,13 +372,6 @@ if (!function_exists('isTeamOwner') && config('kompo-auth.root-security', true))
     function isTeamOwner(): bool
     {
         return authUser()?->isTeamOwner() ?? false;
-    }
-}
-
-if (!function_exists('isSuperAdmin') && config('kompo-auth.root-security', true)) {
-    function isSuperAdmin(): bool
-    {
-        return authUser()?->isSuperAdmin() ?? false;
     }
 }
 

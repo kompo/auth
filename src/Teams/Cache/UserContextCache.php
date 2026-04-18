@@ -29,8 +29,8 @@ class UserContextCache
     public function isSuperAdmin(int|string $userId, callable $compute): bool
     {
         return (bool) $this->cache->remember(
-            CacheKeyBuilder::isSuperAdmin($userId),
-            CacheKeyBuilder::IS_SUPER_ADMIN,
+            CacheKeyBuilder::userSuperAdmin($userId),
+            CacheKeyBuilder::USER_SUPER_ADMIN,
             $compute,
             (int) config('kompo-auth.cache.super_admin_ttl', 3600)
         );
@@ -57,8 +57,8 @@ class UserContextCache
     public function putIsSuperAdmin(int|string $userId, bool $isSuperAdmin): void
     {
         $this->cache->put(
-            CacheKeyBuilder::isSuperAdmin($userId),
-            CacheKeyBuilder::IS_SUPER_ADMIN,
+            CacheKeyBuilder::userSuperAdmin($userId),
+            CacheKeyBuilder::USER_SUPER_ADMIN,
             $isSuperAdmin,
             (int) config('kompo-auth.cache.super_admin_ttl', 3600)
         );
@@ -69,7 +69,7 @@ class UserContextCache
         $this->cache->invalidateTags([
             CacheKeyBuilder::CURRENT_TEAM_ROLE,
             CacheKeyBuilder::CURRENT_TEAM,
-            CacheKeyBuilder::IS_SUPER_ADMIN,
+            CacheKeyBuilder::USER_SUPER_ADMIN,
         ]);
     }
 }

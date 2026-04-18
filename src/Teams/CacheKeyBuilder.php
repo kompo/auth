@@ -36,8 +36,7 @@ class CacheKeyBuilder
     // Current user context cache types
     public const CURRENT_TEAM_ROLE = 'current_team_role';
     public const CURRENT_TEAM = 'current_team';
-    public const IS_SUPER_ADMIN = 'is_super_admin';
-    
+
     /**
      * Build cache key for user permissions
      */
@@ -171,14 +170,6 @@ class CacheKeyBuilder
     }
 
     /**
-     * Build cache key for super admin status
-     */
-    public static function isSuperAdmin(int|string $userId): string
-    {
-        return "isSuperAdmin.{$userId}";
-    }
-
-    /**
      * Get cache tags for a specific cache type
      */
     public static function getTagsForCacheType(string $cacheType): array
@@ -212,7 +203,6 @@ class CacheKeyBuilder
             self::TEAM_SIBLINGS,
             self::CURRENT_TEAM_ROLE,
             self::CURRENT_TEAM,
-            self::IS_SUPER_ADMIN,
         ];
     }
 
@@ -233,7 +223,6 @@ class CacheKeyBuilder
             self::ACTIVE_TEAM_ROLES,
             self::CURRENT_TEAM_ROLE,
             self::CURRENT_TEAM,
-            self::IS_SUPER_ADMIN,
         ];
     }
 

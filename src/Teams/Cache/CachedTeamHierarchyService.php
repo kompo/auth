@@ -56,22 +56,78 @@ class CachedTeamHierarchyService implements TeamHierarchyInterface
 
     public function getBatchAncestorTeamIds(array $teamIds): Collection
     {
-        return $this->inner->getBatchAncestorTeamIds($teamIds);
+        if (empty($teamIds)) {
+            return $this->inner->getBatchAncestorTeamIds($teamIds);
+        }
+
+        $normalized = collect($teamIds)->filter()->unique()->sort()->values()->all();
+        $key = 'batch_ancestors.' . md5(json_encode($normalized));
+
+        return $this->cache->remember(
+            $key,
+            CacheKeyBuilder::TEAM_ANCESTORS,
+            fn() => $this->inner->getBatchAncestorTeamIds($teamIds)
+        );
     }
 
     public function getBatchDescendantTeamIdsByRoot(array $teamIds, ?string $search = ''): Collection
     {
-        return $this->inner->getBatchDescendantTeamIdsByRoot($teamIds, $search);
+        if ($search !== null && $search !== '') {
+            return $this->inner->getBatchDescendantTeamIdsByRoot($teamIds, $search);
+        }
+
+        if (empty($teamIds)) {
+            return $this->inner->getBatchDescendantTeamIdsByRoot($teamIds, $search);
+        }
+
+        $normalized = collect($teamIds)->filter()->unique()->sort()->values()->all();
+        $key = 'batch_descendants_by_root.' . md5(json_encode($normalized));
+
+        return $this->cache->remember(
+            $key,
+            CacheKeyBuilder::TEAM_DESCENDANTS,
+            fn() => $this->inner->getBatchDescendantTeamIdsByRoot($teamIds, $search)
+        );
     }
 
     public function getBatchSiblingTeamIds(array $teamIds, ?string $search = ''): Collection
     {
-        return $this->inner->getBatchSiblingTeamIds($teamIds, $search);
+        if ($search !== null && $search !== '') {
+            return $this->inner->getBatchSiblingTeamIds($teamIds, $search);
+        }
+
+        if (empty($teamIds)) {
+            return $this->inner->getBatchSiblingTeamIds($teamIds, $search);
+        }
+
+        $normalized = collect($teamIds)->filter()->unique()->sort()->values()->all();
+        $key = 'batch_siblings.' . md5(json_encode($normalized));
+
+        return $this->cache->remember(
+            $key,
+            CacheKeyBuilder::TEAM_SIBLINGS,
+            fn() => $this->inner->getBatchSiblingTeamIds($teamIds, $search)
+        );
     }
 
     public function getBatchSiblingTeamIdsBySource(array $teamIds, ?string $search = ''): Collection
     {
-        return $this->inner->getBatchSiblingTeamIdsBySource($teamIds, $search);
+        if ($search !== null && $search !== '') {
+            return $this->inner->getBatchSiblingTeamIdsBySource($teamIds, $search);
+        }
+
+        if (empty($teamIds)) {
+            return $this->inner->getBatchSiblingTeamIdsBySource($teamIds, $search);
+        }
+
+        $normalized = collect($teamIds)->filter()->unique()->sort()->values()->all();
+        $key = 'batch_siblings_by_source.' . md5(json_encode($normalized));
+
+        return $this->cache->remember(
+            $key,
+            CacheKeyBuilder::TEAM_SIBLINGS,
+            fn() => $this->inner->getBatchSiblingTeamIdsBySource($teamIds, $search)
+        );
     }
 
     public function clearCache(?int $teamId = null): void

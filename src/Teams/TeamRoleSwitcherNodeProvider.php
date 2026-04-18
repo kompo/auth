@@ -10,6 +10,7 @@ use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Facades\TeamModel;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Teams\Cache\AuthCacheLayer;
+use Kompo\Auth\Teams\Cache\UserTeamCache;
 use Kompo\Auth\Teams\CacheKeyBuilder;
 use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
 
@@ -26,7 +27,10 @@ class TeamRoleSwitcherNodeProvider
 
     private array $roleNameCache = [];
 
-    public function __construct(private AuthCacheLayer $cache) {}
+    public function __construct(
+        private AuthCacheLayer $cache,
+        private UserTeamCache $userTeamCache,
+    ) {}
 
     public function bootstrap($user, int|string|null $profile, string $mode, int $limit, int $lookaheadBudget): array
     {
@@ -433,9 +437,9 @@ class TeamRoleSwitcherNodeProvider
             $teamSelect[] = 'teams.is_committee';
         }
 
-        return $this->cache->remember(
-            'teamRoleSwitcher.activeTeamRoles.v2.' . $user->id . '.' . ($profile ?: 'all'),
-            CacheKeyBuilder::USER_ACTIVE_TEAM_ROLES,
+        return $this->userTeamCache->activeTeamRolesByProfile(
+            $user->id,
+            $profile,
             fn() => TeamRole::withoutGlobalScope('authUserHasPermissions')
                 ->select(['team_roles.id', 'team_roles.user_id', 'team_roles.team_id', 'team_roles.role', 'team_roles.role_hierarchy'])
                 ->where('team_roles.user_id', $user->id)
@@ -445,8 +449,7 @@ class TeamRoleSwitcherNodeProvider
                     'team' => fn($query) => $query->select($teamSelect),
                     'roleRelation' => fn($query) => $query->select(['roles.id', 'roles.name', 'roles.profile']),
                 ])
-                ->get(),
-            (int) config('kompo-auth.cache.role_switcher_ttl', 900)
+                ->get()
         );
     }
 

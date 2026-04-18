@@ -99,10 +99,6 @@ Route::middleware(['auth'])->group(function(){
 
     Route::get('log-me-out', fn() => auth()->user()?->logMeOut());
 
-	Route::get('team-role-switcher/bootstrap', [TeamRoleSwitcherController::class, 'bootstrap'])
-		->name('team-role-switcher.bootstrap');
-	Route::get('team-role-switcher/nodes', [TeamRoleSwitcherController::class, 'nodes'])
-		->name('team-role-switcher.nodes');
 	Route::post('team-role-switcher/switch', [TeamRoleSwitcherController::class, 'switch'])
 		->name('team-role-switcher.switch');
 

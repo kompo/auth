@@ -128,13 +128,8 @@ trait HasTeamPermissions
         if ($search) {
             return array_keys($this->getAllTeamIdsWithRolesCached(profile: null, search: $search));
         }
-        
-        return $this->getUserTeamCache()->allAccessibleTeams(
-            $this->id,
-            function () {
-                return array_keys($this->getAllTeamIdsWithRolesCached(profile: null, search: null));
-            }   
-        );
+
+        return $this->getPermissionResolver()->getAllAccessibleTeamsForUser($this->id);
     }
 
     public function hasRole(string $role)

@@ -7,19 +7,50 @@ use Illuminate\Support\Facades\DB;
 use Kompo\Auth\Facades\UserModel;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\TeamRole;
+use Kompo\Auth\Teams\Cache\AuthCacheLayer;
+use Kompo\Auth\Teams\Cache\PermissionDefinitionCache;
+use Kompo\Auth\Teams\CacheKeyBuilder;
+use Kompo\Auth\Teams\Contracts\PermissionResolverInterface;
 use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
 
 /**
  * Centralized permission resolution service
  * Handles all permission checking logic with optimized caching and queries
  */
-class PermissionResolver
+class PermissionResolver implements PermissionResolverInterface
 {
     private TeamHierarchyInterface $hierarchyService;
-    
-    public function __construct(TeamHierarchyInterface $hierarchyService)
-    {
+    private ?AuthCacheLayer $cache;
+    private ?PermissionDefinitionCache $definitionCache;
+    private ?PermissionResolverInterface $publicApi = null;
+
+    public function __construct(
+        TeamHierarchyInterface $hierarchyService,
+        ?AuthCacheLayer $cache = null,
+        ?PermissionDefinitionCache $definitionCache = null,
+    ) {
         $this->hierarchyService = $hierarchyService;
+        $this->cache = $cache;
+        $this->definitionCache = $definitionCache;
+    }
+
+    /**
+     * Wire the public-facing API (typically the cache decorator) so internal
+     * calls can route through cached variants even when the outer cache is cold.
+     */
+    public function setPublicApi(PermissionResolverInterface $publicApi): void
+    {
+        $this->publicApi = $publicApi;
+    }
+
+    /**
+     * Return the public API (decorator) when wired, or $this otherwise.
+     * Internal methods that have cached counterparts in the decorator should
+     * route through this helper so nested calls benefit from sub-caches.
+     */
+    private function publicApi(): PermissionResolverInterface
+    {
+        return $this->publicApi ?? $this;
     }
     
     /**
@@ -60,15 +91,67 @@ class PermissionResolver
      */
     public function getAllAccessibleTeamsForUser(int $userId)
     {
-        $accessibleTeams = collect();
-        $teamRoles = $this->getUserActiveTeamRoles($userId);
-        
-        foreach ($teamRoles as $teamRole) {
-            $teams = $this->getTeamRoleAccessibleTeams($teamRole);
-            $accessibleTeams = $accessibleTeams->concat($teams);
+        $teamRoles = $this->publicApi()->getUserActiveTeamRoles($userId);
+        if ($teamRoles->isEmpty()) {
+            return [];
         }
 
-        return $accessibleTeams->unique()->values()->all();
+        $result = collect($teamRoles->pluck('team_id')->all())
+            ->filter()
+            ->unique();
+
+        $grouped = $this->groupTeamRolesByHierarchy($teamRoles);
+
+        foreach ($grouped as $type => $group) {
+            $teamIds = collect($group)->pluck('team_id')->filter()->unique()->values()->all();
+            if (empty($teamIds)) {
+                continue;
+            }
+
+            if ($type === 'below' || $type === 'below_and_neighbors') {
+                $descendants = $this->hierarchyService
+                    ->getBatchDescendantTeamIdsByRoot($teamIds)
+                    ->flatten();
+                $result = $result->concat($descendants);
+            }
+
+            if ($type === 'neighbors' || $type === 'below_and_neighbors') {
+                $siblings = $this->hierarchyService->getBatchSiblingTeamIds($teamIds);
+                $result = $result->concat($siblings);
+            }
+        }
+
+        return $result->unique()->values()->all();
+    }
+
+    /**
+     * Group team roles by their hierarchy access patterns for batched processing.
+     */
+    private function groupTeamRolesByHierarchy(Collection $teamRoles): array
+    {
+        $grouped = [
+            'direct' => [],
+            'below' => [],
+            'neighbors' => [],
+            'below_and_neighbors' => [],
+        ];
+
+        foreach ($teamRoles as $teamRole) {
+            $hasBelow = $teamRole->getRoleHierarchyAccessBelow();
+            $hasNeighbors = $teamRole->getRoleHierarchyAccessNeighbors();
+
+            if ($hasBelow && $hasNeighbors) {
+                $grouped['below_and_neighbors'][] = $teamRole;
+            } elseif ($hasBelow) {
+                $grouped['below'][] = $teamRole;
+            } elseif ($hasNeighbors) {
+                $grouped['neighbors'][] = $teamRole;
+            } else {
+                $grouped['direct'][] = $teamRole;
+            }
+        }
+
+        return array_filter($grouped, fn($group) => !empty($group));
     }
     
     /**
@@ -85,8 +168,8 @@ class PermissionResolver
     private function resolveUserPermissions(int $userId, $teamIds = null)
     {
         // Get user's active team roles with optimized loading
-        $teamRoles = $this->getUserActiveTeamRoles($userId, $teamIds);
-        
+        $teamRoles = $this->publicApi()->getUserActiveTeamRoles($userId, $teamIds);
+
         if ($teamRoles->isEmpty()) {
             return [];
         }
@@ -100,7 +183,7 @@ class PermissionResolver
     /**
      * Get user's active team roles with optimized queries
      */
-    private function getUserActiveTeamRoles(int $userId, $teamIds = null): Collection
+    public function getUserActiveTeamRoles(int $userId, $teamIds = null): Collection
     {
         $query = TeamRole::with(['roleRelation', 'team'])
             ->where('user_id', $userId)
@@ -110,7 +193,7 @@ class PermissionResolver
         // Apply team filtering if specified
         if ($teamIds !== null) {
             $targetTeamIds = collect(is_iterable($teamIds) ? $teamIds : [$teamIds]);
-            $accessibleTeamIds = $this->getAccessibleTeamIds($targetTeamIds);
+            $accessibleTeamIds = $this->publicApi()->getAccessibleTeamIds($targetTeamIds);
 
             $query->whereIn('team_id', $accessibleTeamIds);
         }
@@ -121,7 +204,7 @@ class PermissionResolver
     /**
      * Get all team IDs that could grant access to target teams through hierarchy
      */
-    private function getAccessibleTeamIds(Collection $targetTeamIds): Collection
+    public function getAccessibleTeamIds(Collection $targetTeamIds): Collection
     {
         $accessibleTeams = collect();
         
@@ -159,7 +242,13 @@ class PermissionResolver
                 ->groupBy('role');
 
             foreach ($rolePermissions as $roleId => $permissions) {
-                $permissionData['roles'][$roleId] = collect($permissions)->pluck('complex_permission_key')->all();
+                $perms = collect($permissions)->pluck('complex_permission_key')->all();
+                $permissionData['roles'][$roleId] = $perms;
+                $this->cache?->put(
+                    CacheKeyBuilder::rolePermissions($roleId),
+                    CacheKeyBuilder::ROLE_PERMISSIONS,
+                    $perms
+                );
             }
         }
 
@@ -173,7 +262,13 @@ class PermissionResolver
                 ->groupBy('team_role_id');
                 
             foreach ($teamRolePermissions as $teamRoleId => $permissions) {
-                $permissionData['team_roles'][$teamRoleId] = collect($permissions)->pluck('complex_permission_key')->all();
+                $perms = collect($permissions)->pluck('complex_permission_key')->all();
+                $permissionData['team_roles'][$teamRoleId] = $perms;
+                $this->cache?->put(
+                    CacheKeyBuilder::teamRolePermissions($teamRoleId),
+                    CacheKeyBuilder::TEAM_ROLE_PERMISSIONS,
+                    $perms
+                );
             }
         }
 
@@ -189,24 +284,24 @@ class PermissionResolver
 
         foreach ($teamRoles as $teamRole) {
             // Get teams this role has access to
-            $accessibleTeams = collect($this->getTeamRoleAccessibleTeams($teamRole));
-            
+            $accessibleTeams = collect($this->publicApi()->getTeamRoleAccessibleTeams($teamRole));
+
             // Filter by target teams if specified
             if ($teamIds !== null) {
                 $targetTeams = collect(is_iterable($teamIds) ? $teamIds : [$teamIds]);
                 $accessibleTeams = $accessibleTeams->intersect($targetTeams);
             }
-            
+
             if ($accessibleTeams->isEmpty()) {
                 continue;
             }
-            
+
             // Add role-based permissions
-            $rolePermissions = $permissionData['roles'][$teamRole->role] ?? $this->getRolePermissions($teamRole->roleRelation);
+            $rolePermissions = $permissionData['roles'][$teamRole->role] ?? $this->publicApi()->getRolePermissions($teamRole->roleRelation);
             $permissions = $permissions->concat($rolePermissions);
-            
+
             // Add direct team role permissions
-            $directPermissions = $permissionData['team_roles'][$teamRole->id] ?? $this->getTeamRolePermissions($teamRole);
+            $directPermissions = $permissionData['team_roles'][$teamRole->id] ?? $this->publicApi()->getTeamRolePermissions($teamRole);
             $permissions = $permissions->concat($directPermissions);
         }
         
@@ -216,32 +311,38 @@ class PermissionResolver
     /**
      * Get teams accessible through a team role (considering hierarchy)
      */
-    private function getTeamRoleAccessibleTeams(TeamRole $teamRole)
+    public function getTeamRoleAccessibleTeams(TeamRole $teamRole): array
     {
-        $teams = collect([$teamRole->team_id]);
+        $compute = function () use ($teamRole) {
+            $teams = collect([$teamRole->team_id]);
 
-        if ($teamRole->getRoleHierarchyAccessBelow()) {
-            $descendants = $this->hierarchyService->getDescendantTeamIds($teamRole->team_id);
-            $teams = $teams->concat($descendants);
+            if ($teamRole->getRoleHierarchyAccessBelow()) {
+                $teams = $teams->concat($this->hierarchyService->getDescendantTeamIds($teamRole->team_id));
+            }
+
+            if ($teamRole->getRoleHierarchyAccessNeighbors()) {
+                $teams = $teams->concat($this->hierarchyService->getSiblingTeamIds($teamRole->team_id));
+            }
+
+            return $teams->unique()->values()->all();
+        };
+
+        if ($this->definitionCache) {
+            return $this->definitionCache->accessibleTeamsForTeamRole($teamRole, $compute);
         }
 
-        if ($teamRole->getRoleHierarchyAccessNeighbors()) {
-            $siblings = $this->hierarchyService->getSiblingTeamIds($teamRole->team_id);
-            $teams = $teams->concat($siblings);
-        }
-
-        return $teams->unique()->all();
+        return $compute();
     }
 
     /**
      * Get permissions from role with efficient query
      */
-    public function getRolePermissions($role)
+    public function getRolePermissions($role): array
     {
         if (!$role) {
             return [];
         }
-        
+
         return $role->permissions()->selectRaw(constructComplexPermissionKeySql('permission_role'))
             ->pluck('complex_permission_key')->all();
     }
@@ -254,7 +355,7 @@ class PermissionResolver
     /**
      * Get direct team role permissions
      */
-    public function getTeamRolePermissions(TeamRole $teamRole)
+    public function getTeamRolePermissions(TeamRole $teamRole): array
     {
         return $teamRole->permissions()
             ->selectRaw(constructComplexPermissionKeySql('permission_team_role'))
@@ -267,12 +368,12 @@ class PermissionResolver
     private function getTeamSpecificPermissions(int $userId, string $permissionKey, PermissionTypeEnum $type)
     {
         $teamsWithPermission = collect();
-        $teamRoles = $this->getUserActiveTeamRoles($userId);
+        $teamRoles = $this->publicApi()->getUserActiveTeamRoles($userId);
         $permissionData = $this->preloadPermissionData($teamRoles);
 
         foreach ($teamRoles as $teamRole) {
             if ($this->teamRoleHasPermission($teamRole, $permissionKey, $type, $permissionData)) {
-                $accessibleTeams = $this->getTeamRoleAccessibleTeams($teamRole);
+                $accessibleTeams = $this->publicApi()->getTeamRoleAccessibleTeams($teamRole);
                 $teamsWithPermission = $teamsWithPermission->concat($accessibleTeams);
             }
         }

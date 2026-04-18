@@ -5,6 +5,8 @@ namespace Kompo\Auth\Teams\Cache;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+use Kompo\Auth\Models\Teams\TeamRole;
+use Kompo\Auth\Teams\Cache\UserContextCache;
 use Kompo\Auth\Teams\CacheKeyBuilder;
 use Kompo\Auth\Teams\Contracts\PermissionResolverInterface;
 use Kompo\Auth\Teams\PermissionResolver;
@@ -14,7 +16,10 @@ class CachedPermissionResolver implements PermissionResolverInterface
     public function __construct(
         private PermissionResolver $inner,
         private AuthCacheLayer $cache,
-    ) {}
+        private UserContextCache $context,
+    ) {
+        $inner->setPublicApi($this);
+    }
 
     public function userHasPermission(
         int $userId,
@@ -79,6 +84,59 @@ class CachedPermissionResolver implements PermissionResolverInterface
         );
     }
 
+    public function getUserActiveTeamRoles(int $userId, $teamIds = null): Collection
+    {
+        $key = 'user_active_team_roles.' . $userId . '.' . $this->teamIdsKey($teamIds);
+
+        return $this->cache->remember(
+            $key,
+            CacheKeyBuilder::USER_ACTIVE_TEAM_ROLES,
+            fn() => $this->inner->getUserActiveTeamRoles($userId, $teamIds)
+        );
+    }
+
+    public function getRolePermissions($role): array
+    {
+        if (!$role) {
+            return [];
+        }
+
+        return $this->cache->remember(
+            CacheKeyBuilder::rolePermissions($role->id),
+            CacheKeyBuilder::ROLE_PERMISSIONS,
+            fn() => $this->inner->getRolePermissions($role)
+        );
+    }
+
+    public function getTeamRolePermissions(TeamRole $teamRole): array
+    {
+        return $this->cache->remember(
+            CacheKeyBuilder::teamRolePermissions($teamRole->id),
+            CacheKeyBuilder::TEAM_ROLE_PERMISSIONS,
+            fn() => $this->inner->getTeamRolePermissions($teamRole)
+        );
+    }
+
+    public function getTeamRoleAccessibleTeams(TeamRole $teamRole): array
+    {
+        return $this->cache->remember(
+            CacheKeyBuilder::teamRoleAccess($teamRole->id),
+            CacheKeyBuilder::TEAM_ROLE_ACCESS,
+            fn() => $this->inner->getTeamRoleAccessibleTeams($teamRole)
+        );
+    }
+
+    public function getAccessibleTeamIds(Collection $targetTeamIds): Collection
+    {
+        $key = 'accessible_teams.' . md5(json_encode($targetTeamIds->filter()->unique()->sort()->values()->all()));
+
+        return $this->cache->remember(
+            $key,
+            CacheKeyBuilder::ACCESSIBLE_TEAMS,
+            fn() => $this->inner->getAccessibleTeamIds($targetTeamIds)
+        );
+    }
+
     public function clearRequestCache(): void
     {
         $this->cache->flushRequestCache();
@@ -113,17 +171,7 @@ class CachedPermissionResolver implements PermissionResolverInterface
 
     public function warmRolePermissions($role): void
     {
-        if (!$role) {
-            return;
-        }
-
-        $key = CacheKeyBuilder::rolePermissions($role->id);
-
-        $this->cache->remember(
-            $key,
-            CacheKeyBuilder::ROLE_PERMISSIONS,
-            fn() => $this->inner->getRolePermissions($role)
-        );
+        $this->getRolePermissions($role);
     }
 
     public function getTeamsQueryWithPermissionForUser(
@@ -144,14 +192,7 @@ class CachedPermissionResolver implements PermissionResolverInterface
 
     private function userIsSuperAdmin(int $userId): bool
     {
-        $key = CacheKeyBuilder::userSuperAdmin($userId);
-
-        return (bool) $this->cache->remember(
-            $key,
-            CacheKeyBuilder::USER_SUPER_ADMIN,
-            fn() => $this->inner->userIsSuperAdmin($userId),
-            (int) config('kompo-auth.cache.super_admin_ttl', 3600)
-        );
+        return $this->context->isSuperAdmin($userId, fn() => $this->inner->userIsSuperAdmin($userId));
     }
 
     private function teamIdsKey($teamIds): string

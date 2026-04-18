@@ -6,8 +6,6 @@ use Condoedge\Utils\Kompo\Elements\LazyHierarchy;
 
 class TeamRoleSwitcherElement extends LazyHierarchy
 {
-    public $vueComponent = 'TeamRoleSwitcher';
-
     public function initialize($label = '')
     {
         parent::initialize($label);
@@ -16,11 +14,15 @@ class TeamRoleSwitcherElement extends LazyHierarchy
         $currentTeam = currentTeam();
 
         $this
-            ->hierarchySource('team-role-switcher.bootstrap', 'team-role-switcher.nodes')
+            ->source(TeamRoleSwitcherHierarchySource::class)
             ->hierarchyPaging(20, 80)
-            ->loadDeferred()
+            ->dropdown($currentTeamRole?->getRoleName())
+            ->searchable(__('auth.search-placeholder'))
+            ->modes([
+                TeamAccessHierarchyBuilder::MODE_TEAMS => __('auth.switcher-teams'),
+                TeamAccessHierarchyBuilder::MODE_COMMITTEES => __('auth.switcher-committees'),
+            ], 'mode', TeamAccessHierarchyBuilder::MODE_TEAMS)
             ->switchAction(route('team-role-switcher.switch'), 'POST', ['reload' => true])
-            ->displayMode('dropdown')
             ->defaultMode(TeamAccessHierarchyBuilder::MODE_TEAMS)
             ->switcherProfile($currentTeamRole?->roleRelation?->profile ?? 1)
             ->switcherCurrent($currentTeam, $currentTeamRole)
@@ -39,9 +41,11 @@ class TeamRoleSwitcherElement extends LazyHierarchy
 
     public function switcherProfile(int|string|null $profile)
     {
-        return $this->config([
-            'profile' => $profile,
-        ]);
+        return $this
+            ->hierarchyParam('profile', $profile)
+            ->config([
+                'profile' => $profile,
+            ]);
     }
 
     public function switcherCurrent($team, $teamRole)
@@ -58,16 +62,12 @@ class TeamRoleSwitcherElement extends LazyHierarchy
 
     public function switcherClasses(array $classes)
     {
-        return $this->config([
-            'classes' => array_replace($this->config('classes') ?: [], $classes),
-        ]);
+        return $this->hierarchyClasses($classes);
     }
 
     public function switcherLabels(array $labels)
     {
-        return $this->config([
-            'labels' => array_replace($this->config('labels') ?: [], $labels),
-        ]);
+        return $this->hierarchyLabels($labels);
     }
 
     public function displayMode(string $mode)
@@ -89,17 +89,9 @@ class TeamRoleSwitcherElement extends LazyHierarchy
 
     public function switchAction(string $url, string $method = 'POST', array $config = [])
     {
-        $actions = $this->config('actions') ?: [];
-
-        $actions['switch'] = array_replace($actions['switch'] ?? [], [
-            'url' => $url,
-            'method' => $method,
-        ], $config);
-
-        return $this->config([
-            'actions' => $actions,
-            'switchUrl' => $url,
-        ]);
+        return $this
+            ->hierarchyAction('switch', $url, $method, $config)
+            ->config(['switchUrl' => $url]);
     }
 
     protected function defaultLabels(): array

@@ -35,6 +35,17 @@ class UserTeamCache
         );
     }
 
+    public function activeTeamRolesByProfile(int|string $userId, $profile, callable $compute)
+    {
+        $profileKey = $profile === null ? 'all' : (string) $profile;
+
+        return $this->cache->remember(
+            "activeTeamRoles.{$userId}.profile.{$profileKey}",
+            CacheKeyBuilder::USER_ACTIVE_TEAM_ROLES,
+            $compute
+        );
+    }
+
     public function allTeamIdsWithRoles(int|string $userId, $profile, callable $compute)
     {
         return $this->cache->remember(

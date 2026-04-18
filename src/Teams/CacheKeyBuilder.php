@@ -38,55 +38,103 @@ class CacheKeyBuilder
     public const CURRENT_TEAM = 'current_team';
 
     /**
-     * Build cache key for user permissions
+     * Build cache key for user permissions.
+     *
+     * When $version > 0, a `v{N}` segment is embedded so per-user version
+     * bumps can invalidate this user's entries in O(1) (via UserCacheVersion)
+     * without flushing the entire tag group for every other user.
+     * When $version === 0 (default), the legacy unversioned key format is
+     * returned for backwards compatibility with callers that haven't been
+     * migrated yet.
      */
-    public static function userPermissions(int|string $userId, $teamIds = null): string
+    public static function userPermissions(int|string $userId, $teamIds = null, int $version = 0): string
     {
-        $teamKey = $teamIds ? 
-            md5(json_encode(collect($teamIds)->sort()->values())) : 
+        $teamKey = $teamIds ?
+            md5(json_encode(collect($teamIds)->sort()->values())) :
             'all';
-            
-        return "user_permissions.{$userId}.{$teamKey}";
+
+        $versionSegment = $version > 0 ? "v{$version}." : '';
+
+        return "user_permissions.{$userId}.{$versionSegment}{$teamKey}";
+    }
+
+    /**
+     * Build Redis-set key for user allow set.
+     *
+     * Used by UserPermissionSet to hold `{permission_key}|{type_value}` entries,
+     * expanded across all implied types at materialization. Direct Redis key —
+     * does not go through the tag system; invalidated by version bumping.
+     */
+    public static function userAllowSet(int|string $userId, int $version, $teamIds = null): string
+    {
+        $teamKey = $teamIds
+            ? md5(json_encode(collect($teamIds)->sort()->values()))
+            : 'all';
+        return "user_allow.{$userId}.v{$version}.{$teamKey}";
+    }
+
+    /**
+     * Build Redis-set key for user deny set.
+     *
+     * Holds plain permission-key strings (no type suffix) for explicit DENY entries.
+     * Direct Redis key — does not go through the tag system; invalidated by version bumping.
+     */
+    public static function userDenySet(int|string $userId, int $version, $teamIds = null): string
+    {
+        $teamKey = $teamIds
+            ? md5(json_encode(collect($teamIds)->sort()->values()))
+            : 'all';
+        return "user_deny.{$userId}.v{$version}.{$teamKey}";
     }
 
     /**
      * Build cache key for user team access
      */
-    public static function userTeamAccess(int|string $userId, int|string $teamId, ?string $roleId = null): string
+    public static function userTeamAccess(int|string $userId, int|string $teamId, ?string $roleId = null, int $version = 0): string
     {
-        return "user_team_access.{$userId}.{$teamId}." . ($roleId ?? 'any');
+        $versionSegment = $version > 0 ? "v{$version}." : '';
+
+        return "user_team_access.{$userId}.{$versionSegment}{$teamId}." . ($roleId ?? 'any');
     }
 
     /**
      * Build cache key for user teams with permission
      */
-    public static function userTeamsWithPermission(int|string $userId, string $permissionKey, string $typeValue): string
+    public static function userTeamsWithPermission(int|string $userId, string $permissionKey, string $typeValue, int $version = 0): string
     {
-        return "user_teams_with_permission.{$userId}.{$permissionKey}.{$typeValue}";
+        $versionSegment = $version > 0 ? "v{$version}." : '';
+
+        return "user_teams_with_permission.{$userId}.{$versionSegment}{$permissionKey}.{$typeValue}";
     }
 
     /**
      * Build cache key for user all accessible teams
      */
-    public static function userAllAccessibleTeams(int|string $userId): string
+    public static function userAllAccessibleTeams(int|string $userId, int $version = 0): string
     {
-        return "user_all_accessible_teams.{$userId}";
+        $versionSegment = $version > 0 ? ".v{$version}" : '';
+
+        return "user_all_accessible_teams.{$userId}{$versionSegment}";
     }
 
     /**
      * Build cache key for user active team roles
      */
-    public static function userActiveTeamRoles(int|string $userId, $teamIds = null): string
+    public static function userActiveTeamRoles(int|string $userId, $teamIds = null, int $version = 0): string
     {
-        return "user_active_team_roles.{$userId}." . md5(serialize($teamIds));
+        $versionSegment = $version > 0 ? "v{$version}." : '';
+
+        return "user_active_team_roles.{$userId}.{$versionSegment}" . md5(serialize($teamIds));
     }
 
     /**
      * Build cache key for user super admin status
      */
-    public static function userSuperAdmin(int|string $userId): string
+    public static function userSuperAdmin(int|string $userId, int $version = 0): string
     {
-        return "user_super_admin.{$userId}";
+        $versionSegment = $version > 0 ? ".v{$version}" : '';
+
+        return "user_super_admin.{$userId}{$versionSegment}";
     }
 
     /**
@@ -146,6 +194,16 @@ class CacheKeyBuilder
     }
 
     /**
+     * Build cache key for ancestors grouped by target teams.
+     */
+    public static function batchTeamAncestorsByTarget(array $teamIds): string
+    {
+        $normalized = collect($teamIds)->filter()->unique()->sort()->values();
+
+        return 'batch_ancestors_by_target.' . md5(json_encode($normalized));
+    }
+
+    /**
      * Build cache key for team siblings
      */
     public static function teamSiblings(int|string $teamId, ?string $search = ''): string
@@ -156,17 +214,21 @@ class CacheKeyBuilder
     /**
      * Build cache key for current team role
      */
-    public static function currentTeamRole(int|string $userId): string
+    public static function currentTeamRole(int|string $userId, int $version = 0): string
     {
-        return "currentTeamRole.{$userId}";
+        $versionSegment = $version > 0 ? ".v{$version}" : '';
+
+        return "currentTeamRole.{$userId}{$versionSegment}";
     }
 
     /**
      * Build cache key for current team
      */
-    public static function currentTeam(int|string $userId): string
+    public static function currentTeam(int|string $userId, int $version = 0): string
     {
-        return "currentTeam.{$userId}";
+        $versionSegment = $version > 0 ? ".v{$version}" : '';
+
+        return "currentTeam.{$userId}{$versionSegment}";
     }
 
     /**

@@ -3,16 +3,9 @@
 namespace Kompo\Auth\Teams;
 
 use Condoedge\Utils\Kompo\LazyHierarchy\LazyHierarchyPayload;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
-use Kompo\Auth\Facades\RoleModel;
-use Kompo\Auth\Facades\TeamModel;
-use Kompo\Auth\Models\Teams\TeamRole;
-use Kompo\Auth\Teams\Cache\AuthCacheLayer;
-use Kompo\Auth\Teams\Cache\UserTeamCache;
-use Kompo\Auth\Teams\CacheKeyBuilder;
 use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
+use Kompo\Auth\Teams\Contracts\TeamRoleAccessResolverInterface;
 
 class TeamRoleSwitcherNodeProvider
 {
@@ -23,13 +16,12 @@ class TeamRoleSwitcherNodeProvider
     private const DEFAULT_LOOKAHEAD_BUDGET = 80;
     private const MAX_SCAN_PAGES = 6;
     private const MAX_SEARCH_SCAN_PAGES = 30;
-    private const MAX_PARENT_DEPTH = 50;
-
-    private array $roleNameCache = [];
 
     public function __construct(
-        private AuthCacheLayer $cache,
-        private UserTeamCache $userTeamCache,
+        private TeamRoleAccessResolverInterface $access,
+        private TeamRoleSwitcherTeamRepository $teams,
+        private TeamRoleSwitcherNodeFactory $nodes,
+        private TeamHierarchyInterface $hierarchy,
     ) {}
 
     public function bootstrap($user, int|string|null $profile, string $mode, int $limit, int $lookaheadBudget): array
@@ -109,7 +101,7 @@ class TeamRoleSwitcherNodeProvider
         $take = max($limit * 3, self::MAX_LIMIT);
 
         while ($nodes->count() < $limit && $scanPages < self::MAX_SEARCH_SCAN_PAGES) {
-            $teams = $this->searchTeams($mode, $search, $take, $offset);
+            $teams = $this->teams->search($mode, $search, $take, $offset);
 
             if ($teams->isEmpty()) {
                 break;
@@ -214,26 +206,24 @@ class TeamRoleSwitcherNodeProvider
         $scanOffset = $offset;
         $visible = collect();
         $scanPages = 0;
-        $total = $this->childrenBaseQuery($mode, $parentId, $user, $profile)->count();
+        $total = $this->teams->childrenTotal($mode, $parentId);
 
         while ($visible->count() < $limit && $scanPages < self::MAX_SCAN_PAGES) {
-            $rawTeams = $this->childrenBaseQuery($mode, $parentId, $user, $profile)
-                ->skip($scanOffset)
-                ->take(max($limit * 2, self::DEFAULT_LIMIT))
-                ->get();
+            $take = max($limit * 2, self::DEFAULT_LIMIT);
+            $rawTeams = $this->teams->children($mode, $parentId, $take, $scanOffset);
 
             if ($rawTeams->isEmpty()) {
                 break;
             }
 
             $decorated = $this->decorateTeams($rawTeams, $user, $profile, $mode, $currentPathIds)
-                ->filter(fn($node) => $this->isVisibleNode($node, $mode));
+                ->filter(fn($node) => $this->isVisibleNode($node));
 
             $visible = $visible->concat($decorated)->take($limit)->values();
             $scanOffset += $rawTeams->count();
             $scanPages++;
 
-            if ($rawTeams->count() < max($limit * 2, self::DEFAULT_LIMIT)) {
+            if ($rawTeams->count() < $take) {
                 break;
             }
         }
@@ -258,10 +248,7 @@ class TeamRoleSwitcherNodeProvider
             return;
         }
 
-        $teamsById = $this->teamQuery()
-            ->whereIn('teams.id', $currentPathIds)
-            ->get()
-            ->keyBy('id');
+        $teamsById = $this->teams->findMany($currentPathIds)->keyBy('id');
 
         if ($teamsById->isEmpty()) {
             return;
@@ -269,13 +256,12 @@ class TeamRoleSwitcherNodeProvider
 
         $currentTeam = $teamsById->get((int) end($currentPathIds));
 
-        if (!$currentTeam || !$this->isSelectableForMode($currentTeam, $mode)) {
+        if (!$currentTeam || !$this->teams->isSelectableForMode($currentTeam, $mode)) {
             return;
         }
 
         $nodesByTeamId = $this->decorateTeams($teamsById->values(), $user, $profile, $mode, $currentPathIds)
             ->keyBy('teamId');
-
         $currentNode = $nodesByTeamId->get((int) end($currentPathIds));
 
         if (!$currentNode || !$this->hasSwitchableRole($currentNode)) {
@@ -292,8 +278,7 @@ class TeamRoleSwitcherNodeProvider
             $payload->addNode($node);
 
             $parentId = $index === 0 ? null : (int) $currentPathIds[$index - 1];
-            $parentKey = $this->parentKey($parentId);
-            $payload->prependChild($parentKey, $node['id']);
+            $payload->prependChild($this->parentKey($parentId), $node['id']);
 
             if ($index < count($currentPathIds) - 1) {
                 $payload->expand($node['id']);
@@ -319,281 +304,39 @@ class TeamRoleSwitcherNodeProvider
             return collect();
         }
 
-        $accessByTeam = $this->resolveRolesForCandidates($teams, $user, $profile, $mode);
+        $currentTeamRole = function_exists('currentTeamRole') ? currentTeamRole() : null;
+        $accessByTeam = $this->access->resolveForCandidates(
+            $teams,
+            $user,
+            $profile,
+            $mode,
+            $currentTeamRole
+        );
         $visibleChildrenCounts = $mode === TeamAccessHierarchyBuilder::MODE_TEAMS
             ? $this->visibleDirectChildrenCounts($teams->pluck('id'), $user, $profile, $mode)
             : [];
 
-        return $teams->map(function ($team) use ($accessByTeam, $visibleChildrenCounts, $mode, $currentPathIds) {
+        return $teams->map(function ($team) use ($accessByTeam, $visibleChildrenCounts, $mode, $currentPathIds, $currentTeamRole) {
             $teamId = (int) $team->id;
-            $isCommittee = $this->isCommittee($team);
-            $isSelectable = $this->isSelectableForMode($team, $mode);
+            $isSelectable = $this->teams->isSelectableForMode($team, $mode);
             $access = $isSelectable ? ($accessByTeam[$teamId] ?? []) : [];
-            $roles = $access['roles'] ?? [];
-            $switchRole = $access['switchRole'] ?? null;
             $childrenCount = $mode === TeamAccessHierarchyBuilder::MODE_TEAMS
                 ? (int) ($visibleChildrenCounts[$teamId] ?? 0)
-                : $this->countDirectChildren($teamId, $mode);
+                : $this->teams->countDirectChildren($teamId, $mode);
+            $committeeCount = $mode === TeamAccessHierarchyBuilder::MODE_COMMITTEES
+                ? $this->teams->countDirectCommittees($teamId)
+                : 0;
 
-            return [
-                'id' => $this->nodeId($teamId),
-                'teamId' => $teamId,
-                'parentId' => $team->parent_team_id ? (int) $team->parent_team_id : null,
-                'name' => $team->team_name,
-                'parentName' => $team->relationLoaded('parentTeam') ? $team->parentTeam?->team_name : null,
-                'isCurrent' => $isSelectable && currentTeamRole() && currentTeamRole()->team_id == $teamId,
-                'isInCurrentPath' => in_array($teamId, $currentPathIds, true),
-                'isCommittee' => $isCommittee,
-                'isSelectable' => $isSelectable,
-                'hasChildren' => $childrenCount > 0,
-                'childrenCount' => $childrenCount,
-                'committeeCount' => $mode === TeamAccessHierarchyBuilder::MODE_COMMITTEES ? $this->countDirectCommittees($teamId) : 0,
-                'level' => $this->teamLevelValue($team),
-                'levelLabel' => $this->teamLevelLabel($team, $isCommittee),
-                'levelKey' => $this->teamLevelKey($team, $isCommittee),
-                'roles' => $roles,
-                'switchRole' => $switchRole,
-            ];
+            return $this->nodes->make(
+                team: $team,
+                access: $access,
+                mode: $mode,
+                currentPathIds: $currentPathIds,
+                childrenCount: $childrenCount,
+                committeeCount: $committeeCount,
+                currentTeamRole: $currentTeamRole,
+            );
         })->values();
-    }
-
-    private function resolveRolesForCandidates(Collection $candidateTeams, $user, int|string|null $profile, string $mode): array
-    {
-        $candidateIds = $candidateTeams->pluck('id')->map(fn($id) => (int) $id)->values();
-
-        if ($candidateIds->isEmpty()) {
-            return [];
-        }
-
-        $candidateParents = $candidateTeams->mapWithKeys(fn($team) => [
-            (int) $team->id => $team->parent_team_id ? (int) $team->parent_team_id : null,
-        ]);
-        $ancestorsByCandidate = $this->ancestorIdsByCandidate($candidateIds->all());
-        $activeTeamRoles = $this->activeTeamRoles($user, $profile);
-        $selectableRoleTeamIdsByRole = $activeTeamRoles
-            ->filter(fn($teamRole) => $teamRole->team
-                && $teamRole->getRoleHierarchyAccessBelow()
-                && $this->isSelectableForMode($teamRole->team, $mode))
-            ->groupBy('role')
-            ->map(fn($roles) => $roles->pluck('team_id')->map(fn($id) => (int) $id)->flip());
-        $rolesByTeam = [];
-
-        foreach ($candidateIds as $candidateId) {
-            $candidateAncestors = $ancestorsByCandidate->get($candidateId, collect())->flip();
-            $candidateParentId = $candidateParents->get($candidateId);
-
-            foreach ($activeTeamRoles as $teamRole) {
-                $grantingTeamId = (int) $teamRole->team_id;
-                $isDirectGrant = $grantingTeamId === $candidateId;
-                $grantsAccess = $isDirectGrant;
-
-                if (!$grantsAccess && $teamRole->getRoleHierarchyAccessBelow()) {
-                    $grantsAccess = $candidateAncestors->has($grantingTeamId);
-                }
-
-                if (!$grantsAccess && $teamRole->getRoleHierarchyAccessNeighbors()) {
-                    $roleTeamParentId = $teamRole->team?->parent_team_id ? (int) $teamRole->team->parent_team_id : null;
-                    $grantsAccess = $roleTeamParentId && $candidateParentId && $roleTeamParentId === $candidateParentId;
-                }
-
-                if (!$grantsAccess) {
-                    continue;
-                }
-
-                $rolesByTeam[$candidateId] ??= [];
-                $role = [
-                    'id' => $teamRole->role,
-                    'label' => $this->roleName($teamRole->role),
-                    'isCurrent' => currentTeamRole()
-                        && currentTeamRole()->team_id == $candidateId
-                        && currentTeamRole()->role == $teamRole->role,
-                ];
-
-                if ($this->shouldUseSwitchRole($rolesByTeam[$candidateId]['switchRole'] ?? null, $role)) {
-                    $rolesByTeam[$candidateId]['switchRole'] = $role;
-                }
-
-                if ($this->hasSelectableAncestorRole($candidateAncestors, $selectableRoleTeamIdsByRole->get($teamRole->role))) {
-                    continue;
-                }
-
-                $rolesByTeam[$candidateId]['roles'][$teamRole->role] = $role;
-            }
-        }
-
-        return collect($rolesByTeam)
-            ->map(fn($access) => [
-                'roles' => array_values($access['roles'] ?? []),
-                'switchRole' => $access['switchRole'] ?? null,
-            ])
-            ->all();
-    }
-
-    private function activeTeamRoles($user, int|string|null $profile): Collection
-    {
-        $teamSelect = ['teams.id', 'teams.parent_team_id'];
-
-        if ($this->hasCommitteeColumn()) {
-            $teamSelect[] = 'teams.is_committee';
-        }
-
-        return $this->userTeamCache->activeTeamRolesByProfile(
-            $user->id,
-            $profile,
-            fn() => TeamRole::withoutGlobalScope('authUserHasPermissions')
-                ->select(['team_roles.id', 'team_roles.user_id', 'team_roles.team_id', 'team_roles.role', 'team_roles.role_hierarchy'])
-                ->where('team_roles.user_id', $user->id)
-                ->whereHas('team')
-                ->whereHas('roleRelation', fn($query) => $query->when($profile, fn($query) => $query->where('profile', $profile)))
-                ->with([
-                    'team' => fn($query) => $query->select($teamSelect),
-                    'roleRelation' => fn($query) => $query->select(['roles.id', 'roles.name', 'roles.profile']),
-                ])
-                ->get()
-        );
-    }
-
-    private function childrenBaseQuery(string $mode, ?int $parentId, $user = null, int|string|null $profile = null): Builder
-    {
-        $query = $this->teamQuery();
-
-        if ($parentId) {
-            $query->where('teams.parent_team_id', $parentId);
-        } else {
-            $query->whereNull('teams.parent_team_id');
-        }
-
-        $this->applyModeFilter($query, $mode);
-
-        return $query->orderBy('teams.team_name')->orderBy('teams.id');
-    }
-
-    private function searchTeams(string $mode, string $search, int $limit, int $offset = 0): Collection
-    {
-        $query = $this->teamQuery()
-            ->with('parentTeam:id,team_name')
-            ->where(function ($query) use ($search, $mode) {
-                $query->where('teams.team_name', 'LIKE', wildcardSpace($search));
-
-                if ($mode === TeamAccessHierarchyBuilder::MODE_COMMITTEES) {
-                    $query->orWhereExists(function ($query) use ($search) {
-                        $query->selectRaw(1)
-                            ->from('teams as parent_teams')
-                            ->whereColumn('parent_teams.id', 'teams.parent_team_id')
-                            ->where('parent_teams.team_name', 'LIKE', wildcardSpace($search));
-                    });
-                }
-            });
-
-        $this->applyModeFilter($query, $mode, search: true);
-
-        return $query->orderBy('teams.team_name')->orderBy('teams.id')->skip($offset)->take($limit)->get();
-    }
-
-    private function teamQuery(): Builder
-    {
-        $select = ['teams.id', 'teams.team_name', 'teams.parent_team_id'];
-
-        if ($this->hasTeamLevelColumn()) {
-            $select[] = 'teams.team_level';
-        }
-
-        if ($this->hasCommitteeColumn()) {
-            $select[] = 'teams.is_committee';
-        }
-
-        return TeamModel::withoutGlobalScope('authUserHasPermissions')->select($select);
-    }
-
-    private function applyModeFilter(Builder $query, string $mode, bool $search = false): void
-    {
-        if (!$this->hasCommitteeColumn()) {
-            return;
-        }
-
-        if ($mode === TeamAccessHierarchyBuilder::MODE_COMMITTEES) {
-            if ($search) {
-                $query->where('teams.is_committee', 1);
-            }
-
-            return;
-        }
-
-        $query->where(function ($query) {
-            $query->where('teams.is_committee', 0)
-                ->orWhereNull('teams.is_committee');
-        });
-    }
-
-    private function ancestorIdsByCandidate(array $candidateIds): Collection
-    {
-        $candidateIds = collect($candidateIds)->filter()->unique()->values()->all();
-
-        if (empty($candidateIds)) {
-            return collect();
-        }
-
-        $placeholders = implode(',', array_fill(0, count($candidateIds), '?'));
-
-        $sql = "
-            WITH RECURSIVE candidate_ancestors AS (
-                SELECT id as target_team_id, id, parent_team_id, 0 as depth
-                FROM teams
-                WHERE id IN ({$placeholders})
-
-                UNION ALL
-
-                SELECT ca.target_team_id, t.id, t.parent_team_id, ca.depth + 1
-                FROM teams t
-                INNER JOIN candidate_ancestors ca ON t.id = ca.parent_team_id
-                WHERE ca.depth < " . self::MAX_PARENT_DEPTH . "
-                  AND t.deleted_at IS NULL
-            )
-            SELECT target_team_id, id
-            FROM candidate_ancestors
-            WHERE id != target_team_id
-        ";
-
-        return collect(DB::select($sql, $candidateIds))
-            ->groupBy('target_team_id')
-            ->map(fn($rows) => $rows->pluck('id')->map(fn($id) => (int) $id)->values());
-    }
-
-    private function currentPathIds(): array
-    {
-        $currentTeamId = currentTeamId();
-
-        if (!$currentTeamId) {
-            return [];
-        }
-
-        return app(TeamHierarchyInterface::class)
-            ->getAncestorTeamIds($currentTeamId)
-            ->map(fn($id) => (int) $id)
-            ->values()
-            ->all();
-    }
-
-    private function isVisibleNode(array $node, string $mode): bool
-    {
-        if ($node['isSelectable']) {
-            return $this->hasSwitchableRole($node) || $node['hasChildren'];
-        }
-
-        return $node['hasChildren'];
-    }
-
-    private function hasSwitchableRole(array $node): bool
-    {
-        return !empty($node['roles']) || !empty($node['switchRole']);
-    }
-
-    private function countDirectChildren(int $teamId, string $mode): int
-    {
-        $query = $this->teamQuery()->where('teams.parent_team_id', $teamId);
-        $this->applyModeFilter($query, $mode);
-
-        return $query->count();
     }
 
     private function visibleDirectChildrenCounts(Collection $parentIds, $user, int|string|null $profile, string $mode): array
@@ -608,17 +351,22 @@ class TeamRoleSwitcherNodeProvider
             return [];
         }
 
-        $query = $this->teamQuery()->whereIn('teams.parent_team_id', $parentIds->all());
-        $this->applyModeFilter($query, $mode);
-
+        $query = $this->teams->teamQuery()->whereIn('teams.parent_team_id', $parentIds->all());
+        $this->teams->applyModeFilter($query, $mode);
         $children = $query->get();
 
         if ($children->isEmpty()) {
             return [];
         }
 
-        $accessByChild = $this->resolveRolesForCandidates($children, $user, $profile, $mode);
-        $activeRoleBranchIndex = $this->activeRoleBranchIndex($user, $profile, $mode);
+        $accessByChild = $this->access->resolveForCandidates(
+            $children,
+            $user,
+            $profile,
+            $mode,
+            includeCurrentRole: false
+        );
+        $activeRoleBranchIndex = $this->access->activeRoleBranchIndex($user, $profile, $mode);
         $counts = [];
 
         foreach ($children as $child) {
@@ -629,7 +377,7 @@ class TeamRoleSwitcherNodeProvider
                 continue;
             }
 
-            $childAccess = $this->isSelectableForMode($child, $mode) ? ($accessByChild[$childId] ?? []) : [];
+            $childAccess = $this->teams->isSelectableForMode($child, $mode) ? ($accessByChild[$childId] ?? []) : [];
 
             if (empty($childAccess['roles']) && empty($childAccess['switchRole']) && !$activeRoleBranchIndex->has($childId)) {
                 continue;
@@ -641,129 +389,33 @@ class TeamRoleSwitcherNodeProvider
         return $counts;
     }
 
-    private function countDirectCommittees(int $teamId): int
+    private function currentPathIds(): array
     {
-        if (!$this->hasCommitteeColumn()) {
-            return 0;
+        $currentTeamId = currentTeamId();
+
+        if (!$currentTeamId) {
+            return [];
         }
 
-        return $this->teamQuery()
-            ->where('teams.parent_team_id', $teamId)
-            ->where('teams.is_committee', 1)
-            ->count();
+        return $this->hierarchy
+            ->getAncestorTeamIds($currentTeamId)
+            ->map(fn($id) => (int) $id)
+            ->values()
+            ->all();
     }
 
-    private function roleName(string $roleId): string
+    private function isVisibleNode(array $node): bool
     {
-        if (!array_key_exists($roleId, $this->roleNameCache)) {
-            $role = RoleModel::withoutGlobalScope('authUserHasPermissions')->find($roleId);
-            $this->roleNameCache[$roleId] = $role?->name ?: $roleId;
+        if ($node['isSelectable']) {
+            return $this->hasSwitchableRole($node) || $node['hasChildren'];
         }
 
-        return $this->roleNameCache[$roleId];
+        return $node['hasChildren'];
     }
 
-    private function hasSelectableAncestorRole(Collection $candidateAncestors, ?Collection $roleTeamIds): bool
+    private function hasSwitchableRole(array $node): bool
     {
-        if (!$roleTeamIds || $roleTeamIds->isEmpty() || $candidateAncestors->isEmpty()) {
-            return false;
-        }
-
-        return $candidateAncestors->intersectByKeys($roleTeamIds)->isNotEmpty();
-    }
-
-    private function shouldUseSwitchRole(?array $currentRole, array $candidateRole): bool
-    {
-        return !$currentRole || (!($currentRole['isCurrent'] ?? false) && ($candidateRole['isCurrent'] ?? false));
-    }
-
-    private function activeRoleBranchIndex($user, int|string|null $profile, string $mode): Collection
-    {
-        return $this->cache->rememberRequest(
-            'teamRoleSwitcher.activeRoleBranchIndex.' . $user->id . '.' . ($profile ?: 'all') . '.' . $mode,
-            function () use ($user, $profile, $mode) {
-                $roleTeamIds = $this->activeTeamRoles($user, $profile)
-                    ->filter(fn($teamRole) => $teamRole->team && $this->isSelectableForMode($teamRole->team, $mode))
-                    ->pluck('team_id')
-                    ->map(fn($id) => (int) $id)
-                    ->filter()
-                    ->unique()
-                    ->values();
-
-                if ($roleTeamIds->isEmpty()) {
-                    return collect();
-                }
-
-                $branchIds = $roleTeamIds;
-
-                foreach ($this->ancestorIdsByCandidate($roleTeamIds->all()) as $ancestorIds) {
-                    $branchIds = $branchIds->concat($ancestorIds);
-                }
-
-                return $branchIds->unique()->flip();
-            }
-        );
-    }
-
-    private function teamLevelValue($team): ?int
-    {
-        if (!$this->hasTeamLevelColumn() || $team->team_level === null) {
-            return null;
-        }
-
-        if (is_object($team->team_level) && isset($team->team_level->value)) {
-            return (int) $team->team_level->value;
-        }
-
-        return (int) $team->team_level;
-    }
-
-    private function teamLevelLabel($team, bool $isCommittee): string
-    {
-        if ($isCommittee) {
-            return __('auth.switcher-committee-short');
-        }
-
-        $level = $team->team_level ?? null;
-
-        if (is_object($level) && method_exists($level, 'label')) {
-            return $level->label();
-        }
-
-        return match ($this->teamLevelValue($team)) {
-            1 => __('auth.switcher-national'),
-            2 => __('auth.switcher-district'),
-            3 => __('auth.switcher-group'),
-            4 => __('auth.switcher-unit'),
-            default => __('auth.switcher-team'),
-        };
-    }
-
-    private function teamLevelKey($team, bool $isCommittee): string
-    {
-        if ($isCommittee) {
-            return 'committee';
-        }
-
-        return match ($this->teamLevelValue($team)) {
-            1 => 'national',
-            2 => 'district',
-            3 => 'group',
-            4 => 'unit',
-            default => 'team',
-        };
-    }
-
-    private function isCommittee($team): bool
-    {
-        return $this->hasCommitteeColumn() && (bool) ($team->is_committee ?? false);
-    }
-
-    private function isSelectableForMode($team, string $mode): bool
-    {
-        $isCommittee = $this->isCommittee($team);
-
-        return $mode === TeamAccessHierarchyBuilder::MODE_COMMITTEES ? $isCommittee : !$isCommittee;
+        return !empty($node['roles']) || !empty($node['switchRole']);
     }
 
     private function emptyPayload(string $mode, bool $includeRoot = true): LazyHierarchyPayload
@@ -785,21 +437,6 @@ class TeamRoleSwitcherNodeProvider
 
     private function parentKey(?int $parentId): string
     {
-        return $parentId ? $this->nodeId($parentId) : self::ROOT_KEY;
-    }
-
-    private function nodeId(int $teamId): string
-    {
-        return 'team-' . $teamId;
-    }
-
-    private function hasCommitteeColumn(): bool
-    {
-        return hasColumnCached('teams', 'is_committee');
-    }
-
-    private function hasTeamLevelColumn(): bool
-    {
-        return hasColumnCached('teams', 'team_level');
+        return $parentId ? $this->nodes->nodeId($parentId) : self::ROOT_KEY;
     }
 }

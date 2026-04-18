@@ -8,6 +8,7 @@ use Kompo\Auth\Models\Teams\PermissionTeamRole;
 use Kompo\Auth\Models\Teams\Roles\Role;
 use Kompo\Auth\Models\Teams\Team;
 use Kompo\Auth\Models\Teams\TeamRole;
+use Kompo\Auth\Jobs\RematerializeUserPermissions;
 use Kompo\Auth\Teams\CacheKeyBuilder;
 use Kompo\Auth\Teams\Contracts\PermissionResolverInterface;
 use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
@@ -18,6 +19,7 @@ class PermissionCacheInvalidator
         private AuthCacheLayer $cache,
         private TeamHierarchyInterface $hierarchy,
         private PermissionDefinitionCache $definitions,
+        private UserCacheVersion $versions,
     ) {}
 
     public function teamRoleChanged(TeamRole $teamRole): void
@@ -107,7 +109,14 @@ class PermissionCacheInvalidator
             $this->definitions->forgetPermissionsForSection($sectionId);
         }
 
-        $this->clearAll();
+        $this->cache->invalidateTags([
+            CacheKeyBuilder::PERMISSION_DEFINITIONS,
+            CacheKeyBuilder::USER_PERMISSIONS,
+            CacheKeyBuilder::USER_TEAMS_WITH_PERMISSION,
+            CacheKeyBuilder::ROLE_PERMISSIONS,
+            CacheKeyBuilder::TEAM_ROLE_PERMISSIONS,
+        ]);
+        $this->clearResolverRequestCache();
     }
 
     public function clearUserContext(): void
@@ -126,12 +135,34 @@ class PermissionCacheInvalidator
 
     public function teamRolesChanged(array $teamRoleIds, array $userIds = []): void
     {
+        // Prefer per-user version bumps so we don't wipe every other user's
+        // cache entries via tag flush. The tag flush below still runs as a
+        // safety net — it's cheap now that old versioned keys are unreachable.
+        $userIds = array_values(array_unique(array_filter($userIds)));
+        if (!empty($userIds)) {
+            $this->versions->bumpMany($userIds);
+            $this->dispatchRematerializeJobs($userIds);
+        }
+
         $this->cache->invalidateTags([
             CacheKeyBuilder::TEAM_ROLE_PERMISSIONS,
             CacheKeyBuilder::TEAM_ROLE_ACCESS,
         ]);
 
         $this->invalidateUserPermissions();
+    }
+
+    private function dispatchRematerializeJobs(array $userIds): void
+    {
+        foreach (array_unique(array_filter($userIds)) as $userId) {
+            try {
+                RematerializeUserPermissions::dispatch((int) $userId);
+            } catch (\Throwable $e) {
+                \Log::warning('Failed to dispatch RematerializeUserPermissions: ' . $e->getMessage(), [
+                    'user_id' => $userId,
+                ]);
+            }
+        }
     }
 
     private function invalidateUserPermissions(): void

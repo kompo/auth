@@ -19,7 +19,7 @@ class NotificationsController extends Controller
 		// We started showing notification that are not in the current team
 		// So now we need to ensure that the user is in the team of the notification before redirecting
 		if ($notification->team_id && currentTeamId() != $notification->team_id) {
-			if (auth()->user()->canAccessTeam($notification->team_id)) {
+			if (auth()->user()->hasAccessToTeam($notification->team_id)) {
 				auth()->user()->switchToFirstTeamRole($notification->team_id);
 			} else {
 				abort(403, __('You do not have access to the team related to this notification.'));

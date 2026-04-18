@@ -6,12 +6,17 @@ use Kompo\Auth\Teams\CacheKeyBuilder;
 
 class UserContextCache
 {
-    public function __construct(private AuthCacheLayer $cache) {}
+    public function __construct(
+        private AuthCacheLayer $cache,
+        private UserCacheVersion $versions,
+    ) {}
 
     public function currentTeamRole(int|string $userId, callable $compute)
     {
+        $version = $this->versions->get($userId);
+
         return $this->cache->remember(
-            CacheKeyBuilder::currentTeamRole($userId),
+            CacheKeyBuilder::currentTeamRole($userId, $version),
             CacheKeyBuilder::CURRENT_TEAM_ROLE,
             $compute
         );
@@ -19,8 +24,10 @@ class UserContextCache
 
     public function currentTeam(int|string $userId, callable $compute)
     {
+        $version = $this->versions->get($userId);
+
         return $this->cache->remember(
-            CacheKeyBuilder::currentTeam($userId),
+            CacheKeyBuilder::currentTeam($userId, $version),
             CacheKeyBuilder::CURRENT_TEAM,
             $compute
         );
@@ -28,8 +35,10 @@ class UserContextCache
 
     public function isSuperAdmin(int|string $userId, callable $compute): bool
     {
+        $version = $this->versions->get($userId);
+
         return (bool) $this->cache->remember(
-            CacheKeyBuilder::userSuperAdmin($userId),
+            CacheKeyBuilder::userSuperAdmin($userId, $version),
             CacheKeyBuilder::USER_SUPER_ADMIN,
             $compute,
             (int) config('kompo-auth.cache.super_admin_ttl', 3600)
@@ -38,8 +47,10 @@ class UserContextCache
 
     public function putCurrentTeamRole(int|string $userId, $teamRole): void
     {
+        $version = $this->versions->get($userId);
+
         $this->cache->put(
-            CacheKeyBuilder::currentTeamRole($userId),
+            CacheKeyBuilder::currentTeamRole($userId, $version),
             CacheKeyBuilder::CURRENT_TEAM_ROLE,
             $teamRole
         );
@@ -47,8 +58,10 @@ class UserContextCache
 
     public function putCurrentTeam(int|string $userId, $team): void
     {
+        $version = $this->versions->get($userId);
+
         $this->cache->put(
-            CacheKeyBuilder::currentTeam($userId),
+            CacheKeyBuilder::currentTeam($userId, $version),
             CacheKeyBuilder::CURRENT_TEAM,
             $team
         );
@@ -56,8 +69,10 @@ class UserContextCache
 
     public function putIsSuperAdmin(int|string $userId, bool $isSuperAdmin): void
     {
+        $version = $this->versions->get($userId);
+
         $this->cache->put(
-            CacheKeyBuilder::userSuperAdmin($userId),
+            CacheKeyBuilder::userSuperAdmin($userId, $version),
             CacheKeyBuilder::USER_SUPER_ADMIN,
             $isSuperAdmin,
             (int) config('kompo-auth.cache.super_admin_ttl', 3600)

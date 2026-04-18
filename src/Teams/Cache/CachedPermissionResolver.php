@@ -17,6 +17,8 @@ class CachedPermissionResolver implements PermissionResolverInterface
         private PermissionResolver $inner,
         private AuthCacheLayer $cache,
         private UserContextCache $context,
+        private UserCacheVersion $versions,
+        private UserPermissionSet $permissionSet,
     ) {
         $inner->setPublicApi($this);
     }
@@ -27,7 +29,8 @@ class CachedPermissionResolver implements PermissionResolverInterface
         PermissionTypeEnum $type = PermissionTypeEnum::ALL,
         $teamIds = null
     ): bool {
-        $requestKey = 'user_permission_check.' . $userId . '.' . $permissionKey . '|' . $type->value . '|' . $this->teamIdsKey($teamIds);
+        $version = $this->versions->get($userId);
+        $requestKey = 'user_permission_check.' . $userId . '.v' . $version . '.' . $permissionKey . '|' . $type->value . '|' . $this->teamIdsKey($teamIds);
 
         return $this->cache->rememberRequest($requestKey, function () use ($userId, $permissionKey, $type, $teamIds) {
             if (globalSecurityBypass()) {
@@ -38,13 +41,24 @@ class CachedPermissionResolver implements PermissionResolverInterface
                 return true;
             }
 
-            $permissions = collect($this->getUserPermissionsOptimized($userId, $teamIds));
+            // Fast path: try Redis set check first.
+            $setResult = $this->permissionSet->check($userId, $permissionKey, $type, $teamIds);
 
-            if ($this->inner->hasExplicitDeny($permissions, $permissionKey)) {
-                return false;
+            if ($setResult === null) {
+                // Not materialized OR Redis unavailable — hydrate via the string-cache path,
+                // materialize the sets for next time, and answer with the array check.
+                $permissions = collect($this->getUserPermissionsOptimized($userId, $teamIds));
+
+                // Materialize for subsequent requests (no-op on non-Redis).
+                $this->permissionSet->materialize($userId, $permissions->all(), $teamIds);
+
+                if ($this->inner->hasExplicitDeny($permissions, $permissionKey)) {
+                    return false;
+                }
+                return $this->inner->hasRequiredPermission($permissions, $permissionKey, $type);
             }
 
-            return $this->inner->hasRequiredPermission($permissions, $permissionKey, $type);
+            return $setResult;
         });
     }
 
@@ -53,7 +67,8 @@ class CachedPermissionResolver implements PermissionResolverInterface
         string $permissionKey,
         PermissionTypeEnum $type = PermissionTypeEnum::ALL
     ) {
-        $key = CacheKeyBuilder::userTeamsWithPermission($userId, $permissionKey, $type->value);
+        $version = $this->versions->get($userId);
+        $key = CacheKeyBuilder::userTeamsWithPermission($userId, $permissionKey, $type->value, $version);
 
         return $this->cache->remember(
             $key,
@@ -64,7 +79,8 @@ class CachedPermissionResolver implements PermissionResolverInterface
 
     public function getAllAccessibleTeamsForUser(int $userId)
     {
-        $key = CacheKeyBuilder::userAllAccessibleTeams($userId);
+        $version = $this->versions->get($userId);
+        $key = CacheKeyBuilder::userAllAccessibleTeams($userId, $version);
 
         return $this->cache->remember(
             $key,
@@ -75,7 +91,8 @@ class CachedPermissionResolver implements PermissionResolverInterface
 
     public function getUserPermissionsOptimized(int $userId, $teamIds = null)
     {
-        $key = CacheKeyBuilder::userPermissions($userId, $teamIds);
+        $version = $this->versions->get($userId);
+        $key = CacheKeyBuilder::userPermissions($userId, $teamIds, $version);
 
         return $this->cache->remember(
             $key,
@@ -86,7 +103,8 @@ class CachedPermissionResolver implements PermissionResolverInterface
 
     public function getUserActiveTeamRoles(int $userId, $teamIds = null): Collection
     {
-        $key = 'user_active_team_roles.' . $userId . '.' . $this->teamIdsKey($teamIds);
+        $version = $this->versions->get($userId);
+        $key = 'user_active_team_roles.' . $userId . '.v' . $version . '.' . $this->teamIdsKey($teamIds);
 
         return $this->cache->remember(
             $key,

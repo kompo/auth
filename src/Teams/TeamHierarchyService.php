@@ -195,6 +195,43 @@ class TeamHierarchyService implements TeamHierarchyInterface
     }
 
     /**
+     * Get ancestors for multiple teams while preserving each target relationship.
+     */
+    public function getBatchAncestorTeamIdsByTarget(array $teamIds): Collection
+    {
+        $teamIds = collect($teamIds)->filter()->unique()->values()->all();
+
+        if (empty($teamIds)) {
+            return collect();
+        }
+
+        $placeholders = str_repeat('?,', count($teamIds) - 1) . '?';
+
+        $sql = "
+            WITH RECURSIVE team_ancestors AS (
+                SELECT id as target_team_id, id, parent_team_id, 0 as depth
+                FROM teams
+                WHERE id IN ({$placeholders})
+
+                UNION ALL
+
+                SELECT ta.target_team_id, t.id, t.parent_team_id, ta.depth + 1
+                FROM teams t
+                INNER JOIN team_ancestors ta ON t.id = ta.parent_team_id
+                WHERE ta.depth < 50
+                  AND t.deleted_at IS NULL
+            )
+            SELECT target_team_id, id
+            FROM team_ancestors
+            WHERE id != target_team_id
+        ";
+
+        return collect(DB::select($sql, $teamIds))
+            ->groupBy('target_team_id')
+            ->map(fn($rows) => $rows->pluck('id')->map(fn($id) => (int) $id)->values());
+    }
+
+    /**
      * Get descendants for multiple roots while preserving each root relationship.
      */
     public function getBatchDescendantTeamIdsByRoot(array $teamIds, ?string $search = ''): Collection

@@ -8,10 +8,10 @@ use Kompo\Auth\Facades\UserModel;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Teams\Cache\AuthCacheLayer;
-use Kompo\Auth\Teams\Cache\PermissionDefinitionCache;
 use Kompo\Auth\Teams\CacheKeyBuilder;
 use Kompo\Auth\Teams\Contracts\PermissionResolverInterface;
 use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
+use Kompo\Auth\Teams\Contracts\TeamRoleAccessResolverInterface;
 
 /**
  * Centralized permission resolution service
@@ -21,17 +21,17 @@ class PermissionResolver implements PermissionResolverInterface
 {
     private TeamHierarchyInterface $hierarchyService;
     private ?AuthCacheLayer $cache;
-    private ?PermissionDefinitionCache $definitionCache;
+    private ?TeamRoleAccessResolverInterface $teamRoleAccessResolver;
     private ?PermissionResolverInterface $publicApi = null;
 
     public function __construct(
         TeamHierarchyInterface $hierarchyService,
         ?AuthCacheLayer $cache = null,
-        ?PermissionDefinitionCache $definitionCache = null,
+        ?TeamRoleAccessResolverInterface $teamRoleAccessResolver = null,
     ) {
         $this->hierarchyService = $hierarchyService;
         $this->cache = $cache;
-        $this->definitionCache = $definitionCache;
+        $this->teamRoleAccessResolver = $teamRoleAccessResolver;
     }
 
     /**
@@ -91,6 +91,12 @@ class PermissionResolver implements PermissionResolverInterface
      */
     public function getAllAccessibleTeamsForUser(int $userId)
     {
+        if ($this->teamRoleAccessResolver) {
+            $user = UserModel::find($userId);
+
+            return $user ? $this->teamRoleAccessResolver->accessibleTeamIds($user) : [];
+        }
+
         $teamRoles = $this->publicApi()->getUserActiveTeamRoles($userId);
         if ($teamRoles->isEmpty()) {
             return [];
@@ -313,25 +319,17 @@ class PermissionResolver implements PermissionResolverInterface
      */
     public function getTeamRoleAccessibleTeams(TeamRole $teamRole): array
     {
-        $compute = function () use ($teamRole) {
-            $teams = collect([$teamRole->team_id]);
+        $teams = collect([$teamRole->team_id]);
 
-            if ($teamRole->getRoleHierarchyAccessBelow()) {
-                $teams = $teams->concat($this->hierarchyService->getDescendantTeamIds($teamRole->team_id));
-            }
-
-            if ($teamRole->getRoleHierarchyAccessNeighbors()) {
-                $teams = $teams->concat($this->hierarchyService->getSiblingTeamIds($teamRole->team_id));
-            }
-
-            return $teams->unique()->values()->all();
-        };
-
-        if ($this->definitionCache) {
-            return $this->definitionCache->accessibleTeamsForTeamRole($teamRole, $compute);
+        if ($teamRole->getRoleHierarchyAccessBelow()) {
+            $teams = $teams->concat($this->hierarchyService->getDescendantTeamIds($teamRole->team_id));
         }
 
-        return $compute();
+        if ($teamRole->getRoleHierarchyAccessNeighbors()) {
+            $teams = $teams->concat($this->hierarchyService->getSiblingTeamIds($teamRole->team_id));
+        }
+
+        return $teams->unique()->values()->all();
     }
 
     /**

@@ -70,6 +70,21 @@ class CachedTeamHierarchyService implements TeamHierarchyInterface
         );
     }
 
+    public function getBatchAncestorTeamIdsByTarget(array $teamIds): Collection
+    {
+        $normalized = collect($teamIds)->filter()->unique()->sort()->values()->all();
+
+        if (empty($normalized)) {
+            return $this->inner->getBatchAncestorTeamIdsByTarget($normalized);
+        }
+
+        return $this->cache->remember(
+            CacheKeyBuilder::batchTeamAncestorsByTarget($normalized),
+            CacheKeyBuilder::TEAM_ANCESTORS,
+            fn() => $this->inner->getBatchAncestorTeamIdsByTarget($normalized)
+        );
+    }
+
     public function getBatchDescendantTeamIdsByRoot(array $teamIds, ?string $search = ''): Collection
     {
         if ($search !== null && $search !== '') {

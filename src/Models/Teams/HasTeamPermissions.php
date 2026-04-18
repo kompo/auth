@@ -11,7 +11,7 @@ use Kompo\Auth\Teams\Cache\AuthCacheLayer;
 use Kompo\Auth\Teams\Cache\UserContextCache;
 use Kompo\Auth\Teams\Cache\UserTeamCache;
 use Kompo\Auth\Teams\Contracts\PermissionResolverInterface;
-use Kompo\Auth\Teams\TeamHierarchyRoleProcessor;
+use Kompo\Auth\Teams\Contracts\TeamRoleAccessResolverInterface;
 
 /**
  * Unified permissions trait that handles all permission logic
@@ -42,9 +42,9 @@ trait HasTeamPermissions
         return app(AuthCacheLayer::class);
     }
 
-    private function getTeamHierarchyRoleProcessor(): TeamHierarchyRoleProcessor
+    private function getTeamRoleAccessResolver(): TeamRoleAccessResolverInterface
     {
-        return app(TeamHierarchyRoleProcessor::class);
+        return app(TeamRoleAccessResolverInterface::class);
     }
 
     /**
@@ -76,17 +76,7 @@ trait HasTeamPermissions
      */
     public function hasAccessToTeam(int $teamId, string $roleId = null): bool
     {
-        return $this->getUserTeamCache()->userTeamAccess(
-            $this->id,
-            $teamId,
-            $roleId,
-            function () use ($teamId, $roleId) {
-                $teamRoles = $this->getAllTeamIdsWithRolesCached();
-
-                return isset($teamRoles[$teamId])
-                    && (!$roleId || in_array($roleId, $teamRoles[$teamId]));
-            }
-        );
+        return $this->getTeamRoleAccessResolver()->hasAccessToTeam($this, $teamId, $roleId);
     }
 
     /**
@@ -125,11 +115,7 @@ trait HasTeamPermissions
      */
     public function getAllAccessibleTeamIds($search = null)
     {
-        if ($search) {
-            return array_keys($this->getAllTeamIdsWithRolesCached(profile: null, search: $search));
-        }
-
-        return $this->getPermissionResolver()->getAllAccessibleTeamsForUser($this->id);
+        return $this->getTeamRoleAccessResolver()->accessibleTeamIds($this, null, $search);
     }
 
     public function hasRole(string $role)
@@ -152,235 +138,6 @@ trait HasTeamPermissions
                     ->get();
             }
         );
-    }
-
-    /**
-     * Get all team IDs with roles (optimized for role switcher).
-     */
-    public function getAllTeamIdsWithRolesCached($profile = 1, $search = '')
-    {
-        // Don't cache searches to avoid memory bloat
-        if ($search) {
-            return $this->getAllTeamIdsWithRoles($profile, $search);
-        }
-
-        return $this->getUserTeamCache()->allTeamIdsWithRoles(
-            $this->id,
-            $profile,
-            fn() => $this->getAllTeamIdsWithRoles($profile)
-        );
-    }
-
-    /**
-     * Get team IDs with roles using optimized batch processing
-     * Groups team roles by hierarchy type and processes each group efficiently
-     */
-    public function getAllTeamIdsWithRoles($profile = 1, $search = '')
-    {
-        $teamRoles = $this->activeTeamRoles()
-            ->with(['roleRelation', 'team'])
-            ->whereHas('roleRelation', fn($q) => $q->when($profile, fn($q) => $q->where('profile', $profile)))
-            ->get();
-
-        if ($teamRoles->isEmpty()) {
-            return [];
-        }
-
-        $result = collect();
-        $roleProcessor = $this->getTeamHierarchyRoleProcessor();
-
-        // Group team roles by hierarchy type for batch processing
-        $groupedTeamRoles = $this->groupTeamRolesByHierarchy($teamRoles);
-
-        // Process each hierarchy group with batch operations
-        foreach ($groupedTeamRoles as $hierarchyType => $roleGroup) {
-            $batchResults = $this->processBatchHierarchyGroup(
-                $hierarchyType,
-                $roleGroup,
-                $search,
-                $roleProcessor,
-            );
-
-            // Merge batch results into final result
-            $result = $this->mergeBatchResults($result, $batchResults);
-        }
-
-        return $result->all();
-    }
-
-    /**
-     * Group team roles by their hierarchy access patterns
-     * This enables efficient batch processing of similar hierarchy types
-     */
-    private function groupTeamRolesByHierarchy(Collection $teamRoles): array
-    {
-        $grouped = [
-            'direct' => [],
-            'below' => [],
-            'neighbors' => [],
-            'below_and_neighbors' => []
-        ];
-
-        foreach ($teamRoles as $teamRole) {
-            $hasBelow = $teamRole->getRoleHierarchyAccessBelow();
-            $hasNeighbors = $teamRole->getRoleHierarchyAccessNeighbors();
-
-            if ($hasBelow && $hasNeighbors) {
-                $grouped['below_and_neighbors'][] = $teamRole;
-            } elseif ($hasBelow) {
-                $grouped['below'][] = $teamRole;
-            } elseif ($hasNeighbors) {
-                $grouped['neighbors'][] = $teamRole;
-            } else {
-                $grouped['direct'][] = $teamRole;
-            }
-        }
-
-        // Remove empty groups to avoid unnecessary processing
-        return array_filter($grouped, fn($group) => !empty($group));
-    }
-
-    /**
-     * Process a batch of team roles with the same hierarchy type
-     * Uses efficient batch queries instead of individual lookups
-     */
-    private function processBatchHierarchyGroup(
-        string $hierarchyType,
-        array $teamRoles,
-        ?string $search,
-        TeamHierarchyRoleProcessor $roleProcessor,
-    ): Collection {
-        $batchResults = collect();
-
-        // Always include direct access (the team itself)
-        $directTeams = $this->getDirectTeamAccess($teamRoles, $search);
-        $batchResults = $this->mergeBatchResults($batchResults, $directTeams);
-
-        // Apply hierarchy-specific batch operations
-        switch ($hierarchyType) {
-            case 'direct':
-                // Only direct access, already handled above
-                break;
-
-            case 'below':
-                $belowTeams = $this->getBatchDescendantAccess($teamRoles, $search, $roleProcessor);
-                $batchResults = $this->mergeBatchResults($batchResults, $belowTeams);
-                break;
-
-            case 'neighbors':
-                $neighborTeams = $this->getBatchNeighborAccess($teamRoles, $search, $roleProcessor);
-                $batchResults = $this->mergeBatchResults($batchResults, $neighborTeams);
-                break;
-
-            case 'below_and_neighbors':
-                $belowTeams = $this->getBatchDescendantAccess($teamRoles, $search, $roleProcessor);
-                $neighborTeams = $this->getBatchNeighborAccess($teamRoles, $search, $roleProcessor);
-                $batchResults = $this->mergeBatchResults($batchResults, $belowTeams);
-                $batchResults = $this->mergeBatchResults($batchResults, $neighborTeams);
-                break;
-        }
-
-        return $batchResults;
-    }
-
-    /**
-     * Get direct team access (the teams the roles are directly assigned to)
-     */
-    private function getDirectTeamAccess(array $teamRoles, ?string $search): Collection
-    {
-        $directTeams = collect();
-
-        foreach ($teamRoles as $teamRole) {
-            // Apply search filter if specified
-            if ($search && !str_contains(strtolower($teamRole->team->team_name), strtolower($search))) {
-                continue;
-            }
-
-            $teamId = $teamRole->team->id;
-            $role = $teamRole->role;
-
-            // Use the same merging logic as the original method
-            if ($directTeams->has($teamId)) {
-                $existingRoles = $directTeams->get($teamId);
-                if (!in_array($role, $existingRoles)) {
-                    $existingRoles[] = $role;
-                    $directTeams->put($teamId, $existingRoles);
-                }
-            } else {
-                $directTeams->put($teamId, [$role]);
-            }
-        }
-
-        return $directTeams;
-    }
-
-    /**
-     * Get descendant team access using batch operations
-     */
-    private function getBatchDescendantAccess(
-        array $teamRoles,
-        ?string $search,
-        TeamHierarchyRoleProcessor $roleProcessor,
-    ): Collection {
-        // Prepare batch input: team_id => role mapping
-        $teamIdsWithRoles = [];
-        foreach ($teamRoles as $teamRole) {
-            $teamIdsWithRoles[$teamRole->team->id] = array_values(array_unique([
-                ...($teamIdsWithRoles[$teamRole->team->id] ?? []),
-                $teamRole->role,
-            ]));
-        }
-
-        return $roleProcessor->batchDescendantsWithRoles($teamIdsWithRoles, $search);
-    }
-
-    /**
-     * Get neighbor team access using batch operations
-     */
-    private function getBatchNeighborAccess(
-        array $teamRoles,
-        ?string $search,
-        TeamHierarchyRoleProcessor $roleProcessor,
-    ): Collection {
-        // Prepare batch input: team_id => role mapping
-        $teamIdsWithRoles = [];
-        foreach ($teamRoles as $teamRole) {
-            $teamIdsWithRoles[$teamRole->team->id] = array_values(array_unique([
-                ...($teamIdsWithRoles[$teamRole->team->id] ?? []),
-                $teamRole->role,
-            ]));
-        }
-
-        return $roleProcessor->batchSiblingsWithRoles($teamIdsWithRoles, $search);
-    }
-
-    /**
-     * Merge batch results into the final result collection
-     * Maintains the same logic as the original method for handling duplicate teams
-     */
-    private function mergeBatchResults(Collection $result, Collection $batchResults): Collection
-    {
-        foreach ($batchResults as $teamId => $roles) {
-            if ($result->has($teamId)) {
-                $existingRoles = $result->get($teamId);
-                // Ensure we only add unique roles
-                if (is_array($roles)) {
-                    $newRoles = array_diff($roles, $existingRoles);
-                    if (!empty($newRoles)) {
-                        $result->put($teamId, array_merge($existingRoles, $newRoles));
-                    }
-                } else {
-                    if (!in_array($roles, $existingRoles)) {
-                        $existingRoles[] = $roles;
-                        $result->put($teamId, $existingRoles);
-                    }
-                }
-            } else {
-                $result->put($teamId, is_array($roles) ? $roles : [$roles]);
-            }
-        }
-
-        return $result;
     }
 
     /**
@@ -424,33 +181,6 @@ trait HasTeamPermissions
         $this->clearPermissionCache();
 
         return $permissionTeamRole;
-    }
-
-    /**
-     * Get current permissions in all teams (legacy method for compatibility)
-     */
-    public function getCurrentPermissionsInAllTeams(): Collection
-    {
-        return $this->getUserTeamCache()->currentPermissionsInAllTeams(
-            $this->id,
-            fn() => TeamRole::getAllPermissionsKeysForMultipleRoles($this->activeTeamRoles)
-        );
-    }
-
-    /**
-     * Get current permission keys in specific teams (legacy method for compatibility)
-     */
-    public function getCurrentPermissionKeysInTeams($teamIds): Collection
-    {
-        $teamIds = collect(is_iterable($teamIds) ? $teamIds : [$teamIds]);
-
-        return $this->getUserTeamCache()->currentPermissionKeys(
-            $this->id,
-            $teamIds,
-            fn() => TeamRole::getAllPermissionsKeysForMultipleRoles(
-                $this->activeTeamRoles->filter(fn($tr) => $tr->hasAccessToTeamOfMany($teamIds))
-            )
-        );
     }
 
     /**

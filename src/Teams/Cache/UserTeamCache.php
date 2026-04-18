@@ -6,12 +6,17 @@ use Kompo\Auth\Teams\CacheKeyBuilder;
 
 class UserTeamCache
 {
-    public function __construct(private AuthCacheLayer $cache) {}
+    public function __construct(
+        private AuthCacheLayer $cache,
+        private UserCacheVersion $versions,
+    ) {}
 
     public function userTeamAccess(int|string $userId, int|string $teamId, ?string $roleId, callable $compute): bool
     {
+        $version = $this->versions->get($userId);
+
         return (bool) $this->cache->remember(
-            CacheKeyBuilder::userTeamAccess($userId, $teamId, $roleId),
+            CacheKeyBuilder::userTeamAccess($userId, $teamId, $roleId, $version),
             CacheKeyBuilder::USER_TEAM_ACCESS,
             $compute
         );
@@ -19,8 +24,10 @@ class UserTeamCache
 
     public function allAccessibleTeams(int|string $userId, callable $compute)
     {
+        $version = $this->versions->get($userId);
+
         return $this->cache->remember(
-            CacheKeyBuilder::userAllAccessibleTeams($userId),
+            CacheKeyBuilder::userAllAccessibleTeams($userId, $version),
             CacheKeyBuilder::USER_ALL_ACCESSIBLE_TEAMS,
             $compute
         );
@@ -28,8 +35,10 @@ class UserTeamCache
 
     public function activeTeamRoles(int|string $userId, ?string $roleId, callable $compute)
     {
+        $version = $this->versions->get($userId);
+
         return $this->cache->remember(
-            "activeTeamRoles.{$userId}.{$roleId}",
+            "activeTeamRoles.{$userId}.v{$version}.{$roleId}",
             CacheKeyBuilder::USER_ACTIVE_TEAM_ROLES,
             $compute
         );
@@ -37,10 +46,11 @@ class UserTeamCache
 
     public function activeTeamRolesByProfile(int|string $userId, $profile, callable $compute)
     {
+        $version = $this->versions->get($userId);
         $profileKey = $profile === null ? 'all' : (string) $profile;
 
         return $this->cache->remember(
-            "activeTeamRoles.{$userId}.profile.{$profileKey}",
+            "activeTeamRoles.{$userId}.v{$version}.profile.{$profileKey}",
             CacheKeyBuilder::USER_ACTIVE_TEAM_ROLES,
             $compute
         );
@@ -48,31 +58,15 @@ class UserTeamCache
 
     public function allTeamIdsWithRoles(int|string $userId, $profile, callable $compute)
     {
+        $version = $this->versions->get($userId);
+        $profileKey = $profile === null ? 'all' : (string) $profile;
+
         return $this->cache->remember(
-            "allTeamIdsWithRoles.{$userId}.{$profile}",
+            "allTeamIdsWithRoles.{$userId}.v{$version}.{$profileKey}",
             CacheKeyBuilder::ALL_TEAM_IDS_WITH_ROLES,
             $compute,
             (int) config('kompo-auth.cache.role_switcher_ttl', 900)
         );
     }
 
-    public function currentPermissionsInAllTeams(int|string $userId, callable $compute)
-    {
-        return $this->cache->remember(
-            "currentPermissionsInAllTeams{$userId}",
-            CacheKeyBuilder::USER_PERMISSIONS,
-            $compute
-        );
-    }
-
-    public function currentPermissionKeys(int|string $userId, $teamIds, callable $compute)
-    {
-        $teamIds = collect(is_iterable($teamIds) ? $teamIds : [$teamIds]);
-
-        return $this->cache->remember(
-            'currentPermissionKeys' . $userId . '|' . $teamIds->implode(','),
-            CacheKeyBuilder::USER_PERMISSIONS,
-            $compute
-        );
-    }
 }

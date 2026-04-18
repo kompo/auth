@@ -8,11 +8,6 @@ use Kompo\Auth\Teams\Contracts\PermissionResolverInterface;
 
 class WarmUserCacheOnLogin
 {
-    public function __construct(
-        private PermissionResolverInterface $resolver,
-        private UserContextCache $context,
-    ) {}
-
     public function handle(Login $event): void
     {
         $user = $event->user;
@@ -21,14 +16,21 @@ class WarmUserCacheOnLogin
             return;
         }
 
+        if (!app()->bound(PermissionResolverInterface::class) || !app()->bound(UserContextCache::class)) {
+            return;
+        }
+
         try {
-            $this->context->isSuperAdmin(
+            $context = app(UserContextCache::class);
+            $resolver = app(PermissionResolverInterface::class);
+
+            $context->isSuperAdmin(
                 $user->id,
                 fn() => method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : false
             );
 
-            $this->resolver->getUserPermissionsOptimized($user->id);
-            $this->resolver->getAllAccessibleTeamsForUser($user->id);
+            $resolver->getUserPermissionsOptimized($user->id);
+            $resolver->getAllAccessibleTeamsForUser($user->id);
         } catch (\Throwable $e) {
             \Log::warning('WarmUserCacheOnLogin failed: ' . $e->getMessage(), [
                 'user_id' => $user->id,

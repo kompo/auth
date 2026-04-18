@@ -16,11 +16,16 @@ use Kompo\Auth\Models\Plugins\HasSecurity;
 use Condoedge\Utils\Kompo\Common\Form;
 use Kompo\Auth\Commands\CleanupRedundantHierarchyRoles;
 use Kompo\Auth\Commands\OptimizePermissionCacheCommand;
+use Kompo\Auth\Commands\RematerializeAllPermissions;
 use Kompo\Auth\Commands\WarmTeamHierarchyCache;
 use Kompo\Auth\Teams\TeamAccessHierarchyBuilder;
 use Kompo\Auth\Teams\TeamHierarchyService;
 use Kompo\Auth\Teams\TeamHierarchyRoleProcessor;
+use Kompo\Auth\Teams\TeamRoleAccessDataSource;
+use Kompo\Auth\Teams\TeamRoleAccessResolver;
+use Kompo\Auth\Teams\TeamRoleSwitcherNodeFactory;
 use Kompo\Auth\Teams\TeamRoleSwitcherNodeProvider;
+use Kompo\Auth\Teams\TeamRoleSwitcherTeamRepository;
 use Kompo\Auth\Http\Middleware\MonitorPermissionPerformance;
 use Kompo\Auth\Models\Plugins\Services\DeleteSecurityService;
 use Kompo\Auth\Models\Plugins\Services\FieldProtectionService;
@@ -34,13 +39,19 @@ use Kompo\Auth\Teams\PermissionResolver;
 use Kompo\Auth\Support\ElementPermissionCache;
 use Kompo\Auth\Teams\Cache\AuthCacheLayer;
 use Kompo\Auth\Teams\Cache\CachedPermissionResolver;
+use Kompo\Auth\Teams\Cache\CachedTeamRoleAccessDataSource;
+use Kompo\Auth\Teams\Cache\CachedTeamRoleAccessResolver;
 use Kompo\Auth\Teams\Cache\CachedTeamHierarchyService;
 use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 use Kompo\Auth\Teams\Cache\PermissionDefinitionCache;
+use Kompo\Auth\Teams\Cache\UserCacheVersion;
 use Kompo\Auth\Teams\Cache\UserContextCache;
+use Kompo\Auth\Teams\Cache\UserPermissionSet;
 use Kompo\Auth\Teams\Cache\UserTeamCache;
 use Kompo\Auth\Teams\Contracts\PermissionResolverInterface;
 use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
+use Kompo\Auth\Teams\Contracts\TeamRoleAccessDataSourceInterface;
+use Kompo\Auth\Teams\Contracts\TeamRoleAccessResolverInterface;
 use Kompo\Auth\Http\Middleware\EnsureResetPasswordWhenRequired;
 
 
@@ -209,11 +220,31 @@ class KompoAuthServiceProvider extends ServiceProvider
         });
         $this->app->singleton(TeamHierarchyRoleProcessor::class);
         $this->app->singleton(TeamAccessHierarchyBuilder::class);
+        $this->app->singleton(TeamRoleAccessDataSource::class);
+        $this->app->singleton(TeamRoleAccessDataSourceInterface::class, function ($app) {
+            return new CachedTeamRoleAccessDataSource(
+                $app->make(TeamRoleAccessDataSource::class),
+                $app->make(UserTeamCache::class),
+                $app->make(AuthCacheLayer::class),
+            );
+        });
+        $this->app->singleton(TeamRoleAccessResolver::class);
+        $this->app->singleton(TeamRoleAccessResolverInterface::class, function ($app) {
+            return new CachedTeamRoleAccessResolver(
+                $app->make(TeamRoleAccessResolver::class),
+                $app->make(UserTeamCache::class),
+                $app->make(AuthCacheLayer::class),
+            );
+        });
+        $this->app->singleton(TeamRoleSwitcherTeamRepository::class);
+        $this->app->singleton(TeamRoleSwitcherNodeFactory::class);
         $this->app->singleton(TeamRoleSwitcherNodeProvider::class);
 
+        $this->app->singleton(UserCacheVersion::class);
         $this->app->singleton(UserContextCache::class);
         $this->app->singleton(PermissionDefinitionCache::class);
         $this->app->singleton(UserTeamCache::class);
+        $this->app->singleton(UserPermissionSet::class);
         $this->app->singleton(PermissionCacheInvalidator::class);
 
         // Permission resolver depends on the hierarchy contract; cache is transparent.
@@ -221,7 +252,7 @@ class KompoAuthServiceProvider extends ServiceProvider
             return new PermissionResolver(
                 $app->make(TeamHierarchyInterface::class),
                 $app->make(AuthCacheLayer::class),
-                $app->make(PermissionDefinitionCache::class),
+                $app->make(TeamRoleAccessResolver::class),
             );
         });
 
@@ -230,6 +261,8 @@ class KompoAuthServiceProvider extends ServiceProvider
                 $app->make(PermissionResolver::class),
                 $app->make(AuthCacheLayer::class),
                 $app->make(UserContextCache::class),
+                $app->make(UserCacheVersion::class),
+                $app->make(UserPermissionSet::class),
             );
         });
 
@@ -313,6 +346,14 @@ class KompoAuthServiceProvider extends ServiceProvider
 
             if ($this->app->resolved(AuthCacheLayer::class)) {
                 $this->app->make(AuthCacheLayer::class)->flushRequestCache();
+            }
+
+            if ($this->app->resolved(UserCacheVersion::class)) {
+                $this->app->make(UserCacheVersion::class)->flushRequestCache();
+            }
+
+            if ($this->app->resolved(UserPermissionSet::class)) {
+                $this->app->make(UserPermissionSet::class)->flushRequestCache();
             }
         });
     }
@@ -503,6 +544,7 @@ class KompoAuthServiceProvider extends ServiceProvider
             WarmTeamHierarchyCache::class,
             OptimizePermissionCacheCommand::class,
             CleanupRedundantHierarchyRoles::class,
+            RematerializeAllPermissions::class,
         ];
 
         foreach ($commands as $command) {

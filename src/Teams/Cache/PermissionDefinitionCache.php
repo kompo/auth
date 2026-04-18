@@ -73,13 +73,4 @@ class PermissionDefinitionCache
             $compute
         );
     }
-
-    public function accessibleTeamsForTeamRole(TeamRole $teamRole, callable $compute)
-    {
-        return $this->cache->remember(
-            CacheKeyBuilder::teamRoleAccess($teamRole->id),
-            CacheKeyBuilder::TEAM_ROLE_ACCESS,
-            $compute
-        );
-    }
 }

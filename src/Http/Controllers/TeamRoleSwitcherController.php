@@ -4,7 +4,6 @@ namespace Kompo\Auth\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Kompo\Auth\Models\Teams\TeamRole;
 
 class TeamRoleSwitcherController extends Controller
 {
@@ -15,13 +14,7 @@ class TeamRoleSwitcherController extends Controller
             'role_id' => ['required', 'string', 'max:100'],
         ]);
 
-        $teamRole = TeamRole::getOrCreateForUser($data['team_id'], $request->user()->id, $data['role_id']);
-
-        if (!$teamRole || $teamRole->user_id != $request->user()->id) {
-            abort(403);
-        }
-
-        if (!$request->user()->switchToTeamRole($teamRole)) {
+        if (!$request->user()->switchToTeamWithRole($data['team_id'], $data['role_id'])) {
             abort(403);
         }
 

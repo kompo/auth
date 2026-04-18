@@ -307,23 +307,10 @@ class TeamRole extends Model
 
     public function getAccessibleTeamsOptimized()
     {
-        return app(PermissionDefinitionCache::class)->accessibleTeamsForTeamRole($this, function () {
-            $teams = collect([$this->team_id]);
-            $hierarchyService = app(TeamHierarchyInterface::class);
-
-            // Use batch operations for hierarchy
-            if ($this->getRoleHierarchyAccessBelow()) {
-                $descendants = $hierarchyService->getDescendantTeamIds($this->team_id);
-                $teams = $teams->concat($descendants);
-            }
-
-            if ($this->getRoleHierarchyAccessNeighbors()) {
-                $siblings = $hierarchyService->getSiblingTeamIds($this->team_id);
-                $teams = $teams->concat($siblings);
-            }
-
-            return $teams->unique()->values();
-        });
+        return collect(
+            app(\Kompo\Auth\Teams\Contracts\PermissionResolverInterface::class)
+                ->getTeamRoleAccessibleTeams($this)
+        );
     }
 
     public function hasAccessToTeam($teamId)

@@ -9,6 +9,7 @@ use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Teams\Cache\UserContextCache;
 use Kompo\Auth\Teams\CacheKeyBuilder;
 use Kompo\Auth\Teams\Contracts\PermissionResolverInterface;
+use Kompo\Auth\Teams\PermissionAccessIndex;
 use Kompo\Auth\Teams\PermissionResolver;
 
 class CachedPermissionResolver implements PermissionResolverInterface
@@ -45,17 +46,15 @@ class CachedPermissionResolver implements PermissionResolverInterface
             $setResult = $this->permissionSet->check($userId, $permissionKey, $type, $teamIds);
 
             if ($setResult === null) {
-                // Not materialized OR Redis unavailable — hydrate via the string-cache path,
-                // materialize the sets for next time, and answer with the array check.
+                // Not materialized or Redis unavailable: resolve once, build the index,
+                // and use that same index both for this answer and for future set checks.
                 $permissions = collect($this->getUserPermissionsOptimized($userId, $teamIds));
+                $permissionIndex = PermissionAccessIndex::fromPermissions($permissions);
 
                 // Materialize for subsequent requests (no-op on non-Redis).
-                $this->permissionSet->materialize($userId, $permissions->all(), $teamIds);
+                $this->permissionSet->materialize($userId, $permissionIndex, $teamIds);
 
-                if ($this->inner->hasExplicitDeny($permissions, $permissionKey)) {
-                    return false;
-                }
-                return $this->inner->hasRequiredPermission($permissions, $permissionKey, $type);
+                return $permissionIndex->allows($permissionKey, $type);
             }
 
             return $setResult;
@@ -179,7 +178,11 @@ class CachedPermissionResolver implements PermissionResolverInterface
     {
         foreach ($userIds as $userId) {
             try {
-                $this->getUserPermissionsOptimized($userId);
+                $permissionIndex = PermissionAccessIndex::fromPermissions(
+                    $this->getUserPermissionsOptimized($userId)
+                );
+                $this->permissionSet->materialize($userId, $permissionIndex, null);
+
                 $this->getAllAccessibleTeamsForUser($userId);
             } catch (\Throwable $e) {
                 \Log::warning("Failed to warm cache for user {$userId}: " . $e->getMessage());

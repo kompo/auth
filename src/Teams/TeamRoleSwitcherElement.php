@@ -11,123 +11,31 @@ class TeamRoleSwitcherElement extends LazyHierarchy
         parent::initialize($label);
 
         $currentTeamRole = currentTeamRole();
-        $currentTeam = currentTeam();
+        $profile = $currentTeamRole?->roleRelation?->profile ?? 1;
+        $switchUrl = route('team-role-switcher.switch');
 
         $this
-            ->source(TeamRoleSwitcherHierarchySource::class)
+            ->source(TeamRoleSwitcherHierarchySource::class, ['switchUrl' => $switchUrl])
             ->hierarchyPaging(20, 80)
             ->dropdown($currentTeamRole?->getRoleName())
-            ->searchable(__('auth.search-placeholder'))
-            ->modes([
+            ->searchable(__('auth.search-placeholder'));
+
+        if (config('kompo-auth.team_role_switcher.committees_enabled', false)) {
+            $this->modes([
                 TeamAccessHierarchyBuilder::MODE_TEAMS => __('auth.switcher-teams'),
                 TeamAccessHierarchyBuilder::MODE_COMMITTEES => __('auth.switcher-committees'),
-            ], 'mode', TeamAccessHierarchyBuilder::MODE_TEAMS)
-            ->switchAction(route('team-role-switcher.switch'), 'POST', ['reload' => true])
-            ->defaultMode(TeamAccessHierarchyBuilder::MODE_TEAMS)
-            ->switcherProfile($currentTeamRole?->roleRelation?->profile ?? 1)
-            ->switcherCurrent($currentTeam, $currentTeamRole)
-            ->switcherLabels($this->defaultLabels())
-            ->switcherClasses($this->defaultClasses());
+            ], 'mode', TeamAccessHierarchyBuilder::MODE_TEAMS);
+        }
 
-        $this->class('kompo-team-role-switcher-shell');
-    }
-
-    public function defaultMode(string $mode)
-    {
-        return $this->config([
-            'defaultMode' => $mode,
-        ]);
-    }
-
-    public function switcherProfile(int|string|null $profile)
-    {
-        return $this
+        $this
             ->hierarchyParam('profile', $profile)
-            ->config([
-                'profile' => $profile,
-            ]);
-    }
-
-    public function switcherCurrent($team, $teamRole)
-    {
-        return $this->config([
-            'current' => [
-                'teamId' => $team?->id,
-                'teamName' => $team?->team_name,
-                'roleId' => $teamRole?->role,
-                'roleName' => $teamRole?->getRoleName(),
-            ],
-        ]);
-    }
-
-    public function switcherClasses(array $classes)
-    {
-        return $this->hierarchyClasses($classes);
-    }
-
-    public function switcherLabels(array $labels)
-    {
-        return $this->hierarchyLabels($labels);
-    }
-
-    public function displayMode(string $mode)
-    {
-        return $this->config([
-            'displayMode' => $mode,
-        ]);
-    }
-
-    public function inline()
-    {
-        return $this->displayMode('inline');
-    }
-
-    public function switcherSwitchAction(string $url, string $method = 'POST', array $config = [])
-    {
-        return $this->switchAction($url, $method, $config);
-    }
-
-    public function switchAction(string $url, string $method = 'POST', array $config = [])
-    {
-        return $this
-            ->hierarchyAction('switch', $url, $method, $config)
-            ->config(['switchUrl' => $url]);
-    }
-
-    protected function defaultLabels(): array
-    {
-        return [
-            'searchPlaceholder' => __('auth.search-placeholder'),
-            'teams' => __('auth.switcher-teams'),
-            'committees' => __('auth.switcher-committees'),
-            'committee' => __('auth.switcher-committee'),
-            'committeeShort' => __('auth.switcher-committee-short'),
-            'go' => __('auth.switcher-go'),
-            'loading' => __('auth.switcher-loading'),
-            'empty' => __('auth.switcher-empty'),
-            'showMore' => __('auth.switcher-show-more'),
-            'error' => __('auth.switcher-error'),
-            'switchRole' => __('auth.switcher-switch-role'),
-        ];
-    }
-
-    protected function defaultClasses(): array
-    {
-        return [
-            'trigger' => '',
-            'panel' => '',
-            'searchWrapper' => '',
-            'searchInput' => '',
-            'modes' => '',
-            'mode' => '',
-            'body' => '',
-            'nodeRow' => '',
-            'nodeName' => '',
-            'committeePill' => '',
-            'levelPill' => '',
-            'rolePill' => '',
-            'goButton' => '',
-            'showMore' => '',
-        ];
+            ->hierarchyLabels([
+                'searchPlaceholder' => __('auth.search-placeholder'),
+                'loading' => __('auth.switcher-loading'),
+                'empty' => __('auth.switcher-empty'),
+                'error' => __('auth.switcher-error'),
+                'showMore' => __('auth.switcher-show-more'),
+            ])
+            ->class('kompo-team-role-switcher-shell');
     }
 }

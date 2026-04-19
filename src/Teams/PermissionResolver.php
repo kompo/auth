@@ -66,13 +66,11 @@ class PermissionResolver implements PermissionResolverInterface
             return true;
         }
 
-        $userPermissions = collect($this->getUserPermissionsOptimized($userId, $teamIds));
+        $permissionIndex = PermissionAccessIndex::fromPermissions(
+            $this->getUserPermissionsOptimized($userId, $teamIds)
+        );
 
-        if ($this->hasExplicitDeny($userPermissions, $permissionKey)) {
-            return false;
-        }
-
-        return $this->hasRequiredPermission($userPermissions, $permissionKey, $type);
+        return $permissionIndex->allows($permissionKey, $type);
     }
 
     /**
@@ -420,10 +418,7 @@ class PermissionResolver implements PermissionResolverInterface
      */
     public function hasExplicitDeny(Collection $permissions, string $permissionKey): bool
     {
-        return $permissions->contains(function($permission) use ($permissionKey) {
-            return getPermissionKey($permission) === $permissionKey && 
-                   getPermissionType($permission) === PermissionTypeEnum::DENY;
-        });
+        return PermissionAccessIndex::fromPermissions($permissions)->denies($permissionKey);
     }
     
     /**
@@ -434,17 +429,7 @@ class PermissionResolver implements PermissionResolverInterface
         string $permissionKey, 
         PermissionTypeEnum $requiredType
     ): bool {
-        $userPermissions = $permissions->filter(function($permission) use ($permissionKey) {
-            return getPermissionKey($permission) === $permissionKey;
-        })->all();
-        
-        foreach ($userPermissions as $permission) {
-            if (PermissionTypeEnum::hasPermission(getPermissionType($permission), $requiredType)) {
-                return true;
-            }
-        }
-        
-        return false;
+        return PermissionAccessIndex::fromPermissions($permissions)->hasAllowed($permissionKey, $requiredType);
     }
     
     /**

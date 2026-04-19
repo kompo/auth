@@ -136,53 +136,19 @@ class TeamRoleSwitcherTeamRepository
         return $mode === TeamAccessHierarchyBuilder::MODE_COMMITTEES ? $isCommittee : !$isCommittee;
     }
 
-    public function teamLevelValue($team): ?int
+    public function teamLevelLabel($team): ?string
     {
-        if (!$this->hasTeamLevelColumn() || $team->team_level === null) {
-            return null;
-        }
+        $label = $this->teamLevelMethodResult($team, 'label');
 
-        if (is_object($team->team_level) && isset($team->team_level->value)) {
-            return (int) $team->team_level->value;
-        }
-
-        return (int) $team->team_level;
+        return $label === null || $label === '' ? null : (string) $label;
     }
 
-    public function teamLevelLabel($team, bool $isCommittee): string
+    public function teamLevelClass($team): ?string
     {
-        if ($isCommittee) {
-            return __('auth.switcher-committee-short');
-        }
+        $class = $this->teamLevelMethodResult($team, 'class')
+            ?? $this->teamLevelMethodResult($team, 'classes');
 
-        $level = $team->team_level ?? null;
-
-        if (is_object($level) && method_exists($level, 'label')) {
-            return $level->label();
-        }
-
-        return match ($this->teamLevelValue($team)) {
-            1 => __('auth.switcher-national'),
-            2 => __('auth.switcher-district'),
-            3 => __('auth.switcher-group'),
-            4 => __('auth.switcher-unit'),
-            default => __('auth.switcher-team'),
-        };
-    }
-
-    public function teamLevelKey($team, bool $isCommittee): string
-    {
-        if ($isCommittee) {
-            return 'committee';
-        }
-
-        return match ($this->teamLevelValue($team)) {
-            1 => 'national',
-            2 => 'district',
-            3 => 'group',
-            4 => 'unit',
-            default => 'team',
-        };
+        return $class === null || $class === '' ? null : (string) $class;
     }
 
     public function hasCommitteeColumn(): bool
@@ -193,5 +159,20 @@ class TeamRoleSwitcherTeamRepository
     public function hasTeamLevelColumn(): bool
     {
         return hasColumnCached('teams', 'team_level');
+    }
+
+    private function teamLevelMethodResult($team, string $method)
+    {
+        if (!$this->hasTeamLevelColumn()) {
+            return null;
+        }
+
+        $level = $team->team_level ?? null;
+
+        if (!is_object($level) || !method_exists($level, $method)) {
+            return null;
+        }
+
+        return $level->{$method}();
     }
 }

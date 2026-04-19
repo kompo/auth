@@ -22,6 +22,7 @@ class TeamRoleSwitcherNodeProvider
         private TeamRoleSwitcherTeamRepository $teams,
         private TeamRoleSwitcherNodeFactory $nodes,
         private TeamHierarchyInterface $hierarchy,
+        private string $switchUrl,
     ) {}
 
     public function bootstrap($user, int|string|null $profile, string $mode, int $limit, int $lookaheadBudget): array
@@ -95,12 +96,12 @@ class TeamRoleSwitcherNodeProvider
         }
 
         $currentPathIds = $this->currentPathIds();
-        $nodes = collect();
+        $contexts = collect();
         $offset = 0;
         $scanPages = 0;
         $take = max($limit * 3, self::MAX_LIMIT);
 
-        while ($nodes->count() < $limit && $scanPages < self::MAX_SEARCH_SCAN_PAGES) {
+        while ($contexts->count() < $limit && $scanPages < self::MAX_SEARCH_SCAN_PAGES) {
             $teams = $this->teams->search($mode, $search, $take, $offset);
 
             if ($teams->isEmpty()) {
@@ -108,9 +109,9 @@ class TeamRoleSwitcherNodeProvider
             }
 
             $decorated = $this->decorateTeams($teams, $user, $profile, $mode, $currentPathIds)
-                ->filter(fn($node) => $node['isSelectable'] && $this->hasSwitchableRole($node));
+                ->filter(fn(HierarchyNodeContext $ctx) => $ctx->isSelectable && $ctx->hasSwitchableRole());
 
-            $nodes = $nodes->concat($decorated)->take($limit)->values();
+            $contexts = $contexts->concat($decorated)->take($limit)->values();
             $offset += $teams->count();
             $scanPages++;
 
@@ -119,13 +120,12 @@ class TeamRoleSwitcherNodeProvider
             }
         }
 
-        foreach ($nodes as $node) {
-            $payload
-                ->addNode($node)
-                ->appendChild(self::ROOT_KEY, $node['id']);
+        foreach ($contexts as $ctx) {
+            $node = $this->nodes->toPayload($ctx, $this->switchUrl);
+            $payload->addNode($node)->appendChild(self::ROOT_KEY, $node['id']);
         }
 
-        $payload->setPaging(self::ROOT_KEY, null, $nodes->count(), $limit);
+        $payload->setPaging(self::ROOT_KEY, null, $contexts->count(), $limit);
 
         return $payload->toArray();
     }
@@ -151,11 +151,12 @@ class TeamRoleSwitcherNodeProvider
         $page = $this->visibleChildrenPage($user, $profile, $mode, $parentId, $limit, $cursor, $currentPathIds);
         $nodeIds = [];
 
-        foreach ($page['nodes'] as $node) {
+        foreach ($page['contexts'] as $ctx) {
             if ($nodeBudget <= 0) {
                 break;
             }
 
+            $node = $this->nodes->toPayload($ctx, $this->switchUrl);
             $payload->addNode($node);
             $nodeIds[] = $node['id'];
             $nodeBudget--;
@@ -169,12 +170,12 @@ class TeamRoleSwitcherNodeProvider
             return;
         }
 
-        foreach ($page['nodes'] as $node) {
+        foreach ($page['contexts'] as $ctx) {
             if ($nodeBudget <= 0) {
                 break;
             }
 
-            if (!$node['hasChildren']) {
+            if (!$ctx->hasChildren) {
                 continue;
             }
 
@@ -183,7 +184,7 @@ class TeamRoleSwitcherNodeProvider
                 user: $user,
                 profile: $profile,
                 mode: $mode,
-                parentId: $node['teamId'],
+                parentId: $ctx->teamId,
                 limit: $limit,
                 cursor: null,
                 lookaheadDepth: $lookaheadDepth - 1,
@@ -217,7 +218,7 @@ class TeamRoleSwitcherNodeProvider
             }
 
             $decorated = $this->decorateTeams($rawTeams, $user, $profile, $mode, $currentPathIds)
-                ->filter(fn($node) => $this->isVisibleNode($node));
+                ->filter(fn(HierarchyNodeContext $ctx) => $ctx->isVisible());
 
             $visible = $visible->concat($decorated)->take($limit)->values();
             $scanOffset += $rawTeams->count();
@@ -229,7 +230,7 @@ class TeamRoleSwitcherNodeProvider
         }
 
         return [
-            'nodes' => $visible,
+            'contexts' => $visible,
             'nextCursor' => $scanOffset < $total ? $scanOffset : null,
             'total' => $total,
         ];
@@ -260,21 +261,23 @@ class TeamRoleSwitcherNodeProvider
             return;
         }
 
-        $nodesByTeamId = $this->decorateTeams($teamsById->values(), $user, $profile, $mode, $currentPathIds)
-            ->keyBy('teamId');
-        $currentNode = $nodesByTeamId->get((int) end($currentPathIds));
+        $contextsByTeamId = $this->decorateTeams($teamsById->values(), $user, $profile, $mode, $currentPathIds)
+            ->keyBy(fn(HierarchyNodeContext $ctx) => $ctx->teamId);
 
-        if (!$currentNode || !$this->hasSwitchableRole($currentNode)) {
+        $currentCtx = $contextsByTeamId->get((int) end($currentPathIds));
+
+        if (!$currentCtx || !$currentCtx->hasSwitchableRole()) {
             return;
         }
 
         foreach ($currentPathIds as $index => $teamId) {
-            $node = $nodesByTeamId->get($teamId);
+            $ctx = $contextsByTeamId->get($teamId);
 
-            if (!$node) {
+            if (!$ctx) {
                 continue;
             }
 
+            $node = $this->nodes->toPayload($ctx, $this->switchUrl);
             $payload->addNode($node);
 
             $parentId = $index === 0 ? null : (int) $currentPathIds[$index - 1];
@@ -305,13 +308,7 @@ class TeamRoleSwitcherNodeProvider
         }
 
         $currentTeamRole = function_exists('currentTeamRole') ? currentTeamRole() : null;
-        $accessByTeam = $this->access->resolveForCandidates(
-            $teams,
-            $user,
-            $profile,
-            $mode,
-            $currentTeamRole
-        );
+        $accessByTeam = $this->access->resolveForCandidates($teams, $user, $profile, $mode, $currentTeamRole);
         $visibleChildrenCounts = $mode === TeamAccessHierarchyBuilder::MODE_TEAMS
             ? $this->visibleDirectChildrenCounts($teams->pluck('id'), $user, $profile, $mode)
             : [];
@@ -327,7 +324,7 @@ class TeamRoleSwitcherNodeProvider
                 ? $this->teams->countDirectCommittees($teamId)
                 : 0;
 
-            return $this->nodes->make(
+            return $this->nodes->context(
                 team: $team,
                 access: $access,
                 mode: $mode,
@@ -341,11 +338,7 @@ class TeamRoleSwitcherNodeProvider
 
     private function visibleDirectChildrenCounts(Collection $parentIds, $user, int|string|null $profile, string $mode): array
     {
-        $parentIds = $parentIds
-            ->map(fn($id) => (int) $id)
-            ->filter()
-            ->unique()
-            ->values();
+        $parentIds = $parentIds->map(fn($id) => (int) $id)->filter()->unique()->values();
 
         if ($parentIds->isEmpty()) {
             return [];
@@ -359,13 +352,7 @@ class TeamRoleSwitcherNodeProvider
             return [];
         }
 
-        $accessByChild = $this->access->resolveForCandidates(
-            $children,
-            $user,
-            $profile,
-            $mode,
-            includeCurrentRole: false
-        );
+        $accessByChild = $this->access->resolveForCandidates($children, $user, $profile, $mode, includeCurrentRole: false);
         $activeRoleBranchIndex = $this->access->activeRoleBranchIndex($user, $profile, $mode);
         $counts = [];
 
@@ -402,20 +389,6 @@ class TeamRoleSwitcherNodeProvider
             ->map(fn($id) => (int) $id)
             ->values()
             ->all();
-    }
-
-    private function isVisibleNode(array $node): bool
-    {
-        if ($node['isSelectable']) {
-            return $this->hasSwitchableRole($node) || $node['hasChildren'];
-        }
-
-        return $node['hasChildren'];
-    }
-
-    private function hasSwitchableRole(array $node): bool
-    {
-        return !empty($node['roles']) || !empty($node['switchRole']);
     }
 
     private function emptyPayload(string $mode, bool $includeRoot = true): LazyHierarchyPayload

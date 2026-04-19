@@ -68,6 +68,10 @@ return [
         'batch_size' => 50,
     ],
 
+    'team_role_switcher' => [
+        'committees_enabled' => false,
+    ],
+
     'superadmin-emails' => [
         ...explode(',', env('SUPERADMIN_EMAILS', '')),
     ],

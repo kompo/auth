@@ -6,6 +6,7 @@ use Illuminate\Cache\RedisStore;
 use Illuminate\Support\Facades\Cache;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Teams\CacheKeyBuilder;
+use Kompo\Auth\Teams\PermissionAccessIndex;
 
 /**
  * Redis-set-backed permission check for O(1) userHasPermission.
@@ -13,14 +14,14 @@ use Kompo\Auth\Teams\CacheKeyBuilder;
  * Two Redis sets per (user, teamIds, version):
  *  - user_deny.{uid}.v{N}.{teamKey}   : permission_key strings only (no type suffix).
  *  - user_allow.{uid}.v{N}.{teamKey}  : "{permission_key}|{type_value}" strings,
- *                                       expanded across all implied types at materialization.
+ *                                       expanded across all implied types by PermissionAccessIndex.
  *
  * Materialization is idempotent. A sentinel key (`user_permset_ready.{uid}.v{N}.{teamKey}`)
- * indicates completion — using EXISTS on the sets themselves would miss the "user has no
+ * indicates completion. Using EXISTS on the sets themselves would miss the "user has no
  * permissions at all" case where both sets are legitimately empty.
  *
- * Falls back to null-returning when the cache driver is not Redis; callers must then
- * use the existing array-iteration path.
+ * Falls back to null-returning when the cache driver is not Redis; callers then
+ * answer from an in-memory PermissionAccessIndex.
  */
 class UserPermissionSet
 {
@@ -65,7 +66,7 @@ class UserPermissionSet
 
             return (bool) $redis->sismember(
                 CacheKeyBuilder::userAllowSet($userId, $version, $teamIds),
-                $permissionKey . '|' . $type->value,
+                PermissionAccessIndex::allowMember($permissionKey, $type),
             );
         } catch (\Throwable $e) {
             \Log::warning('UserPermissionSet::check failed, falling back: ' . $e->getMessage(), [
@@ -77,10 +78,10 @@ class UserPermissionSet
     }
 
     /**
-     * Materialize the two sets from a permission array (output of getUserPermissionsOptimized).
+     * Materialize the two sets from a prepared permission index.
      * Idempotent: overwrites the keys.
      */
-    public function materialize(int|string $userId, array $permissions, $teamIds, ?int $ttl = null): void
+    public function materialize(int|string $userId, PermissionAccessIndex $permissionIndex, $teamIds, ?int $ttl = null): void
     {
         if (!$this->isSupported()) {
             return;
@@ -93,43 +94,20 @@ class UserPermissionSet
         $denyKey = CacheKeyBuilder::userDenySet($userId, $version, $teamIds);
         $readyKey = $this->readyKey($userId, $version, $teamIds);
 
-        $allowMembers = [];
-        $denyMembers = [];
-
-        foreach ($permissions as $complex) {
-            $key = getPermissionKey($complex);
-            $type = getPermissionType($complex);
-
-            if (!$key || !$type) {
-                continue;
-            }
-
-            if ($type === PermissionTypeEnum::DENY) {
-                $denyMembers[$key] = true;
-                continue;
-            }
-
-            foreach (PermissionTypeEnum::cases() as $candidate) {
-                if ($candidate === PermissionTypeEnum::DENY) {
-                    continue;
-                }
-                if (PermissionTypeEnum::hasPermission($type, $candidate)) {
-                    $allowMembers[$key . '|' . $candidate->value] = true;
-                }
-            }
-        }
+        $allowMembers = $permissionIndex->allowMembers();
+        $denyMembers = $permissionIndex->denyMembers();
 
         try {
             $redis = $this->redis();
             $redis->del($allowKey, $denyKey, $readyKey);
 
             if ($allowMembers) {
-                $redis->sadd($allowKey, ...array_keys($allowMembers));
+                $redis->sadd($allowKey, ...$allowMembers);
                 $redis->expire($allowKey, $ttl);
             }
 
             if ($denyMembers) {
-                $redis->sadd($denyKey, ...array_keys($denyMembers));
+                $redis->sadd($denyKey, ...$denyMembers);
                 $redis->expire($denyKey, $ttl);
             }
 

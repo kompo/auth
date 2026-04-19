@@ -9,6 +9,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Kompo\Auth\Teams\Cache\UserPermissionSet;
 use Kompo\Auth\Teams\Contracts\PermissionResolverInterface;
+use Kompo\Auth\Teams\PermissionAccessIndex;
 
 class RematerializeUserPermissions implements ShouldQueue
 {
@@ -41,7 +42,11 @@ class RematerializeUserPermissions implements ShouldQueue
 
         try {
             $permissions = $resolver->getUserPermissionsOptimized($this->userId);
-            $permissionSet->materialize($this->userId, (array) $permissions, null);
+            $permissionSet->materialize(
+                $this->userId,
+                PermissionAccessIndex::fromPermissions($permissions),
+                null
+            );
         } catch (\Throwable $e) {
             \Log::warning('RematerializeUserPermissions failed: ' . $e->getMessage(), [
                 'user_id' => $this->userId,

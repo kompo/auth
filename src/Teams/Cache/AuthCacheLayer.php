@@ -202,6 +202,8 @@ class AuthCacheLayer
         try {
             if (Cache::supportsTags()) {
                 Cache::tags($tags)->flush();
+            } else {
+                Cache::flush(); // We need to invalidate everything if tags are not supported
             }
         } catch (\Throwable $e) {
             \Log::warning('Auth cache flush failed', [

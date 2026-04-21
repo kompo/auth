@@ -4,14 +4,14 @@ namespace Kompo\Auth\Commands;
 
 use Illuminate\Console\Command;
 use Kompo\Auth\Facades\TeamModel;
-use Kompo\Auth\Teams\TeamHierarchyService;
+use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
 
 class WarmTeamHierarchyCache extends Command
 {
     protected $signature = 'teams:warm-hierarchy-cache {--team-id=* : Specific team IDs to warm}';
     protected $description = 'Pre-calculates and caches team hierarchies for better performance';
 
-    public function handle(TeamHierarchyService $service)
+    public function handle(TeamHierarchyInterface $service)
     {
         $teamIds = $this->option('team-id');
 

@@ -5,6 +5,7 @@ namespace Kompo\Auth\Teams\Roles;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\Roles\Role;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 
 trait RoleRequestsUtils
 {
@@ -30,11 +31,11 @@ trait RoleRequestsUtils
             $role->permissions()->detach($permissions);
         } else {
             foreach($permissions as $permission) {
-                $role->createOrUpdatePermission($permission, $value);
+                $role->createOrUpdatePermission($permission, $value, false);
             }
         }
 
-        \Cache::flushTags(['permissions'], true);
+        app(PermissionCacheInvalidator::class)->rolePermissionsChanged([$role->id]);
     }
 
     public function changeRolePermission()
@@ -54,10 +55,10 @@ trait RoleRequestsUtils
         if (!$value) {
             $role->permissions()->detach(request('permission'));
         } else{
-            $role->createOrUpdatePermission(request('permission'), $value);
+            $role->createOrUpdatePermission(request('permission'), $value, false);
         }
 
-        \Cache::flushTags(['permissions'], true);
+        app(PermissionCacheInvalidator::class)->rolePermissionsChanged([$role->id]);
     }
 
     public function getRoleForm($id = null)

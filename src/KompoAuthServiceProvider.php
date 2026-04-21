@@ -16,14 +16,43 @@ use Kompo\Auth\Models\Plugins\HasSecurity;
 use Condoedge\Utils\Kompo\Common\Form;
 use Kompo\Auth\Commands\CleanupRedundantHierarchyRoles;
 use Kompo\Auth\Commands\OptimizePermissionCacheCommand;
+use Kompo\Auth\Commands\RematerializeAllPermissions;
 use Kompo\Auth\Commands\WarmTeamHierarchyCache;
+use Kompo\Auth\Teams\TeamAccessHierarchyBuilder;
 use Kompo\Auth\Teams\TeamHierarchyService;
+use Kompo\Auth\Teams\TeamHierarchyRoleProcessor;
+use Kompo\Auth\Teams\TeamRoleAccessDataSource;
+use Kompo\Auth\Teams\TeamRoleAccessResolver;
+use Kompo\Auth\Teams\TeamRoleSwitcherNodeFactory;
+use Kompo\Auth\Teams\TeamRoleSwitcherNodeProvider;
+use Kompo\Auth\Teams\TeamRoleSwitcherTeamRepository;
 use Kompo\Auth\Http\Middleware\MonitorPermissionPerformance;
+use Kompo\Auth\Models\Plugins\Services\DeleteSecurityService;
+use Kompo\Auth\Models\Plugins\Services\FieldProtectionService;
+use Kompo\Auth\Models\Plugins\Services\PermissionCacheService;
+use Kompo\Auth\Models\Plugins\Services\ReadSecurityService;
+use Kompo\Auth\Models\Plugins\Services\SecurityBypassService;
+use Kompo\Auth\Models\Plugins\Services\SecurityMetadataRegistry;
+use Kompo\Auth\Models\Plugins\Services\WriteSecurityService;
 use Kompo\Auth\Teams\PermissionCacheManager;
-use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Teams\PermissionResolver;
+use Kompo\Auth\Support\ElementPermissionCache;
+use Kompo\Auth\Teams\Cache\AuthCacheLayer;
+use Kompo\Auth\Teams\Cache\CachedPermissionResolver;
+use Kompo\Auth\Teams\Cache\CachedTeamRoleAccessDataSource;
+use Kompo\Auth\Teams\Cache\CachedTeamRoleAccessResolver;
+use Kompo\Auth\Teams\Cache\CachedTeamHierarchyService;
+use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
+use Kompo\Auth\Teams\Cache\PermissionDefinitionCache;
+use Kompo\Auth\Teams\Cache\UserCacheVersion;
+use Kompo\Auth\Teams\Cache\UserContextCache;
+use Kompo\Auth\Teams\Cache\UserPermissionSet;
+use Kompo\Auth\Teams\Cache\UserTeamCache;
+use Kompo\Auth\Teams\Contracts\PermissionResolverInterface;
+use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
+use Kompo\Auth\Teams\Contracts\TeamRoleAccessDataSourceInterface;
+use Kompo\Auth\Teams\Contracts\TeamRoleAccessResolverInterface;
 use Kompo\Auth\Http\Middleware\EnsureResetPasswordWhenRequired;
-use Illuminate\Support\Facades\Schema;
 
 
 class KompoAuthServiceProvider extends ServiceProvider
@@ -69,6 +98,7 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->loadCommands();
         $this->loadCrons();
         $this->setupCacheMacros();
+        $this->registerRequestLifecycleCleanup();
         $this->setupPerformanceMonitoring();
 
         // Setup missing translation handling
@@ -175,19 +205,73 @@ class KompoAuthServiceProvider extends ServiceProvider
      */
     private function registerOptimizedPermissionServices(): void
     {
+        $this->app->singleton(AuthCacheLayer::class);
+
         // Team hierarchy service (foundation service - no dependencies)
         $this->app->singleton(TeamHierarchyService::class, function ($app) {
             return new TeamHierarchyService();
         });
 
-        // Permission resolver (depends on TeamHierarchyService)
+        $this->app->singleton(TeamHierarchyInterface::class, function ($app) {
+            return new CachedTeamHierarchyService(
+                $app->make(TeamHierarchyService::class),
+                $app->make(AuthCacheLayer::class),
+            );
+        });
+        $this->app->singleton(TeamHierarchyRoleProcessor::class);
+        $this->app->singleton(TeamAccessHierarchyBuilder::class);
+        $this->app->singleton(TeamRoleAccessDataSource::class);
+        $this->app->singleton(TeamRoleAccessDataSourceInterface::class, function ($app) {
+            return new CachedTeamRoleAccessDataSource(
+                $app->make(TeamRoleAccessDataSource::class),
+                $app->make(UserTeamCache::class),
+                $app->make(AuthCacheLayer::class),
+            );
+        });
+        $this->app->singleton(TeamRoleAccessResolver::class);
+        $this->app->singleton(TeamRoleAccessResolverInterface::class, function ($app) {
+            return new CachedTeamRoleAccessResolver(
+                $app->make(TeamRoleAccessResolver::class),
+                $app->make(UserTeamCache::class),
+                $app->make(AuthCacheLayer::class),
+            );
+        });
+        $this->app->singleton(TeamRoleSwitcherTeamRepository::class);
+        $this->app->singleton(TeamRoleSwitcherNodeFactory::class);
+        $this->app->singleton(TeamRoleSwitcherNodeProvider::class);
+
+        $this->app->singleton(UserCacheVersion::class);
+        $this->app->singleton(UserContextCache::class);
+        $this->app->singleton(PermissionDefinitionCache::class);
+        $this->app->singleton(UserTeamCache::class);
+        $this->app->singleton(UserPermissionSet::class);
+        $this->app->singleton(PermissionCacheInvalidator::class);
+
+        // Permission resolver depends on the hierarchy contract; cache is transparent.
         $this->app->singleton(PermissionResolver::class, function ($app) {
-            return new PermissionResolver($app->make(TeamHierarchyService::class));
+            return new PermissionResolver(
+                $app->make(TeamHierarchyInterface::class),
+                $app->make(AuthCacheLayer::class),
+                $app->make(TeamRoleAccessResolver::class),
+            );
         });
 
-        // Permission cache manager (depends on PermissionResolver)
+        $this->app->singleton(PermissionResolverInterface::class, function ($app) {
+            return new CachedPermissionResolver(
+                $app->make(PermissionResolver::class),
+                $app->make(AuthCacheLayer::class),
+                $app->make(UserContextCache::class),
+                $app->make(UserCacheVersion::class),
+                $app->make(UserPermissionSet::class),
+            );
+        });
+
+        // Backward-compatible manager facade over the cache invalidator/warmer behavior.
         $this->app->singleton(PermissionCacheManager::class, function ($app) {
-            return new PermissionCacheManager($app->make(PermissionResolver::class));
+            return new PermissionCacheManager(
+                $app->make(PermissionCacheInvalidator::class),
+                $app->make(AuthCacheLayer::class),
+            );
         });
 
         // Performance monitoring service
@@ -247,6 +331,33 @@ class KompoAuthServiceProvider extends ServiceProvider
         });
     }
 
+    private function registerRequestLifecycleCleanup(): void
+    {
+        $this->app->terminating(function () {
+            SecurityMetadataRegistry::clearAll();
+            FieldProtectionService::clearTracking();
+            SecurityBypassService::clearTracking();
+            PermissionCacheService::clearAllCaches();
+            ElementPermissionCache::clear();
+
+            ReadSecurityService::clearSecurityConfigCache();
+            WriteSecurityService::clearSecurityConfigCache();
+            DeleteSecurityService::clearSecurityConfigCache();
+
+            if ($this->app->resolved(AuthCacheLayer::class)) {
+                $this->app->make(AuthCacheLayer::class)->flushRequestCache();
+            }
+
+            if ($this->app->resolved(UserCacheVersion::class)) {
+                $this->app->make(UserCacheVersion::class)->flushRequestCache();
+            }
+
+            if ($this->app->resolved(UserPermissionSet::class)) {
+                $this->app->make(UserPermissionSet::class)->flushRequestCache();
+            }
+        });
+    }
+
     /**
      * Register security services with proper dependency injection (Laravel standard)
      */
@@ -274,10 +385,16 @@ class KompoAuthServiceProvider extends ServiceProvider
     }
 
     /**
-     * Setup cache macros for better cache management
+     * Setup cache macros for better cache management.
+     * These macros are for backward compatibility. AuthCacheLayer inlines the
+     * same logic to avoid depending on macros being registered before model boots.
      */
     private function setupCacheMacros(): void
     {
+        if (Cache::hasMacro('rememberWithTags')) {
+            return;
+        }
+
         // Enhanced cache macros with better error handling
         Cache::macro('rememberWithTags', function ($tags, $key, $ttl, $callback) {
             try {
@@ -427,6 +544,7 @@ class KompoAuthServiceProvider extends ServiceProvider
             WarmTeamHierarchyCache::class,
             OptimizePermissionCacheCommand::class,
             CleanupRedundantHierarchyRoles::class,
+            RematerializeAllPermissions::class,
         ];
 
         foreach ($commands as $command) {
@@ -539,6 +657,7 @@ class KompoAuthServiceProvider extends ServiceProvider
 
         // Auth events
         Event::listen(\Illuminate\Auth\Events\Login::class, \Kompo\Auth\Listeners\RecordSuccessLoginAttempt::class);
+        Event::listen(\Illuminate\Auth\Events\Login::class, \Kompo\Auth\Listeners\WarmUserCacheOnLogin::class);
         Event::listen(\Illuminate\Auth\Events\Failed::class, \Kompo\Auth\Listeners\RecordFailedLoginAttempt::class);
     }
 

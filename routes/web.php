@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Kompo\Auth\Facades\NotificationModel;
 use Kompo\Auth\Http\Controllers\NotificationsController;
+use Kompo\Auth\Http\Controllers\TeamRoleSwitcherController;
 
 //PACKAGES
 Route::impersonate();
@@ -97,6 +98,9 @@ Route::layout('layouts.dashboard')->middleware(['auth'])->group(function(){
 Route::middleware(['auth'])->group(function(){
 
     Route::get('log-me-out', fn() => auth()->user()?->logMeOut());
+
+	Route::post('team-role-switcher/switch', [TeamRoleSwitcherController::class, 'switch'])
+		->name('team-role-switcher.switch');
 
 	//Notification
 	Route::get('notification/{id}/button-action', [NotificationsController::class, 'goToButtonAction'])->name('notifications.button-action');

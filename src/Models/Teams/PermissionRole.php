@@ -3,6 +3,7 @@
 namespace Kompo\Auth\Models\Teams;
 
 use Condoedge\Utils\Models\Model;
+use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 
 class PermissionRole extends Model
 {
@@ -23,9 +24,7 @@ class PermissionRole extends Model
 
     protected function clearCache()
     {
-        app(\Kompo\Auth\Teams\PermissionCacheManager::class)->invalidateByChange('role_permissions_changed', [
-            'role_ids' => [$this->role_id]
-        ]);
+        app(PermissionCacheInvalidator::class)->permissionRoleChanged($this);
     }
 
     /* RELATIONS */

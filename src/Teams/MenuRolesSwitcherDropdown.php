@@ -11,11 +11,7 @@ class MenuRolesSwitcherDropdown extends Form
         if (!auth()->user()) {
             return;
         }
-        return _Rows(
-            _Dropdown(currentTeamRole()->getRoleName())
-                ->submenu(
-                    new OptionsRolesSwitcher(),
-                )->alignRight(),
-        );
+
+        return TeamRoleSwitcherElement::form();
     }
 }

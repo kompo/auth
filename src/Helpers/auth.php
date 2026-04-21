@@ -4,8 +4,9 @@ use Condoedge\Utils\Kompo\Elements\ValidatedInput;
 use Kompo\Auth\Models\Plugins\HasSecurity;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
-use Kompo\Auth\Teams\PermissionResolver;
-use Kompo\Auth\Teams\CacheKeyBuilder;
+use Kompo\Auth\Support\ElementPermissionCache;
+use Kompo\Auth\Teams\Cache\UserContextCache;
+use Kompo\Auth\Teams\Contracts\PermissionResolverInterface;
 use Kompo\Date;
 use Kompo\Elements\Field;
 use Kompo\Place;
@@ -63,7 +64,7 @@ function checkAuthPermission($id, $type = PermissionTypeEnum::READ, $specificTea
     }
 
     // Use the optimized permission resolver
-    $resolver = app(PermissionResolver::class);
+    $resolver = app(PermissionResolverInterface::class);
     return $resolver->userHasPermission(
         auth()->id(),
         $id,
@@ -162,13 +163,8 @@ if (!function_exists('currentTeamRole') && config('kompo-auth.root-security', tr
             if(method_exists(auth()->user(), 'switchToFirstTeamRole')) auth()->user()->switchToFirstTeamRole();
         }
 
-        $cacheKey = CacheKeyBuilder::currentTeamRole(auth()->id());
-        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::CURRENT_TEAM_ROLE);
-        
-        $currentTeamRole = \Cache::rememberWithTags(
-            $tags,
-            $cacheKey,
-            900, // 15 minutes
+        $currentTeamRole = app(UserContextCache::class)->currentTeamRole(
+            auth()->id(),
             fn() => auth()->user()->currentTeamRole
         );
 
@@ -186,13 +182,8 @@ if (!function_exists('currentTeam') && config('kompo-auth.root-security', true))
             return null;
         }
 
-        $cacheKey = CacheKeyBuilder::currentTeam(auth()->id());
-        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::CURRENT_TEAM);
-        
-        $currentTeam = \Cache::rememberWithTags(
-            $tags,
-            $cacheKey,
-            900,
+        $currentTeam = app(UserContextCache::class)->currentTeam(
+            auth()->id(),
             fn() => currentTeamRole()?->team
         );
 
@@ -225,14 +216,9 @@ if (!function_exists('isAppSuperAdmin') && config('kompo-auth.root-security', tr
             return false;
         }
 
-        $cacheKey = CacheKeyBuilder::isSuperAdmin(auth()->id());
-        $tags = CacheKeyBuilder::getTagsForCacheType(CacheKeyBuilder::IS_SUPER_ADMIN);
-        
-        $isSuperAdmin = \Cache::rememberWithTags(
-            $tags,
-            $cacheKey,
-            3600, // 1 hour
-            fn() => isSuperAdmin() || auth()->user()->isSuperAdmin()
+        $isSuperAdmin = app(UserContextCache::class)->isSuperAdmin(
+            auth()->id(),
+            fn() => auth()->user()->isSuperAdmin()
         );
 
         return $isSuperAdmin;
@@ -253,7 +239,7 @@ if (!function_exists('batchCheckPermissions')) {
             return array_fill_keys($permissions, false);
         }
 
-        $resolver = app(PermissionResolver::class);
+        $resolver = app(PermissionResolverInterface::class);
         $results = [];
 
         foreach ($permissions as $permission) {
@@ -272,15 +258,13 @@ if (!function_exists('batchCheckPermissions')) {
  * Performance-optimized macro extensions
  */
 \Kompo\Elements\BaseElement::macro('checkAuth', function ($id, $type = PermissionTypeEnum::READ, $specificTeamId = null, $returnNullInstead = false, $specificModel = null) {
-    // Use static cache for repeated checks in same request
-    static $permissionCache = [];
     $cacheKey = $id . '|' . $type->value . '|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest') . '|' . ($specificModel?->getKey() ?? 'null');
+    $hasPermission = ElementPermissionCache::remember(
+        $cacheKey,
+        fn() => checkAuthPermission($id, $type, $specificTeamId, $specificModel)
+    );
 
-    if (!isset($permissionCache[$cacheKey])) {
-        $permissionCache[$cacheKey] = checkAuthPermission($id, $type, $specificTeamId, $specificModel);
-    }
-
-    if ($permissionCache[$cacheKey]) {
+    if ($hasPermission) {
         return $this;
     }
 
@@ -306,14 +290,13 @@ if (!function_exists('batchCheckPermissions')) {
 });
 
 Field::macro('readOnlyIfNotAuth', function ($id, $specificTeamId = null, $specificModel = null) {
-    static $permissionCache = [];
     $cacheKey = $id . '|write|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest') . '|' . ($specificModel?->getKey() ?? 'null');
+    $hasPermission = ElementPermissionCache::remember(
+        $cacheKey,
+        fn() => checkAuthPermission($id, PermissionTypeEnum::WRITE, $specificTeamId, $specificModel)
+    );
 
-    if (!isset($permissionCache[$cacheKey])) {
-        $permissionCache[$cacheKey] = checkAuthPermission($id, PermissionTypeEnum::WRITE, $specificTeamId, $specificModel);
-    }
-
-    if ($permissionCache[$cacheKey]) {
+    if ($hasPermission) {
         return $this;
     }
 
@@ -321,14 +304,13 @@ Field::macro('readOnlyIfNotAuth', function ($id, $specificTeamId = null, $specif
 });
 
 Field::macro('hashIfNotAuth', function ($id, $specificTeamId = null, $minChars = 12, $specificModel = null) {
-    static $permissionCache = [];
-    $cacheKey = $id . '|read|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest');
+    $cacheKey = $id . '|read|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest') . '|' . ($specificModel?->getKey() ?? 'null');
+    $hasPermission = ElementPermissionCache::remember(
+        $cacheKey,
+        fn() => checkAuthPermission($id, PermissionTypeEnum::READ, $specificTeamId, $specificModel)
+    );
 
-    if (!isset($permissionCache[$cacheKey])) {
-        $permissionCache[$cacheKey] = checkAuthPermission($id, PermissionTypeEnum::READ, $specificTeamId, $specificModel);
-    }
-
-    if ($permissionCache[$cacheKey]) {
+    if ($hasPermission) {
         return $this;
     }
 
@@ -351,14 +333,13 @@ Field::macro('hashAndReadOnlyIfNotAuth', function ($id, $specificTeamId = null, 
 });
 
 \Kompo\Html::macro('hashIfNotAuthHtml', function ($id, $specificTeamId = null, $minChars = 12, $specificModel = null) {
-    static $permissionCache = [];
     $cacheKey = $id . '|read|' . ($specificTeamId ?? 'null') . '|' . (auth()->id() ?? 'guest') . '|' . ($specificModel?->getKey() ?? 'null');
+    $hasPermission = ElementPermissionCache::remember(
+        $cacheKey,
+        fn() => checkAuthPermission($id, PermissionTypeEnum::READ, $specificTeamId, $specificModel)
+    );
 
-    if (!isset($permissionCache[$cacheKey])) {
-        $permissionCache[$cacheKey] = checkAuthPermission($id, PermissionTypeEnum::READ, $specificTeamId, $specificModel);
-    }
-
-    if ($permissionCache[$cacheKey]) {
+    if ($hasPermission) {
         return $this;
     }
 
@@ -394,24 +375,13 @@ if (!function_exists('isTeamOwner') && config('kompo-auth.root-security', true))
     }
 }
 
-if (!function_exists('isSuperAdmin') && config('kompo-auth.root-security', true)) {
-    function isSuperAdmin(): bool
-    {
-        return authUser()?->isSuperAdmin() ?? false;
-    }
-}
-
 /**
  * Clear all auth-related static caches
  */
 if (!function_exists('clearAuthStaticCache')) {
     function clearAuthStaticCache(): void
     {
-        // This function helps with testing or when user switches
-        // Clear current user context cache types using tags
-        \Cache::flushTags([CacheKeyBuilder::CURRENT_TEAM_ROLE]);
-        \Cache::flushTags([CacheKeyBuilder::CURRENT_TEAM]);
-        \Cache::flushTags([CacheKeyBuilder::IS_SUPER_ADMIN]);
+        app(UserContextCache::class)->clear();
     }
 }
 
@@ -510,8 +480,8 @@ if (!function_exists('cleanupAuthHelperCache')) {
         clearAuthStaticCache();
 
         // Clear resolver cache if needed
-        if (app()->bound(PermissionResolver::class)) {
-            app(PermissionResolver::class)->clearAllCache();
+        if (app()->bound(PermissionResolverInterface::class)) {
+            app(PermissionResolverInterface::class)->clearAllCache();
         }
     }
 }

@@ -7,8 +7,10 @@ use Condoedge\Utils\Models\Model;
 use Illuminate\Support\Facades\Log;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\Roles\Role;
-use Kompo\Auth\Teams\PermissionCacheManager;
-use Kompo\Auth\Teams\TeamHierarchyService;
+use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
+use Kompo\Auth\Teams\Cache\PermissionDefinitionCache;
+use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
+use Kompo\Auth\Teams\TeamHierarchyRoleProcessor;
 
 class TeamRole extends Model
 {
@@ -34,10 +36,7 @@ class TeamRole extends Model
 
     protected function clearCache()
     {
-        // Invalidate permissions cache
-        app(PermissionCacheManager::class)->invalidateByChange('team_role_changed', [
-            'user_ids' => [$this->user_id]
-        ]);
+        app(PermissionCacheInvalidator::class)->teamRoleChanged($this);
     }
 
     /* RELATIONS */
@@ -138,10 +137,8 @@ class TeamRole extends Model
      */
     private function getAllPermissionsKeys()
     {
-        return \Cache::rememberWithTags(
-            ['permissions'],
-            'teamRolePermissions' . $this->id,
-            180,
+        return app(PermissionDefinitionCache::class)->teamRolePermissionKeys(
+            $this,
             fn() => $this->getAllPermissionsKeysQuery()->pluck('complex_permission_key')
         );
     }
@@ -264,7 +261,7 @@ class TeamRole extends Model
      */
     public function getAllTeamsWithAccess()
     {
-        $hierarchyService = app(TeamHierarchyService::class);
+        $hierarchyService = app(TeamHierarchyInterface::class);
         $teams = collect([$this->team->id]);
 
         if ($this->getRoleHierarchyAccessBelow()) {
@@ -280,9 +277,9 @@ class TeamRole extends Model
         return $teams->unique();
     }
 
-    public function getAllHierarchyTeamsIds($search = '', $limit = null)
+    public function getAllHierarchyTeamsIds($search = '')
     {
-        $hierarchyService = app(TeamHierarchyService::class);
+        $roleProcessor = app(TeamHierarchyRoleProcessor::class);
         $teams = collect([$this->team->id => $this->role]);
 
         if ($search && !str_contains(strtolower($this->team->team_name), strtolower($search))) {
@@ -290,25 +287,19 @@ class TeamRole extends Model
         }
 
         if ($this->getRoleHierarchyAccessBelow()) {
-            $descendantsWithRole = $hierarchyService->getDescendantTeamsWithRole(
+            $descendantsWithRole = $roleProcessor->descendantsWithRole(
                 $this->team->id,
                 $this->role,
                 $search,
-                $limit,
             );
 
             $teams = $teams->union($descendantsWithRole);
         }
 
-        if ($limit && $teams->count() >= $limit) {
-            return $teams;
-        }
-
         if ($this->getRoleHierarchyAccessNeighbors()) {
-            $siblings = $hierarchyService->getSiblingTeamIds($this->team->id, $search, $limit);
-
-            $siblingsWithRole = $siblings->mapWithKeys(fn($id) => [$id => $this->role]);
-            $teams = $teams->union($siblingsWithRole);
+            $teams = $teams->union(
+                $roleProcessor->siblingsWithRole($this->team->id, $this->role, $search)
+            );
         }
 
         return $teams;
@@ -316,25 +307,10 @@ class TeamRole extends Model
 
     public function getAccessibleTeamsOptimized()
     {
-        $cacheKey = "team_role_accessible.{$this->id}";
-
-        return \Cache::rememberWithTags(['permissions-v2'], $cacheKey, 900, function () {
-            $teams = collect([$this->team_id]);
-            $hierarchyService = app(TeamHierarchyService::class);
-
-            // Use batch operations for hierarchy
-            if ($this->getRoleHierarchyAccessBelow()) {
-                $descendants = $hierarchyService->getDescendantTeamIds($this->team_id);
-                $teams = $teams->concat($descendants);
-            }
-
-            if ($this->getRoleHierarchyAccessNeighbors()) {
-                $siblings = $hierarchyService->getSiblingTeamIds($this->team_id);
-                $teams = $teams->concat($siblings);
-            }
-
-            return $teams->unique()->values();
-        });
+        return collect(
+            app(\Kompo\Auth\Teams\Contracts\PermissionResolverInterface::class)
+                ->getTeamRoleAccessibleTeams($this)
+        );
     }
 
     public function hasAccessToTeam($teamId)
@@ -343,7 +319,7 @@ class TeamRole extends Model
             return true;
         }
 
-        $hierarchyService = app(TeamHierarchyService::class);
+        $hierarchyService = app(TeamHierarchyInterface::class);
 
         if ($this->getRoleHierarchyAccessBelow() && $hierarchyService->isDescendant($this->team->id, $teamId)) {
             return true;

@@ -3,6 +3,7 @@
 namespace Kompo\Auth\Models\Teams;
 
 use Kompo\Auth\Models\Teams\TeamRole;
+use Kompo\Auth\Teams\Contracts\TeamRoleAccessResolverInterface;
 
 
 /**
@@ -77,19 +78,11 @@ trait HasTeamNavigation
 
 
     /**
-     * Check if user can access a specific team through any role
-     */
-    public function canAccessTeam($teamId): bool
-    {
-        return $this->hasAccessToTeam($teamId);
-    }
-
-    /**
      * Get available teams for role switching
      */
     public function getAvailableTeamsForSwitching($profile = 1, $search = ''): \Illuminate\Support\Collection
     {
-        return collect($this->getAllTeamIdsWithRolesCached($profile, $search));
+        return collect(app(TeamRoleAccessResolverInterface::class)->teamIdsWithRoles($this, $profile, $search));
     }
 
     /**

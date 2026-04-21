@@ -6,6 +6,7 @@ use Condoedge\Utils\Kompo\Common\Modal;
 use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Rules\MaxTranslatable;
+use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 
 class RoleForm extends Modal
 {
@@ -27,7 +28,8 @@ class RoleForm extends Modal
     public function beforeSave()
     {
         if (!$this->model->id) {
-            $this->model->id = \Str::snake(request('name')) . '-' . \Str::random(3);
+            $enName = request('name')['en'] ?? request('name')['fr'] ?? 'role';
+            $this->model->id = \Str::snake($enName) . '-' . \Str::random(3);
         }
 
         if (request('just_one_per_team')) {
@@ -39,10 +41,7 @@ class RoleForm extends Modal
 
     public function afterSave()
     {
-        \Cache::forget('roles');
-
-        // \Cache::tags(['permissions'])->flush();
-        \Cache::flush();
+        app(PermissionCacheInvalidator::class)->roleChanged($this->model);
     }
 
     public function response()

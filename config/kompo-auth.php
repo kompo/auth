@@ -50,6 +50,12 @@ return [
     // Cache configuration
     'cache' => [
         'ttl' => 900, // 15 minutes
+        'hierarchy_ttl' => 3600,
+        'role_switcher_ttl' => 900,
+        'super_admin_ttl' => 3600,
+        'permission_lookup_ttl' => 60,
+        'permission_definition_ttl' => 3600,
+        'role_list_ttl' => 3600,
         'tags_enabled' => true,
         'warm_critical_users' => true,
         'max_cache_size_mb' => 100,
@@ -60,6 +66,10 @@ return [
         'max_depth' => 10,
         'cache_warming' => true,
         'batch_size' => 50,
+    ],
+
+    'team_role_switcher' => [
+        'committees_enabled' => false,
     ],
 
     'superadmin-emails' => [

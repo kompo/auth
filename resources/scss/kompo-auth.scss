@@ -20,6 +20,22 @@
     width: var(--select-width) !important;
 }
 
+.kompo-team-role-collapsible > .flex.flex-between.cursor-pointer.items-center {
+    justify-content: flex-start !important;
+    gap: 0.25rem;
+}
+
+.kompo-team-role-collapsible > .flex.flex-between.cursor-pointer.items-center > div:first-child {
+    order: 2;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.kompo-team-role-collapsible > .flex.flex-between.cursor-pointer.items-center > div:last-child {
+    order: 1;
+    flex: 0 0 auto;
+}
+
 #roles-header {
     &>.roles-manager-rows>*>* {
         max-width: 100px;

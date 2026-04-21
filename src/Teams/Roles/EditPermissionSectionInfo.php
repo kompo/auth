@@ -3,7 +3,6 @@
 namespace Kompo\Auth\Teams\Roles;
 
 use Condoedge\Utils\Kompo\Common\Modal;
-use Illuminate\Support\Facades\Cache;
 use Kompo\Auth\Models\Teams\PermissionSection;
 
 class EditPermissionSectionInfo extends Modal

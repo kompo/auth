@@ -56,4 +56,9 @@ trait SecurityConfigTrait
 
         return static::$securityConfigCache[$class][$cacheKey];
     }
+
+    public static function clearSecurityConfigCache(): void
+    {
+        static::$securityConfigCache = [];
+    }
 }

@@ -8,7 +8,7 @@ use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Models\Traits\BelongsToManyPivotlessTrait;
-use Kompo\Auth\Teams\PermissionCacheManager;
+use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 use Condoedge\Utils\Models\Traits\MemoizesResults;
 use Kompo\Database\HasTranslations;
 
@@ -43,11 +43,7 @@ class Role extends Model
 
     protected function clearCache()
     {
-        app(PermissionCacheManager::class)->invalidateByChange('role_permissions_changed', [
-            'role_ids' => [$this->id]
-        ]);
-            
-        \Cache::forget('roles');
+        app(PermissionCacheInvalidator::class)->roleChanged($this);
     }
 
     public $incrementing = false;
@@ -110,7 +106,7 @@ class Role extends Model
 
     public function hasPendingActionsToDelete()
     {
-        return $this->teamRoles()->count() > 0;
+        return $this->teamRoles()->exists();
     }
 
     public function pendingActionsToDeleteEls()
@@ -135,6 +131,11 @@ class Role extends Model
     // SCOPES
 
     // ACTIONS
+    public function deletable()
+    {
+        return true; // If authorization required we use internal system
+    }
+
     public function save(array $options = []): void
     {
         if ($this->from_system && !$this->_bypassSecurity) {
@@ -150,14 +151,14 @@ class Role extends Model
             throw new \Exception(__('auth-you-cannot-delete-system-role'));
         }
 
-        if ($this->teamRoles()->count() > 0) {
+        if ($this->teamRoles()->exists()) {
             throw new \Exception(__('auth-you-cannot-delete-role-with-team-roles'));
         }
 
         parent::delete();
     }
 
-    public function createOrUpdatePermission($permissionId, $value)
+    public function createOrUpdatePermission($permissionId, $value, bool $invalidate = true)
     {
         $permission = $this->permissions()->where('permissions.id', $permissionId)->first();
 
@@ -165,6 +166,10 @@ class Role extends Model
             $this->permissions()->attach($permissionId, ['permission_type' => $value, 'added_by' => auth()->id(), 'modified_by' => auth()->id(), 'updated_at' => now(), 'created_at' => now()]);
         } else {
             $this->permissions()->updateExistingPivot($permissionId, ['permission_type' => $value, 'modified_by' => auth()->id(), 'updated_at' => now()]);
+        }
+
+        if ($invalidate) {
+            app(PermissionCacheInvalidator::class)->rolePermissionsChanged([$this->id]);
         }
     }
 

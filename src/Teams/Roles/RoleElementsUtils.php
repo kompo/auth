@@ -2,8 +2,10 @@
 
 namespace Kompo\Auth\Teams\Roles;
 
+use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Models\Teams\Roles\Role;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 
 trait RoleElementsUtils
 {
@@ -27,7 +29,7 @@ trait RoleElementsUtils
                 !$role ? null : _TripleDotsDropdown(
                     _Link('permissions-edit')->class('py-1 px-2')->selfGet('getRoleForm', ['id' => $role?->id])->inModal(),
                     !$role->canSeeDeletedButton() ? null : (
-                        !$role->hasPendingActionsToDelete() ? _Delete($role, 'permissions-delete') : 
+                        !$role->hasPendingActionsToDelete() ? _DeleteLink('permissions-delete')->class('py-1 px-2 text-red-500')->selfPost('deleteRole', ['id' => $role?->id])->refresh() : 
                             _Link('permissions-delete')->class('py-1 px-2 text-red-500')
                                 ->selfPost('getPendingActionsToDeleteRoleModal', ['id' => $role?->id])->inModal()
                     ),
@@ -87,5 +89,17 @@ trait RoleElementsUtils
                     ')
             ))->attr(['data-role-id' => $role->id])
         );
+    }
+
+    public function deleteRole()
+    {
+        $role = RoleModel::findOrFail(request('id'));
+        app(PermissionCacheInvalidator::class)->roleChanged($role);
+        
+        return response()->kompoMulti([
+            response()->closeModal(),
+            response()->kompoRun('() => { window.utils.setLoadingScreen() }'),
+            response()->kompoRedirect(route('roles.manage')),
+        ]);
     }
 }

@@ -3,6 +3,8 @@
 namespace Kompo\Auth\Commands;
 
 use Illuminate\Console\Command;
+use Kompo\Auth\Models\Teams\Roles\Role;
+use Kompo\Auth\Teams\Contracts\PermissionResolverInterface;
 use Kompo\Auth\Teams\PermissionCacheManager;
 
 class OptimizePermissionCacheCommand extends Command
@@ -56,10 +58,25 @@ class OptimizePermissionCacheCommand extends Command
         $progressBar->start();
 
         $warmed = $cacheManager->warmCriticalUserCache();
+        $warmedRoles = $this->warmRolePermissionSets();
 
         $progressBar->finish();
         $this->newLine();
         $this->info("✅ Warmed cache for {$warmed} users");
+        $this->info('Warmed ' . $warmedRoles . ' role permission sets');
+    }
+
+    private function warmRolePermissionSets(): int
+    {
+        $resolver = app(PermissionResolverInterface::class);
+        $warmed = 0;
+
+        Role::all()->each(function ($role) use ($resolver, &$warmed) {
+            $resolver->warmRolePermissions($role);
+            $warmed++;
+        });
+
+        return $warmed;
     }
 
     private function warmSpecificUsers(PermissionCacheManager $cacheManager, array $userIds): void

@@ -3,9 +3,6 @@
 namespace Kompo\Auth\Models\Teams;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Kompo\Auth\Models\Teams\TeamRole;
-use Kompo\Auth\Teams\PermissionCacheManager;
 
 /**
  * HasTeamsTrait

@@ -100,7 +100,7 @@ trait HasTeamPermissions
     public function getTeamsQueryWithPermission(
         string $permissionKey,
         PermissionTypeEnum $type = PermissionTypeEnum::ALL,
-        ?string $teamTableAlias = 'teams'
+        ?string $teamTableAlias = null
     ): \Illuminate\Database\Query\Builder {
         return $this->getPermissionResolver()->getTeamsQueryWithPermissionForUser(
             $this->id,

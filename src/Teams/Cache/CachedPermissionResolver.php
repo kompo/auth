@@ -199,9 +199,18 @@ class CachedPermissionResolver implements PermissionResolverInterface
         int $userId,
         string $permissionKey,
         PermissionTypeEnum $type = PermissionTypeEnum::ALL,
-        ?string $teamTableAlias = 'teams'
+        ?string $teamTableAlias = null
     ): Builder {
         return $this->inner->getTeamsQueryWithPermissionForUser($userId, $permissionKey, $type, $teamTableAlias);
+    }
+
+    public function getUsersQueryWithPermission(
+        string $permissionKey,
+        PermissionTypeEnum $type = PermissionTypeEnum::ALL,
+        $teamIds = null,
+        ?string $usersTableAlias = null
+    ): Builder {
+        return $this->inner->getUsersQueryWithPermission($permissionKey, $type, $teamIds, $usersTableAlias);
     }
 
     public function getPerformanceMetrics(): array

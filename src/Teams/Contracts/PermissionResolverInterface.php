@@ -52,7 +52,14 @@ interface PermissionResolverInterface
         int $userId,
         string $permissionKey,
         PermissionTypeEnum $type = PermissionTypeEnum::ALL,
-        ?string $teamTableAlias = 'teams'
+        ?string $teamTableAlias = null
+    ): Builder;
+
+    public function getUsersQueryWithPermission(
+        string $permissionKey,
+        PermissionTypeEnum $type = PermissionTypeEnum::ALL,
+        $teamIds = null,
+        ?string $usersTableAlias = null
     ): Builder;
 
     public function getPerformanceMetrics(): array;

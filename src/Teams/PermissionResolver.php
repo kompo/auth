@@ -4,6 +4,7 @@ namespace Kompo\Auth\Teams;
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Kompo\Auth\Facades\TeamModel;
 use Kompo\Auth\Facades\UserModel;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\TeamRole;
@@ -521,92 +522,115 @@ class PermissionResolver implements PermissionResolverInterface
         int $userId,
         string $permissionKey,
         PermissionTypeEnum $type = PermissionTypeEnum::ALL,
-        ?string $teamTableAlias = 'teams'
+        ?string $teamTableAlias = null
     ): \Illuminate\Database\Query\Builder {
-        // Base query for teams
-        $query = DB::table($teamTableAlias ?: 'teams')
-            ->select(($teamTableAlias ?: 'teams') . '.id');
+        $teamIds = $this->normalizeIds(
+            $this->publicApi()->getTeamsWithPermissionForUser($userId, $permissionKey, $type)
+        );
 
-        $query->where(function ($q) use ($userId, $permissionKey, $type, $teamTableAlias) {
-            // First, exclude teams where user has explicit DENY for this permission
-            $q->whereNotExists(function ($denyQuery) use ($userId, $permissionKey, $teamTableAlias) {
-                $denyQuery->select(DB::raw(1))
-                    ->from('team_roles as tr_deny')
-                    ->whereColumn('tr_deny.team_id', ($teamTableAlias ?: 'teams') . '.id')
-                    ->where('tr_deny.user_id', $userId)
-                    ->whereNull('tr_deny.terminated_at')
-                    ->whereNull('tr_deny.suspended_at')
-                    ->where(function ($denySubQuery) use ($permissionKey) {
-                        // Check for DENY in role-based permissions
-                        $denySubQuery->whereExists(function ($roleDenyQuery) use ($permissionKey) {
-                            $roleDenyQuery->select(DB::raw(1))
-                                ->from('permission_role as pr_deny')
-                                ->join('permissions as p_deny', 'pr_deny.permission_id', '=', 'p_deny.id')
-                                ->whereColumn('pr_deny.role', 'tr_deny.role')
-                                ->where('p_deny.permission_key', $permissionKey)
-                                ->where('pr_deny.permission_type', PermissionTypeEnum::DENY->value);
-                        })
-                        // Check for DENY in direct team role permissions
-                        ->orWhereExists(function ($directDenyQuery) use ($permissionKey) {
-                            $directDenyQuery->select(DB::raw(1))
-                                ->from('permission_team_role as ptr_deny')
-                                ->join('permissions as p_deny', 'ptr_deny.permission_id', '=', 'p_deny.id')
-                                ->whereColumn('ptr_deny.team_role_id', 'tr_deny.id')
-                                ->where('p_deny.permission_key', $permissionKey)
-                                ->where('ptr_deny.permission_type', PermissionTypeEnum::DENY->value);
-                        });
-                    });
-            });
+        return $this->buildIdQuery(
+            $teamTableAlias ?: $this->resolveModelTable(TeamModel::getClass()),
+            $teamIds
+        );
+    }
 
-            // Then, include teams where user has the required permission
-            $q->where(function ($allowQuery) use ($userId, $permissionKey, $type, $teamTableAlias) {
-                // Query for role-based permissions
-                $allowQuery->whereExists(function ($roleQuery) use ($userId, $permissionKey, $type, $teamTableAlias) {
-                    $roleQuery->select(DB::raw(1))
-                        ->from('team_roles as tr')
-                        ->join('permission_role as pr', 'tr.role', '=', 'pr.role')
-                        ->join('permissions as p', 'pr.permission_id', '=', 'p.id')
-                        ->whereColumn('tr.team_id', ($teamTableAlias ?: 'teams') . '.id')
-                        ->where('tr.user_id', $userId)
-                        ->whereNull('tr.terminated_at')
-                        ->whereNull('tr.suspended_at')
-                        ->where('p.permission_key', $permissionKey)
-                        ->where('pr.permission_type', '!=', PermissionTypeEnum::DENY->value);
+    public function getUsersQueryWithPermission(
+        string $permissionKey,
+        PermissionTypeEnum $type = PermissionTypeEnum::ALL,
+        $teamIds = null,
+        ?string $usersTableAlias = null
+    ): \Illuminate\Database\Query\Builder {
+        $normalizedTeamIds = $teamIds === null ? null : $this->normalizeIds($teamIds);
+        $candidateUserIds = $this->getCandidateUserIdsForPermission($permissionKey, $normalizedTeamIds);
 
-                    // Apply permission type filter
-                    if ($type !== PermissionTypeEnum::ALL) {
-                        $roleQuery->where(function ($typeQuery) use ($type) {
-                            $typeQuery->where('pr.permission_type', $type->value)
-                                ->orWhere('pr.permission_type', PermissionTypeEnum::ALL->value);
-                        });
-                    }
-                });
+        // Slower path for complex permissions - filter candidates in PHP to leverage full permission resolution logic
+        // Including the denying logic. For some cases where permission is expected to return a lot of cases, this is not the best
+        $userIds = collect($candidateUserIds)
+            ->filter(function ($userId) use ($permissionKey, $type, $normalizedTeamIds) {
+                return $this->publicApi()->userHasPermission(
+                    (int) $userId,
+                    $permissionKey,
+                    $type,
+                    $normalizedTeamIds
+                );
+            })
+            ->values()
+            ->all();
 
-                // Query for direct team role permissions
-                $allowQuery->orWhereExists(function ($directQuery) use ($userId, $permissionKey, $type, $teamTableAlias) {
-                    $directQuery->select(DB::raw(1))
-                        ->from('team_roles as tr')
-                        ->join('permission_team_role as ptr', 'tr.id', '=', 'ptr.team_role_id')
-                        ->join('permissions as p', 'ptr.permission_id', '=', 'p.id')
-                        ->whereColumn('tr.team_id', ($teamTableAlias ?: 'teams') . '.id')
-                        ->where('tr.user_id', $userId)
-                        ->whereNull('tr.terminated_at')
-                        ->whereNull('tr.suspended_at')
-                        ->where('p.permission_key', $permissionKey)
-                        ->where('ptr.permission_type', '!=', PermissionTypeEnum::DENY->value);
+        return $this->buildIdQuery(
+            $usersTableAlias ?: $this->resolveModelTable(UserModel::getClass()),
+            $userIds
+        );
+    }
 
-                    // Apply permission type filter
-                    if ($type !== PermissionTypeEnum::ALL) {
-                        $directQuery->where(function ($typeQuery) use ($type) {
-                            $typeQuery->where('ptr.permission_type', $type->value)
-                                ->orWhere('ptr.permission_type', PermissionTypeEnum::ALL->value);
-                        });
-                    }
-                });
+    private function getCandidateUserIdsForPermission(string $permissionKey, ?array $teamIds = null): array
+    {
+        $query = DB::table('team_roles as tr')
+            ->select('tr.user_id')
+            ->distinct()
+            ->whereNull('tr.terminated_at')
+            ->whereNull('tr.suspended_at');
+
+        $query->where(function ($permissionQuery) use ($permissionKey) {
+            $permissionQuery->whereExists(function ($rolePermissionQuery) use ($permissionKey) {
+                $rolePermissionQuery->select(DB::raw(1))
+                    ->from('permission_role as pr')
+                    ->join('permissions as p', 'pr.permission_id', '=', 'p.id')
+                    ->whereColumn('pr.role', 'tr.role')
+                    ->where('p.permission_key', $permissionKey);
+            })->orWhereExists(function ($teamRolePermissionQuery) use ($permissionKey) {
+                $teamRolePermissionQuery->select(DB::raw(1))
+                    ->from('permission_team_role as ptr')
+                    ->join('permissions as p', 'ptr.permission_id', '=', 'p.id')
+                    ->whereColumn('ptr.team_role_id', 'tr.id')
+                    ->where('p.permission_key', $permissionKey);
             });
         });
 
-        return $query;
+        if ($teamIds !== null) {
+            $accessibleTeamIds = $this->normalizeIds(
+                $this->publicApi()->getAccessibleTeamIds(collect($teamIds))
+            );
+
+            if (empty($accessibleTeamIds)) {
+                return [];
+            }
+
+            $query->whereIn('tr.team_id', $accessibleTeamIds);
+        }
+
+        return $this->normalizeIds($query->pluck('tr.user_id')->all());
+    }
+
+    private function buildIdQuery(string $tableAlias, array $ids): \Illuminate\Database\Query\Builder
+    {
+        $query = DB::table($tableAlias)
+            ->select($tableAlias . '.id');
+
+        if (empty($ids)) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn($tableAlias . '.id', $ids);
+    }
+
+    private function normalizeIds($ids): array
+    {
+        if ($ids instanceof Collection) {
+            $ids = $ids->all();
+        }
+
+        return collect(is_iterable($ids) ? $ids : [$ids])
+            ->map(fn($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function resolveModelTable(string $modelClass): string
+    {
+        return (new $modelClass)->getTable();
     }
 
     /**

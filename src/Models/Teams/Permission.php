@@ -81,19 +81,29 @@ class Permission extends Model
     }
 
     /**
-     * !IMPORTANT: We just retrieve direct permissions. we don't use hierarchy or roll down here.
+     * Get users who have this permission, considering role_hierarchy
+     * (DIRECT / BELOW / NEIGHBOURS) and DENY precedence.
+     *
+     * @param iterable|int|null $teamsIds optional team IDs to scope the check;
+     *                                    null = any team the user has access to.
+     * @param PermissionTypeEnum $type required permission level.
+     * @return \Illuminate\Support\Collection user models.
      */
-    public function getUsersWithPermission($teamsIds = null)
-    {
-        $roleIds = $this->roles->pluck('id')->toArray();
+    public function getUsersWithPermission(
+        $teamsIds = null,
+        PermissionTypeEnum $type = PermissionTypeEnum::ALL
+    ): \Illuminate\Support\Collection {
+        $query = app(\Kompo\Auth\Teams\Contracts\PermissionResolverInterface::class)
+            ->getUsersQueryWithPermission(
+                $this->permission_key,
+                $type,
+                $teamsIds,
+                UserModel::getTable()
+            );
 
-        return UserModel::whereHas('teamRoles', function ($q) use ($roleIds, $teamsIds) {
-            $q->whereIn('role', $roleIds);
-            
-            if ($teamsIds) {
-                $q->whereIn('team_id', $teamsIds);
-            }
-        })->get();
+        return UserModel::query()
+            ->whereIn(UserModel::qualifyColumn(UserModel::getKeyName()), $query)
+            ->get();
     }
 
     // SCOPES 

@@ -218,6 +218,73 @@ class PermissionResolverTest extends TestCase
     }
 
     /**
+     * INVARIANT: query-based team lookup respects hierarchy roll-down
+     *
+     * @test
+     */
+    public function test_get_teams_query_with_permission_respects_hierarchy()
+    {
+        // Arrange: Role on parent team should grant descendants too
+        $teams = AuthTestHelpers::createTeamHierarchy(2);
+        $user = UserFactory::new()->create();
+        $role = AuthTestHelpers::createRole('Hierarchy Role', [
+            'TestResource' => PermissionTypeEnum::READ,
+        ]);
+
+        AuthTestHelpers::assignRoleToUser(
+            $user,
+            $role,
+            $teams['root'],
+            RoleHierarchyEnum::DIRECT_AND_BELOW
+        );
+
+        // Act
+        $results = $this->resolver->getTeamsQueryWithPermissionForUser(
+            $user->id,
+            'TestResource',
+            PermissionTypeEnum::READ
+        )->pluck('id');
+
+        // Assert
+        $this->assertTrue($results->contains($teams['root']->id));
+        $this->assertTrue($results->contains($teams['childA']->id));
+        $this->assertTrue($results->contains($teams['childB']->id));
+    }
+
+    /**
+     * INVARIANT: type ALL only matches full permission, not partial grants
+     *
+     * @test
+     */
+    public function test_get_teams_query_with_permission_requires_explicit_all()
+    {
+        // Arrange
+        $user = UserFactory::new()->create();
+        $teamRead = AuthTestHelpers::createTeam(['team_name' => 'Read Team'], $user);
+        $teamAll = AuthTestHelpers::createTeam(['team_name' => 'All Team'], $user);
+        $readRole = AuthTestHelpers::createRole('Read Role', [
+            'TestResource' => PermissionTypeEnum::READ,
+        ]);
+        $allRole = AuthTestHelpers::createRole('All Role', [
+            'TestResource' => PermissionTypeEnum::ALL,
+        ]);
+
+        AuthTestHelpers::assignRoleToUser($user, $readRole, $teamRead);
+        AuthTestHelpers::assignRoleToUser($user, $allRole, $teamAll);
+
+        // Act
+        $results = $this->resolver->getTeamsQueryWithPermissionForUser(
+            $user->id,
+            'TestResource',
+            PermissionTypeEnum::ALL
+        )->pluck('id');
+
+        // Assert
+        $this->assertFalse($results->contains($teamRead->id));
+        $this->assertTrue($results->contains($teamAll->id));
+    }
+
+    /**
      * INVARIANT: Resolver clearUserCache invalidates correctly
      * 
      * @test

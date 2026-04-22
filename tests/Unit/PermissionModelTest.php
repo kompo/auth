@@ -126,12 +126,105 @@ class PermissionModelTest extends TestCase
         $user3 = UserFactory::new()->create();
 
         // Act: Get users with this permission
-        $usersWithPermission = $permission->getUsersWithPermission();
+        $usersWithPermission = $permission->getUsersWithPermission(
+            null,
+            PermissionTypeEnum::READ
+        );
 
         // Assert: Should include user1 and user2, not user3
         $this->assertGreaterThanOrEqual(2, $usersWithPermission->count());
         $this->assertTrue($usersWithPermission->contains('id', $user1->id));
         $this->assertTrue($usersWithPermission->contains('id', $user2->id));
+    }
+
+    /**
+     * INVARIANT: getUsersWithPermission(type=ALL) only returns full access users
+     *
+     * @test
+     */
+    public function test_get_users_with_permission_requires_explicit_all()
+    {
+        // Arrange
+        $permission = AuthTestHelpers::createPermission('StrictSharedPermission');
+
+        $readUser = AuthTestHelpers::createUserWithRole(
+            ['StrictSharedPermission' => PermissionTypeEnum::READ],
+            null,
+            RoleHierarchyEnum::DIRECT
+        )['user'];
+
+        $allUser = AuthTestHelpers::createUserWithRole(
+            ['StrictSharedPermission' => PermissionTypeEnum::ALL],
+            null,
+            RoleHierarchyEnum::DIRECT
+        )['user'];
+
+        // Act
+        $usersWithPermission = $permission->getUsersWithPermission(
+            null,
+            PermissionTypeEnum::ALL
+        );
+
+        // Assert
+        $this->assertFalse($usersWithPermission->contains('id', $readUser->id));
+        $this->assertTrue($usersWithPermission->contains('id', $allUser->id));
+    }
+
+    /**
+     * INVARIANT: getUsersWithPermission() respects hierarchy on scoped teams
+     *
+     * @test
+     */
+    public function test_get_users_with_permission_respects_hierarchy_targets()
+    {
+        // Arrange
+        $permission = AuthTestHelpers::createPermission('HierarchySharedPermission');
+        $teams = AuthTestHelpers::createTeamHierarchy(2);
+
+        $parentUser = UserFactory::new()->create();
+        $parentRole = AuthTestHelpers::createRole('Parent Hierarchy Role', [
+            'HierarchySharedPermission' => PermissionTypeEnum::READ,
+        ]);
+        AuthTestHelpers::assignRoleToUser(
+            $parentUser,
+            $parentRole,
+            $teams['root'],
+            RoleHierarchyEnum::DIRECT_AND_BELOW
+        );
+
+        $childUser = UserFactory::new()->create();
+        $childRole = AuthTestHelpers::createRole('Child Direct Role', [
+            'HierarchySharedPermission' => PermissionTypeEnum::READ,
+        ]);
+        AuthTestHelpers::assignRoleToUser(
+            $childUser,
+            $childRole,
+            $teams['childA'],
+            RoleHierarchyEnum::DIRECT
+        );
+
+        $outsideUser = UserFactory::new()->create();
+        $outsideTeam = AuthTestHelpers::createTeam(['team_name' => 'Outside Team'], $outsideUser);
+        $outsideRole = AuthTestHelpers::createRole('Outside Role', [
+            'HierarchySharedPermission' => PermissionTypeEnum::READ,
+        ]);
+        AuthTestHelpers::assignRoleToUser(
+            $outsideUser,
+            $outsideRole,
+            $outsideTeam,
+            RoleHierarchyEnum::DIRECT
+        );
+
+        // Act
+        $usersWithPermission = $permission->getUsersWithPermission(
+            $teams['childA']->id,
+            PermissionTypeEnum::READ
+        );
+
+        // Assert
+        $this->assertTrue($usersWithPermission->contains('id', $parentUser->id));
+        $this->assertTrue($usersWithPermission->contains('id', $childUser->id));
+        $this->assertFalse($usersWithPermission->contains('id', $outsideUser->id));
     }
 
     /**

@@ -29,18 +29,6 @@ class AssignRoleModal extends Modal
     public function beforeSave()
     {
         $role = RoleModel::findOrFail(request('role'));
-
-        $hierarchies = [RoleHierarchyEnum::DIRECT];
-
-        if (request('roll_to_child') && $role->accept_roll_to_child) {
-            array_push($hierarchies, RoleHierarchyEnum::DIRECT_AND_BELOW);
-        }
-
-        if (request('roll_to_neighbourg') && $role->accept_roll_to_neighbourg) {
-            array_push($hierarchies, RoleHierarchyEnum::DIRECT_AND_NEIGHBOURS);
-        }
-
-        $this->model->role_hierarchy = RoleHierarchyEnum::getFinal($hierarchies);
         $this->model->role = $role->id;
 
         TeamRole::manageTerminateAssignationFromRequest([static::class, 'terminateTeamRole']);
@@ -72,19 +60,8 @@ class AssignRoleModal extends Modal
 
             _Panel()->id('role-warning'),
 
-            // hidden class will be removed by js if the selected role has accept_roll_to_child
-            _Toggle('permissions-roll-down')->name('roll_to_child', false)
-                ->id('permissions-roll-down'),
-
-            // hidden class will be removed by js if the selected role has accept_roll_to_neighbourg
-            _Toggle('permissions-roll-to-neighbour')->name('roll_to_neighbourg', false)
-                ->id('permissions-roll-to-neighbour'),
-
-            // Doing this instead of puttin hidden in the toggle, because they will get reloaded with that class on every change
-            _Hidden()->name('hide', false)->onLoad(fn($e) => $e->run('() => {
-                $("#permissions-roll-down").closest(".vlToggle").addClass("hidden");
-                $("#permissions-roll-to-neighbour").closest(".vlToggle").addClass("hidden");
-            }')),
+            $this->warningCard('permissions-roll-down-warning', 'teams.role-roll-down-warning'),
+            $this->warningCard('permissions-roll-to-neighbour-warning', 'teams.role-roll-to-neighbour-warning'),
 
             _Flex(
                 !$this->model->id ? null : _DeleteButton('permissions-delete-assignation')->outlined()->byKey($this->model)->class('w-full'),
@@ -108,6 +85,15 @@ class AssignRoleModal extends Modal
             ->overModal('select-team');
     }
 
+    protected function warningCard(string $id, string $messageKey)
+    {
+        return _Flex(
+            _Sax('info-circle', 20)->class('text-warning shrink-0 mt-0.5'),
+            _Html($messageKey)->class('text-sm'),
+        )->id($id)
+         ->class('hidden gap-2 items-start p-3 rounded-lg bg-warning bg-opacity-10 border border-warning mb-2');
+    }
+
     public function getSelectRolesByTeam($teamId)
     {
         return _Select('permissions-role')->name('role')->required()
@@ -117,26 +103,21 @@ class AssignRoleModal extends Modal
                     // To manage with js the displaying of the toggles
                     'data-accept-roll-to-child' => $role->accept_roll_to_child,
                     'data-accept-roll-to-neighbourg' => $role->accept_roll_to_neighbourg,
+                    'role-id' => $role->id,
                 ])
             ]))
             ->overModal('select-role')
-            ->onChange(fn($e) => $e->run('() => {
-                const selected = $("#roles-select-panel").find(".vlSelected>div");
+            ->onChange(fn($e) => $e->run('({value, el}) => {
+                const parsedValue = value[0]?.value ?? null;
 
-                const acceptRollToChild = selected?.data("accept-roll-to-child") || false;
-                const acceptRollToNeighbourg = selected?.data("accept-roll-to-neighbourg") || false;
+                if (!parsedValue) return;
 
-                if (acceptRollToChild) {
-                    $("#permissions-roll-down").closest(".vlToggle").removeClass("hidden");
-                } else {
-                    $("#permissions-roll-down").closest(".vlToggle").addClass("hidden");
-                }
+                const selectedOption = document.querySelector(`.vlOption>div[role-id="${parsedValue}"]`);
+                const acceptRollToChild = selectedOption?.getAttribute("data-accept-roll-to-child") == 1;
+                const acceptRollToNeighbourg = selectedOption?.getAttribute("data-accept-roll-to-neighbourg") == 1;
 
-                if (acceptRollToNeighbourg) {
-                    $("#permissions-roll-to-neighbour").closest(".vlToggle").removeClass("hidden");
-                } else {
-                    $("#permissions-roll-to-neighbour").closest(".vlToggle").addClass("hidden");
-                }
+                $("#permissions-roll-down-warning").toggleClass("hidden", !acceptRollToChild);
+                $("#permissions-roll-to-neighbour-warning").toggleClass("hidden", !acceptRollToNeighbourg);
             }') && $e->selfPost('checkIfItHasWarning')->withAllFormValues()->inPanel('role-warning'));
     }
 

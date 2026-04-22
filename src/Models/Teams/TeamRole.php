@@ -25,6 +25,18 @@ class TeamRole extends Model
 
     public static function booted()
     {        
+        static::saving(function ($teamRole) {
+            if ($teamRole->isDirty('role')) {
+                $role = RoleModel::find($teamRole->role);
+
+                if ($role) {
+                    $teamRole->role_hierarchy = static::catchRightHiearchyBasedOnRole($role);
+                } else {
+                    $teamRole->role_hierarchy = RoleHierarchyEnum::DIRECT;
+                }
+            }
+        });
+
         static::saved(function ($teamRole) {
             $teamRole->clearCache();
         });
@@ -311,6 +323,21 @@ class TeamRole extends Model
             app(\Kompo\Auth\Teams\Contracts\PermissionResolverInterface::class)
                 ->getTeamRoleAccessibleTeams($this)
         );
+    }
+
+    public static function catchRightHiearchyBasedOnRole($role)
+    {
+        $hierarchies = [RoleHierarchyEnum::DIRECT];
+
+        if ($role->accept_roll_to_child) {
+            array_push($hierarchies, RoleHierarchyEnum::DIRECT_AND_BELOW);
+        }
+
+        if ($role->accept_roll_to_neighbourg) {
+            array_push($hierarchies, RoleHierarchyEnum::DIRECT_AND_NEIGHBOURS);
+        }
+
+        return RoleHierarchyEnum::getFinal($hierarchies);
     }
 
     public function hasAccessToTeam($teamId)

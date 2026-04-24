@@ -54,7 +54,6 @@ class TeamRoleSwitcherNodeFactory
     {
         return [
             'id' => $ctx->id,
-            'teamId' => $ctx->teamId,
             'parentId' => $ctx->parentId,
             'hasChildren' => $ctx->hasChildren,
             'isCurrent' => $ctx->isCurrent,

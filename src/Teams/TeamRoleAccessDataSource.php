@@ -19,7 +19,14 @@ class TeamRoleAccessDataSource implements TeamRoleAccessDataSourceInterface
         }
 
         return TeamRole::withoutGlobalScope('authUserHasPermissions')
-            ->select(['team_roles.id', 'team_roles.user_id', 'team_roles.team_id', 'team_roles.role', 'team_roles.role_hierarchy'])
+            ->select([
+                'team_roles.id',
+                'team_roles.user_id',
+                'team_roles.team_id',
+                'team_roles.role',
+                'team_roles.role_hierarchy',
+                'team_roles.parent_team_role_id',
+            ])
             ->where('team_roles.user_id', $user->id)
             ->whereHas('team')
             ->whereHas('roleRelation', fn($query) => $query->when(

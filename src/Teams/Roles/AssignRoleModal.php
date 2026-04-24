@@ -6,7 +6,6 @@ use Condoedge\Utils\Facades\UserModel;
 use Condoedge\Utils\Kompo\Common\Modal;
 use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Facades\TeamModel;
-use Kompo\Auth\Models\Teams\RoleHierarchyEnum;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Models\User;
 

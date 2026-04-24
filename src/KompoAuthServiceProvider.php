@@ -25,6 +25,8 @@ use Kompo\Auth\Teams\TeamRoleAccessDataSource;
 use Kompo\Auth\Teams\TeamRoleAccessResolver;
 use Kompo\Auth\Teams\TeamRoleSwitcherNodeFactory;
 use Kompo\Auth\Teams\TeamRoleSwitcherNodeProvider;
+use Kompo\Auth\Teams\TeamRoleSwitcherScopeCodec;
+use Kompo\Auth\Teams\TeamRoleSwitcherScopeResolver;
 use Kompo\Auth\Teams\TeamRoleSwitcherTeamRepository;
 use Kompo\Auth\Http\Middleware\MonitorPermissionPerformance;
 use Kompo\Auth\Models\Plugins\Services\DeleteSecurityService;
@@ -237,6 +239,8 @@ class KompoAuthServiceProvider extends ServiceProvider
             );
         });
         $this->app->singleton(TeamRoleSwitcherTeamRepository::class);
+        $this->app->singleton(TeamRoleSwitcherScopeCodec::class);
+        $this->app->singleton(TeamRoleSwitcherScopeResolver::class);
         $this->app->singleton(TeamRoleSwitcherNodeFactory::class);
         $this->app->singleton(TeamRoleSwitcherNodeProvider::class);
 

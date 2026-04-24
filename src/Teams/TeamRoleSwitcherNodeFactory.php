@@ -13,9 +13,11 @@ class TeamRoleSwitcherNodeFactory
 
     public function __construct(
         private TeamRoleSwitcherTeamRepository $teams,
+        private TeamRoleSwitcherScopeCodec $codec,
     ) {}
 
     public function context(
+        string $scopeKey,
         $team,
         array $access,
         string $mode,
@@ -29,7 +31,7 @@ class TeamRoleSwitcherNodeFactory
         $isSelectable = $this->teams->isSelectableForMode($team, $mode);
 
         return new HierarchyNodeContext(
-            id: $this->nodeId($teamId),
+            id: $this->nodeId($scopeKey, $teamId),
             teamId: $teamId,
             parentId: $team->parent_team_id ? (int) $team->parent_team_id : null,
             teamName: (string) $team->team_name,
@@ -60,9 +62,9 @@ class TeamRoleSwitcherNodeFactory
         ];
     }
 
-    public function nodeId(int $teamId): string
+    public function nodeId(string $scopeKey, int $teamId): string
     {
-        return 'team-' . $teamId;
+        return $this->codec->nodeId($scopeKey, $teamId);
     }
 
     private function composeRender(HierarchyNodeContext $ctx, string $switchUrl)

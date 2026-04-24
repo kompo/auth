@@ -8,6 +8,27 @@ use Kompo\Auth\Facades\TeamModel;
 
 class TeamRoleSwitcherTeamRepository
 {
+    public function childrenForIds(string $mode, ?int $parentId, array $teamIds, int $limit, int $offset): Collection
+    {
+        if (empty($teamIds)) {
+            return collect();
+        }
+
+        return $this->childrenQueryForIds($mode, $parentId, $teamIds)
+            ->skip($offset)
+            ->take($limit)
+            ->get();
+    }
+
+    public function childrenForIdsTotal(string $mode, ?int $parentId, array $teamIds): int
+    {
+        if (empty($teamIds)) {
+            return 0;
+        }
+
+        return $this->childrenQueryForIds($mode, $parentId, $teamIds)->count();
+    }
+
     public function children(string $mode, ?int $parentId, int $limit, int $offset): Collection
     {
         return $this->childrenQuery($mode, $parentId)
@@ -34,6 +55,18 @@ class TeamRoleSwitcherTeamRepository
         $this->applyModeFilter($query, $mode);
 
         return $query->orderBy('teams.team_name')->orderBy('teams.id');
+    }
+
+    public function childrenQueryForIds(string $mode, ?int $parentId, array $teamIds): Builder
+    {
+        $teamIds = collect($teamIds)->map(fn($id) => (int) $id)->filter()->unique()->values()->all();
+        $query = $this->childrenQuery($mode, $parentId);
+
+        if (empty($teamIds)) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn('teams.id', $teamIds);
     }
 
     public function search(string $mode, string $search, int $limit, int $offset = 0): Collection

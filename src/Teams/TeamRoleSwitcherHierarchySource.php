@@ -6,26 +6,27 @@ use Condoedge\Utils\Contracts\LazyHierarchySourceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
-use Kompo\Auth\Teams\Contracts\TeamRoleAccessResolverInterface;
 
 class TeamRoleSwitcherHierarchySource implements LazyHierarchySourceInterface
 {
     private TeamRoleSwitcherNodeProvider $provider;
 
     public function __construct(
-        TeamRoleAccessResolverInterface $access,
+        TeamRoleSwitcherScopeResolver $scopes,
         TeamRoleSwitcherTeamRepository $teams,
         TeamRoleSwitcherNodeFactory $nodes,
         TeamHierarchyInterface $hierarchy,
+        TeamRoleSwitcherScopeCodec $codec,
         protected array $store = [],
     ) {
         $switchUrl = (string) ($store['switchUrl'] ?? route('team-role-switcher.switch'));
 
         $this->provider = new TeamRoleSwitcherNodeProvider(
-            $access,
+            $scopes,
             $teams,
             $nodes,
             $hierarchy,
+            $codec,
             $switchUrl,
         );
     }
@@ -56,7 +57,7 @@ class TeamRoleSwitcherHierarchySource implements LazyHierarchySourceInterface
     public function children(Request $request): array
     {
         $data = $this->validatedListRequest($request, [
-            'parent_id' => ['nullable', 'integer', 'min:1', 'exists:teams,id'],
+            'parent_id' => ['nullable', 'string', 'max:255'],
             'cursor' => ['nullable', 'integer', 'min:0'],
         ]);
 

@@ -22,22 +22,15 @@ class TeamRoleSwitcherScopeResolver
             ->filter(fn($teamRole) => $teamRole->team)
             ->values();
 
-        $originRoles = $activeRoles
-            ->filter(fn($teamRole) => empty($teamRole->parent_team_role_id))
-            ->values();
-
-        if ($originRoles->isEmpty()) {
-            $originRoles = $activeRoles;
-        }
-
-        if ($originRoles->isEmpty()) {
+        if ($activeRoles->isEmpty()) {
             return collect();
         }
 
-        return $originRoles
+        return $activeRoles
             ->groupBy('role')
             ->flatMap(fn(Collection $roleGroup, string $roleId) => $this->scopesForRole($roleId, $roleGroup, $mode))
             ->sortBy(fn(TeamRoleSwitcherScope $scope) => implode(':', [
+                str_pad((string) ($this->teams->teamLevelSortValue($scope->rootTeam) ?? 9999), 4, '0', STR_PAD_LEFT),
                 str_pad((string) $scope->rootDepth, 4, '0', STR_PAD_LEFT),
                 strtolower((string) ($scope->rootTeam->team_name ?? '')),
                 strtolower($scope->roleLabel),
@@ -87,6 +80,17 @@ class TeamRoleSwitcherScopeResolver
 
         $rootDepths = $this->hierarchy->getBatchAncestorTeamIdsByTarget($rootIds->all())
             ->map(fn(Collection $ancestors) => $ancestors->count());
+        $subtreeIndexesByRoot = $this->hierarchy->getBatchDescendantTeamIdsByRoot($rootIds->all())
+            ->mapWithKeys(function (Collection $descendantIds, $rootTeamId) {
+                $subtreeIds = collect([(int) $rootTeamId])
+                    ->concat($descendantIds->map(fn($id) => (int) $id))
+                    ->unique()
+                    ->values();
+
+                return [
+                    (int) $rootTeamId => $subtreeIds->flip()->all(),
+                ];
+            });
 
         return $rootIds->map(function (int $rootTeamId) use (
             $roleId,
@@ -95,6 +99,7 @@ class TeamRoleSwitcherScopeResolver
             $accessibleIds,
             $ancestorsByTarget,
             $rootDepths,
+            $subtreeIndexesByRoot,
         ) {
             $rootTeam = $accessibleTeams->get($rootTeamId);
 
@@ -102,18 +107,28 @@ class TeamRoleSwitcherScopeResolver
                 return null;
             }
 
-            $scopeIndex = [];
+            $subtreeIndex = $subtreeIndexesByRoot->get($rootTeamId, [$rootTeamId => true]);
+            $switchableIndex = [];
 
             foreach ($accessibleIds as $teamId) {
-                if ($teamId === $rootTeamId) {
-                    $scopeIndex[$teamId] = true;
-                    continue;
-                }
-
-                if ($ancestorsByTarget->get($teamId, collect())->contains($rootTeamId)) {
-                    $scopeIndex[$teamId] = true;
+                if (isset($subtreeIndex[$teamId])) {
+                    $switchableIndex[$teamId] = true;
                 }
             }
+
+            $visibleIndex = $switchableIndex;
+
+            foreach (array_keys($switchableIndex) as $teamId) {
+                foreach ($ancestorsByTarget->get($teamId, collect()) as $ancestorId) {
+                    $ancestorId = (int) $ancestorId;
+
+                    if (isset($subtreeIndex[$ancestorId])) {
+                        $visibleIndex[$ancestorId] = true;
+                    }
+                }
+            }
+
+            $visibleIndex[$rootTeamId] = true;
 
             return new TeamRoleSwitcherScope(
                 key: $this->codec->scopeKey($roleId, $rootTeamId),
@@ -121,7 +136,8 @@ class TeamRoleSwitcherScopeResolver
                 roleLabel: $roleLabel,
                 rootTeamId: $rootTeamId,
                 rootTeam: $rootTeam,
-                accessibleTeamIdsIndex: $scopeIndex,
+                visibleTeamIdsIndex: $visibleIndex,
+                switchableTeamIdsIndex: $switchableIndex,
                 rootDepth: (int) ($rootDepths->get($rootTeamId) ?? 0),
             );
         })->filter()->values();

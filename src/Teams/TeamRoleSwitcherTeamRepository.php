@@ -184,6 +184,41 @@ class TeamRoleSwitcherTeamRepository
         return $class === null || $class === '' ? null : (string) $class;
     }
 
+    public function teamLevelSortValue($team): ?int
+    {
+        if (!$this->hasTeamLevelColumn()) {
+            return null;
+        }
+
+        $level = $team->team_level ?? null;
+
+        if (is_int($level)) {
+            return $level;
+        }
+
+        if (is_string($level) && is_numeric($level)) {
+            return (int) $level;
+        }
+
+        if ($level instanceof \BackedEnum) {
+            return is_numeric($level->value) ? (int) $level->value : null;
+        }
+
+        foreach (['sortOrder', 'order', 'level', 'priority'] as $method) {
+            if (!is_object($level) || !method_exists($level, $method)) {
+                continue;
+            }
+
+            $value = $level->{$method}();
+
+            if (is_numeric($value)) {
+                return (int) $value;
+            }
+        }
+
+        return null;
+    }
+
     public function hasCommitteeColumn(): bool
     {
         return hasColumnCached('teams', 'is_committee');

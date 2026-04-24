@@ -31,43 +31,51 @@ class TeamRoleSwitcherNodeProvider
         $lookaheadBudget = max($limit, min(120, $lookaheadBudget ?: self::DEFAULT_LOOKAHEAD_BUDGET));
         $payload = $this->emptyPayload($mode);
         $resolvedScopes = $this->scopes->resolve($user, $profile, $mode);
+        $roleGroups = $this->roleGroups($resolvedScopes);
         $currentTeamRole = function_exists('currentTeamRole') ? currentTeamRole() : null;
 
-        $pageScopes = $resolvedScopes->take($limit)->values();
-        $this->appendRootScopesPage(
+        $pageRoleGroups = $roleGroups->take($limit)->values();
+        $this->appendRootRoleGroupsPage(
             payload: $payload,
-            scopes: $pageScopes,
-            mode: $mode,
+            roleGroups: $pageRoleGroups,
             limit: $limit,
-            total: $resolvedScopes->count(),
+            total: $roleGroups->count(),
             offset: 0,
             append: false,
             currentTeamRole: $currentTeamRole,
         );
 
-        $nodeBudget = max(0, $lookaheadBudget - $pageScopes->count());
-
-        foreach ($pageScopes as $scope) {
-            if ($nodeBudget <= 0) {
-                break;
-            }
-
-            $this->appendScopedLevel(
-                payload: $payload,
-                scope: $scope,
-                mode: $mode,
-                parentTeamId: $scope->rootTeamId,
-                limit: $limit,
-                cursor: null,
-                lookaheadDepth: self::LOOKAHEAD_DEPTH,
-                nodeBudget: $nodeBudget,
-                currentPathIds: $this->currentPathIdsForScope($scope, $currentTeamRole),
-            );
-        }
+        $nodeBudget = max(0, $lookaheadBudget - $pageRoleGroups->count());
 
         $currentScope = $this->currentScope($resolvedScopes, $currentTeamRole);
 
         if ($currentScope) {
+            $currentRoleGroup = $this->findRoleGroup($roleGroups, $currentScope->roleId);
+
+            if ($currentRoleGroup) {
+                $this->appendRoleScopesPage(
+                    payload: $payload,
+                    roleGroup: $currentRoleGroup,
+                    mode: $mode,
+                    limit: $limit,
+                    offset: 0,
+                    append: false,
+                    currentTeamRole: $currentTeamRole,
+                );
+
+                $roleNode = $this->nodes->rolePayload(
+                    $currentRoleGroup['roleId'],
+                    $currentRoleGroup['roleLabel'],
+                    $currentRoleGroup['scopes']->count(),
+                    (string) ($currentTeamRole->role ?? '') === $currentRoleGroup['roleId'],
+                );
+
+                $payload
+                    ->addNode($roleNode)
+                    ->prependChild(self::ROOT_KEY, $roleNode['id'])
+                    ->expand($roleNode['id']);
+            }
+
             $this->appendCurrentScopePath(
                 payload: $payload,
                 scope: $currentScope,
@@ -95,20 +103,67 @@ class TeamRoleSwitcherNodeProvider
         $nodeBudget = max($limit, min(120, $lookaheadBudget ?: self::DEFAULT_LOOKAHEAD_BUDGET));
         $payload = $this->emptyPayload($mode, $parentNodeId === null);
         $resolvedScopes = $this->scopes->resolve($user, $profile, $mode);
+        $roleGroups = $this->roleGroups($resolvedScopes);
         $currentTeamRole = function_exists('currentTeamRole') ? currentTeamRole() : null;
 
         if ($parentNodeId === null) {
             $offset = max(0, (int) ($cursor ?? 0));
-            $pageScopes = $resolvedScopes->slice($offset, $limit)->values();
+            $pageRoleGroups = $roleGroups->slice($offset, $limit)->values();
 
-            $this->appendRootScopesPage(
+            $this->appendRootRoleGroupsPage(
                 payload: $payload,
-                scopes: $pageScopes,
-                mode: $mode,
+                roleGroups: $pageRoleGroups,
                 limit: $limit,
-                total: $resolvedScopes->count(),
+                total: $roleGroups->count(),
                 offset: $offset,
                 append: $offset > 0,
+                currentTeamRole: $currentTeamRole,
+            );
+
+            return $payload->toArray();
+        }
+
+        $parsedRole = $this->codec->parseRoleNodeId($parentNodeId);
+
+        if ($parsedRole) {
+            $roleGroup = $this->findRoleGroup($roleGroups, $parsedRole['roleId']);
+
+            if (!$roleGroup) {
+                return $payload->toArray();
+            }
+
+            $offset = max(0, (int) ($cursor ?? 0));
+
+            $this->appendRoleScopesPage(
+                payload: $payload,
+                roleGroup: $roleGroup,
+                mode: $mode,
+                limit: $limit,
+                offset: $offset,
+                append: $offset > 0,
+                currentTeamRole: $currentTeamRole,
+            );
+
+            return $payload->toArray();
+        }
+
+        if ($parentNodeId !== null && ctype_digit($parentNodeId)) {
+            $legacyParentTeamId = (int) $parentNodeId;
+            $matchingScopes = $this->legacyScopesForParentTeam($resolvedScopes, $legacyParentTeamId, $currentTeamRole);
+
+            if ($matchingScopes->isEmpty()) {
+                return $payload->toArray();
+            }
+
+            $this->appendLegacyScopedLevel(
+                payload: $payload,
+                scopes: $matchingScopes,
+                mode: $mode,
+                parentTeamId: $legacyParentTeamId,
+                limit: $limit,
+                cursor: $cursor,
+                append: (int) ($cursor ?? 0) > 0,
+                rawParentNodeKey: $parentNodeId,
                 currentTeamRole: $currentTeamRole,
             );
 
@@ -231,16 +286,46 @@ class TeamRoleSwitcherNodeProvider
         return $payload->toArray();
     }
 
-    private function appendRootScopesPage(
+    private function appendRootRoleGroupsPage(
         LazyHierarchyPayload $payload,
-        Collection $scopes,
-        string $mode,
+        Collection $roleGroups,
         int $limit,
         int $total,
         int $offset,
         bool $append,
         $currentTeamRole,
     ): void {
+        $nodeIds = [];
+        $currentRoleId = (string) ($currentTeamRole->role ?? '');
+
+        foreach ($roleGroups as $roleGroup) {
+            $node = $this->nodes->rolePayload(
+                $roleGroup['roleId'],
+                $roleGroup['roleLabel'],
+                $roleGroup['scopes']->count(),
+                $currentRoleId === $roleGroup['roleId'],
+            );
+            $payload->addNode($node);
+            $nodeIds[] = $node['id'];
+        }
+
+        $nextCursor = $offset + $roleGroups->count();
+
+        $payload
+            ->setChildren(self::ROOT_KEY, $nodeIds, $append)
+            ->setPaging(self::ROOT_KEY, $nextCursor < $total ? $nextCursor : null, $total, $limit, $append);
+    }
+
+    private function appendRoleScopesPage(
+        LazyHierarchyPayload $payload,
+        array $roleGroup,
+        string $mode,
+        int $limit,
+        int $offset,
+        bool $append,
+        $currentTeamRole,
+    ): void {
+        $scopes = $roleGroup['scopes']->slice($offset, $limit)->values();
         $nodeIds = [];
 
         foreach ($scopes as $scope) {
@@ -257,10 +342,17 @@ class TeamRoleSwitcherNodeProvider
         }
 
         $nextCursor = $offset + $scopes->count();
+        $roleNodeId = $this->codec->roleNodeId($roleGroup['roleId']);
 
         $payload
-            ->setChildren(self::ROOT_KEY, $nodeIds, $append)
-            ->setPaging(self::ROOT_KEY, $nextCursor < $total ? $nextCursor : null, $total, $limit, $append);
+            ->setChildren($roleNodeId, $nodeIds, $append)
+            ->setPaging(
+                $roleNodeId,
+                $nextCursor < $roleGroup['scopes']->count() ? $nextCursor : null,
+                $roleGroup['scopes']->count(),
+                $limit,
+                $append
+            );
     }
 
     private function appendScopedLevel(
@@ -274,6 +366,7 @@ class TeamRoleSwitcherNodeProvider
         int &$nodeBudget,
         array $currentPathIds,
         bool $append = false,
+        ?string $parentNodeKey = null,
     ): void {
         if ($nodeBudget <= 0) {
             return;
@@ -293,10 +386,12 @@ class TeamRoleSwitcherNodeProvider
             $nodeBudget--;
         }
 
+        $parentKey = $parentNodeKey ?: $this->nodes->nodeId($scope->key, $parentTeamId);
+
         $payload
-            ->setChildren($this->nodes->nodeId($scope->key, $parentTeamId), $nodeIds, $append)
+            ->setChildren($parentKey, $nodeIds, $append)
             ->setPaging(
-                $this->nodes->nodeId($scope->key, $parentTeamId),
+                $parentKey,
                 $page['nextCursor'],
                 $page['total'],
                 $limit,
@@ -353,6 +448,76 @@ class TeamRoleSwitcherNodeProvider
         ];
     }
 
+    private function appendLegacyScopedLevel(
+        LazyHierarchyPayload $payload,
+        Collection $scopes,
+        string $mode,
+        int $parentTeamId,
+        int $limit,
+        ?int $cursor,
+        bool $append,
+        string $rawParentNodeKey,
+        $currentTeamRole,
+    ): void {
+        $page = $this->legacyVisibleChildrenPage($scopes, $mode, $parentTeamId, $limit, $cursor, $currentTeamRole);
+        $nodeIds = [];
+
+        foreach ($page['contexts'] as $ctx) {
+            $node = $this->nodes->toPayload($ctx, $this->switchUrl);
+            $payload->addNode($node);
+            $nodeIds[] = $node['id'];
+        }
+
+        $parentKeys = collect([$rawParentNodeKey])
+            ->concat($scopes->map(fn(TeamRoleSwitcherScope $scope) => $this->nodes->nodeId($scope->key, $parentTeamId)))
+            ->unique()
+            ->values()
+            ->all();
+
+        foreach ($parentKeys as $parentKey) {
+            $payload
+                ->setChildren($parentKey, $nodeIds, $append)
+                ->setPaging($parentKey, $page['nextCursor'], $page['total'], $limit, $append);
+        }
+    }
+
+    private function legacyVisibleChildrenPage(
+        Collection $scopes,
+        string $mode,
+        int $parentTeamId,
+        int $limit,
+        ?int $cursor,
+        $currentTeamRole,
+    ): array {
+        $offset = max(0, (int) ($cursor ?? 0));
+        $teamIds = $scopes
+            ->flatMap(fn(TeamRoleSwitcherScope $scope) => $scope->teamIds())
+            ->unique()
+            ->values()
+            ->all();
+
+        $teams = $this->teams->childrenForIds($mode, $parentTeamId, $teamIds, $limit, $offset);
+        $total = $this->teams->childrenForIdsTotal($mode, $parentTeamId, $teamIds);
+        $currentPathIds = $scopes
+            ->flatMap(fn(TeamRoleSwitcherScope $scope) => $this->currentPathIdsForScope($scope, $currentTeamRole))
+            ->unique()
+            ->values()
+            ->all();
+
+        $contexts = $teams
+            ->map(fn($team) => $this->decorateLegacyTeam($scopes, $team, $mode, $currentPathIds, $currentTeamRole))
+            ->filter(fn(HierarchyNodeContext $ctx) => $ctx->isVisible())
+            ->values();
+
+        $nextCursor = $offset + $teams->count();
+
+        return [
+            'contexts' => $contexts,
+            'nextCursor' => $nextCursor < $total ? $nextCursor : null,
+            'total' => $total,
+        ];
+    }
+
     private function appendCurrentScopePath(
         LazyHierarchyPayload $payload,
         TeamRoleSwitcherScope $scope,
@@ -367,6 +532,8 @@ class TeamRoleSwitcherNodeProvider
             return;
         }
 
+        $roleNodeId = $this->codec->roleNodeId($scope->roleId);
+        $payload->expand($roleNodeId);
         $teamsById = $this->teams->findMany($currentPathIds)->keyBy('id');
 
         if ($teamsById->isEmpty()) {
@@ -388,7 +555,7 @@ class TeamRoleSwitcherNodeProvider
             $payload->addNode($node);
 
             $parentNodeKey = $index === 0
-                ? self::ROOT_KEY
+                ? $roleNodeId
                 : $this->nodes->nodeId($scope->key, (int) $currentPathIds[$index - 1]);
 
             $payload->prependChild($parentNodeKey, $node['id']);
@@ -418,24 +585,75 @@ class TeamRoleSwitcherNodeProvider
         $currentTeamRole,
     ): HierarchyNodeContext {
         $teamId = (int) $team->id;
-        $role = [
-            'id' => $scope->roleId,
-            'label' => $scope->roleLabel,
-            'isCurrent' => $currentTeamRole
-                && (int) $currentTeamRole->team_id === $teamId
-                && (string) $currentTeamRole->role === $scope->roleId,
-        ];
+        $roles = [];
+
+        if ($scope->containsSwitchableTeam($teamId)) {
+            $roles[] = [
+                'id' => $scope->roleId,
+                'label' => $scope->roleLabel,
+                'isCurrent' => $currentTeamRole
+                    && (int) $currentTeamRole->team_id === $teamId
+                    && (string) $currentTeamRole->role === $scope->roleId,
+            ];
+        }
 
         return $this->nodes->context(
             scopeKey: $scope->key,
             team: $team,
             access: [
-                'roles' => [$role],
+                'roles' => $roles,
                 'switchRole' => null,
             ],
             mode: $mode,
             currentPathIds: $currentPathIds,
             childrenCount: $this->teams->childrenForIdsTotal($mode, $teamId, $scope->teamIds()),
+            committeeCount: 0,
+            currentTeamRole: $currentTeamRole,
+        );
+    }
+
+    private function decorateLegacyTeam(
+        Collection $scopes,
+        $team,
+        string $mode,
+        array $currentPathIds,
+        $currentTeamRole,
+    ): HierarchyNodeContext {
+        $teamId = (int) $team->id;
+        $matchingScopes = $scopes
+            ->filter(fn(TeamRoleSwitcherScope $scope) => $scope->containsTeam($teamId))
+            ->values();
+        $preferredScope = $this->preferredLegacyScopeForTeam($matchingScopes, $teamId, $currentTeamRole);
+        $roles = $matchingScopes
+            ->filter(fn(TeamRoleSwitcherScope $scope) => $scope->containsSwitchableTeam($teamId))
+            ->mapWithKeys(fn(TeamRoleSwitcherScope $scope) => [
+                $scope->roleId => [
+                    'id' => $scope->roleId,
+                    'label' => $scope->roleLabel,
+                    'isCurrent' => $currentTeamRole
+                        && (int) $currentTeamRole->team_id === $teamId
+                        && (string) $currentTeamRole->role === $scope->roleId,
+                ],
+            ])
+            ->values()
+            ->all();
+        $visibleChildIds = $matchingScopes
+            ->filter(fn(TeamRoleSwitcherScope $scope) => $scope->containsTeam($teamId))
+            ->flatMap(fn(TeamRoleSwitcherScope $scope) => $scope->teamIds())
+            ->unique()
+            ->values()
+            ->all();
+
+        return $this->nodes->context(
+            scopeKey: $preferredScope?->key ?: $this->codec->scopeKey('legacy', $teamId),
+            team: $team,
+            access: [
+                'roles' => $roles,
+                'switchRole' => null,
+            ],
+            mode: $mode,
+            currentPathIds: $currentPathIds,
+            childrenCount: $this->teams->childrenForIdsTotal($mode, $teamId, $visibleChildIds),
             committeeCount: 0,
             currentTeamRole: $currentTeamRole,
         );
@@ -451,7 +669,7 @@ class TeamRoleSwitcherNodeProvider
         $currentRoleId = (string) ($currentTeamRole->role ?? '');
 
         return $scopes->first(function (TeamRoleSwitcherScope $scope) use ($currentTeamId, $currentRoleId) {
-            return $scope->roleId === $currentRoleId && $scope->containsTeam($currentTeamId);
+            return $scope->roleId === $currentRoleId && $scope->containsSwitchableTeam($currentTeamId);
         });
     }
 
@@ -463,7 +681,7 @@ class TeamRoleSwitcherNodeProvider
 
         $currentTeamId = (int) ($currentTeamRole->team_id ?? 0);
 
-        if (!$currentTeamId || !$scope->containsTeam($currentTeamId)) {
+        if (!$currentTeamId || !$scope->containsSwitchableTeam($currentTeamId)) {
             return [];
         }
 
@@ -499,6 +717,120 @@ class TeamRoleSwitcherNodeProvider
         return $mode === TeamAccessHierarchyBuilder::MODE_COMMITTEES
             ? TeamAccessHierarchyBuilder::MODE_COMMITTEES
             : TeamAccessHierarchyBuilder::MODE_TEAMS;
+    }
+
+    private function roleGroups(Collection $scopes): Collection
+    {
+        if ($scopes->isEmpty()) {
+            return collect();
+        }
+
+        return $scopes
+            ->groupBy(fn(TeamRoleSwitcherScope $scope) => $scope->roleId)
+            ->map(function (Collection $roleScopes, string $roleId) {
+                $roleScopes = $roleScopes->values();
+                $firstScope = $roleScopes->first();
+
+                return [
+                    'roleId' => $roleId,
+                    'roleLabel' => $firstScope->roleLabel,
+                    'scopes' => $roleScopes,
+                    'sortKey' => implode(':', [
+                        str_pad((string) ($this->teams->teamLevelSortValue($firstScope->rootTeam) ?? 9999), 4, '0', STR_PAD_LEFT),
+                        str_pad((string) $firstScope->rootDepth, 4, '0', STR_PAD_LEFT),
+                        strtolower((string) $firstScope->roleLabel),
+                        strtolower((string) ($firstScope->rootTeam->team_name ?? '')),
+                    ]),
+                ];
+            })
+            ->sortBy('sortKey')
+            ->values();
+    }
+
+    private function findRoleGroup(Collection $roleGroups, string $roleId): ?array
+    {
+        $roleGroup = $roleGroups->first(fn(array $roleGroup) => $roleGroup['roleId'] === $roleId);
+
+        return is_array($roleGroup) ? $roleGroup : null;
+    }
+
+    private function legacyScopesForParentTeam(
+        Collection $scopes,
+        int $parentTeamId,
+        $currentTeamRole,
+    ): Collection {
+        $matchingScopes = $scopes
+            ->filter(fn(TeamRoleSwitcherScope $scope) => $scope->containsTeam($parentTeamId))
+            ->values();
+
+        if ($matchingScopes->isEmpty()) {
+            return collect();
+        }
+
+        if ($currentTeamRole) {
+            $currentRoleId = (string) ($currentTeamRole->role ?? '');
+            $currentTeamId = (int) ($currentTeamRole->team_id ?? 0);
+
+            $preferredScope = $matchingScopes->first(function (TeamRoleSwitcherScope $scope) use ($currentRoleId, $currentTeamId) {
+                if ($scope->roleId !== $currentRoleId) {
+                    return false;
+                }
+
+                return $currentTeamId
+                    ? $scope->containsSwitchableTeam($currentTeamId) || $scope->containsTeam($currentTeamId)
+                    : true;
+            });
+
+            if ($preferredScope) {
+                return $matchingScopes
+                    ->sortByDesc(fn(TeamRoleSwitcherScope $scope) => $scope->key === $preferredScope->key)
+                    ->values();
+            }
+        }
+
+        return $matchingScopes
+            ->sortBy(fn(TeamRoleSwitcherScope $scope) => implode(':', [
+                str_pad((string) $scope->rootDepth, 4, '0', STR_PAD_LEFT),
+                strtolower($scope->roleLabel),
+                strtolower((string) ($scope->rootTeam->team_name ?? '')),
+            ]))
+            ->values();
+    }
+
+    private function preferredLegacyScopeForTeam(Collection $scopes, int $teamId, $currentTeamRole): ?TeamRoleSwitcherScope
+    {
+        if ($scopes->isEmpty()) {
+            return null;
+        }
+
+        if ($currentTeamRole) {
+            $currentRoleId = (string) ($currentTeamRole->role ?? '');
+            $currentTeamId = (int) ($currentTeamRole->team_id ?? 0);
+
+            $preferred = $scopes->first(function (TeamRoleSwitcherScope $scope) use ($currentRoleId, $currentTeamId, $teamId) {
+                if ($scope->roleId !== $currentRoleId) {
+                    return false;
+                }
+
+                if ($currentTeamId && $currentTeamId !== $teamId) {
+                    return $scope->containsTeam($currentTeamId);
+                }
+
+                return true;
+            });
+
+            if ($preferred) {
+                return $preferred;
+            }
+        }
+
+        return $scopes
+            ->sortBy(fn(TeamRoleSwitcherScope $scope) => implode(':', [
+                str_pad((string) $scope->rootDepth, 4, '0', STR_PAD_LEFT),
+                strtolower($scope->roleLabel),
+                strtolower((string) ($scope->rootTeam->team_name ?? '')),
+            ]))
+            ->first();
     }
 
     private function emptyPayload(string $mode, bool $includeRoot = true): LazyHierarchyPayload

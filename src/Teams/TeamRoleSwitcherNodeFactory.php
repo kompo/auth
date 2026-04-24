@@ -62,6 +62,17 @@ class TeamRoleSwitcherNodeFactory
         ];
     }
 
+    public function rolePayload(string $roleId, string $roleLabel, int $childrenCount, bool $isCurrent = false): array
+    {
+        return [
+            'id' => $this->codec->roleNodeId($roleId),
+            'roleId' => $roleId,
+            'hasChildren' => $childrenCount > 0,
+            'isCurrent' => $isCurrent,
+            'render' => $this->composeRoleRender($roleLabel),
+        ];
+    }
+
     public function nodeId(string $scopeKey, int $teamId): string
     {
         return $this->codec->nodeId($scopeKey, $teamId);
@@ -88,6 +99,16 @@ class TeamRoleSwitcherNodeFactory
             ->style('display: flex; align-items: center; width: 100%; gap: 0.45rem;');
     }
 
+    private function composeRoleRender(string $roleLabel)
+    {
+        return _Flex(
+            _Html(e($roleLabel))
+                ->class('lazy-hierarchy-node__name min-w-max')
+                ->style('flex: 1 1 auto; min-width: max-content; font-size: 0.875rem; font-weight: 700;')
+        )->class('lazy-hierarchy-node__content-row')
+            ->style('display: flex; align-items: center; width: 100%; gap: 0.45rem;');
+    }
+
     private function levelPill(HierarchyNodeContext $ctx)
     {
         if (!$ctx->levelLabel) {
@@ -107,7 +128,7 @@ class TeamRoleSwitcherNodeFactory
             $elements[] = _Flex(
                 $this->roleLink($ctx, $role, $switchUrl),
                 $this->goLink($ctx, $role, $switchUrl),
-            )->style('display: inline-flex; align-items: center; gap: 0.75rem;');
+            )->style('display: inline-flex; align-items: center; gap: 0.75rem; min-width: max-content;');
         }
 
         return $elements;
@@ -121,6 +142,8 @@ class TeamRoleSwitcherNodeFactory
         return _Link($role['label'] ?? '')
             ->plain()
             ->class('text-sm px-2 py-1 bg-level3/35')
+            ->class('min-w-max max-w-none')
+            ->style('min-width: max-content; max-width: none;')
             ->class($class)
             ->post($switchUrl, null, ['team_id' => $ctx->teamId, 'role_id' => $role['id'] ?? null])
             ->run("() => location.reload()");

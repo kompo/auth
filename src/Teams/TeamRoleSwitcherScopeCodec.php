@@ -4,6 +4,7 @@ namespace Kompo\Auth\Teams;
 
 class TeamRoleSwitcherScopeCodec
 {
+    private const ROLE_PREFIX = 'role-';
     private const NODE_PREFIX = 'scope-';
     private const NODE_SEPARATOR = ':team-';
 
@@ -14,19 +15,12 @@ class TeamRoleSwitcherScopeCodec
             'root' => $rootTeamId,
         ]);
 
-        return rtrim(strtr(base64_encode($json), '+/', '-_'), '=');
+        return $this->encodeValue($json);
     }
 
     public function decodeScopeKey(string $scopeKey): ?array
     {
-        $base64 = strtr($scopeKey, '-_', '+/');
-        $padding = strlen($base64) % 4;
-
-        if ($padding > 0) {
-            $base64 .= str_repeat('=', 4 - $padding);
-        }
-
-        $payload = base64_decode($base64, true);
+        $payload = $this->decodeValue($scopeKey);
 
         if (!$payload) {
             return null;
@@ -42,6 +36,30 @@ class TeamRoleSwitcherScopeCodec
             'roleId' => (string) $data['role'],
             'rootTeamId' => (int) $data['root'],
             'scopeKey' => $scopeKey,
+        ];
+    }
+
+    public function roleNodeId(string $roleId): string
+    {
+        return self::ROLE_PREFIX . $this->encodeValue($roleId);
+    }
+
+    public function parseRoleNodeId(?string $nodeId): ?array
+    {
+        if (!$nodeId || !str_starts_with($nodeId, self::ROLE_PREFIX)) {
+            return null;
+        }
+
+        $encodedRoleId = substr($nodeId, strlen(self::ROLE_PREFIX));
+        $roleId = $this->decodeValue($encodedRoleId);
+
+        if ($roleId === null || $roleId === '') {
+            return null;
+        }
+
+        return [
+            'roleId' => $roleId,
+            'nodeId' => $nodeId,
         ];
     }
 
@@ -73,5 +91,24 @@ class TeamRoleSwitcherScopeCodec
             'teamId' => (int) $parts[1],
             'nodeId' => $nodeId,
         ];
+    }
+
+    private function encodeValue(string $value): string
+    {
+        return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+    }
+
+    private function decodeValue(string $encoded): ?string
+    {
+        $base64 = strtr($encoded, '-_', '+/');
+        $padding = strlen($base64) % 4;
+
+        if ($padding > 0) {
+            $base64 .= str_repeat('=', 4 - $padding);
+        }
+
+        $decoded = base64_decode($base64, true);
+
+        return $decoded === false ? null : $decoded;
     }
 }

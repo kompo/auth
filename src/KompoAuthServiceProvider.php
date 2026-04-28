@@ -18,6 +18,7 @@ use Kompo\Auth\Commands\CleanupRedundantHierarchyRoles;
 use Kompo\Auth\Commands\OptimizePermissionCacheCommand;
 use Kompo\Auth\Commands\RematerializeAllPermissions;
 use Kompo\Auth\Commands\WarmTeamHierarchyCache;
+use Kompo\Auth\Commands\EnsureCurrentTeamRoleIsValidCommand;
 use Kompo\Auth\Teams\TeamAccessHierarchyBuilder;
 use Kompo\Auth\Teams\TeamHierarchyService;
 use Kompo\Auth\Teams\TeamHierarchyRoleProcessor;
@@ -549,6 +550,7 @@ class KompoAuthServiceProvider extends ServiceProvider
             OptimizePermissionCacheCommand::class,
             CleanupRedundantHierarchyRoles::class,
             RematerializeAllPermissions::class,
+            EnsureCurrentTeamRoleIsValidCommand::class,
         ];
 
         foreach ($commands as $command) {
@@ -601,19 +603,13 @@ class KompoAuthServiceProvider extends ServiceProvider
                     Log::error('Failed to run team hierarchy cache warming');
                 });
 
-            // Clear old cache statistics and cleanup
-            $schedule->call(function () {
-                try {
-                    app(PermissionCacheManager::class)->clearAllCache();
-
-                    // Clear any orphaned cache keys
-                    if (Cache::supportsTags()) {
-                        Cache::tags(['permissions-v2-temp'])->flush();
-                    }
-                } catch (\Exception $e) {
-                    Log::warning('Cache cleanup failed', ['error' => $e->getMessage()]);
-                }
-            })->daily()->name('permission-cache-cleanup');
+            $schedule->command('auth:ensure-current-team-role-is-valid')
+                ->dailyAt('01:30')
+                ->withoutOverlapping()
+                ->runInBackground()
+                ->onFailure(function () {
+                    Log::error('Failed to run team hierarchy cache warming');
+                });
         });
     }
 

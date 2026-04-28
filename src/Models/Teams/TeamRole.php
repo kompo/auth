@@ -94,6 +94,11 @@ class TeamRole extends Model
             ->orWhereHas('roleRelation', fn($q) => $q->search($search));
     }
 
+    public function scopeWithValidTeamAndRole($query)
+    {
+        $query->has('team')->has('roleRelation');
+    }
+
     /**
      * Get the query for valid permissions for the team role.
      * This includes permissions defined directly on the team role and those inherited from the role relation.
@@ -477,7 +482,7 @@ class TeamRole extends Model
 
     public static function getParentHierarchyRole($teamId, $userId, $role = null)
     {
-        return static::when($role, fn($q) => $q->where('role', $role))->where('user_id', $userId)->get()->first(
+        return static::withValidTeamAndRole()->when($role, fn($q) => $q->where('role', $role))->where('user_id', $userId)->get()->first(
             fn($teamRole) => $teamRole->hasAccessToTeam($teamId)
         );
     }

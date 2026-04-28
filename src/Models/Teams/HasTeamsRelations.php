@@ -77,18 +77,18 @@ trait HasTeamsRelations
     /* CALCULATED FIELDS - Basic getters only */
     public function getRelatedTeamRoles($teamId = null)
     {
-        return $this->teamRoles()->relatedToTeam($teamId)->get();
+        return $this->activeTeamRoles()->relatedToTeam($teamId)->get();
     }
 
     public function getFirstTeamRole($teamId = null)
     {
-        return $this->teamRoles()->relatedToTeam($teamId)->has('team')->has('roleRelation')->first() ?? 
+        return $this->activeTeamRoles()->relatedToTeam($teamId)->first() ?? 
             TeamRole::getParentHierarchyRole($teamId, $this->id)?->createChildForHierarchy($teamId);
     }
 
     public function getLatestTeamRole($teamId = null)
     {
-        return $this->teamRoles()->relatedToTeam($teamId)->latest()->first();        
+        return $this->activeTeamRoles()->relatedToTeam($teamId)->latest()->first();        
     }
 
     public function isOwnTeamRole($teamRole)

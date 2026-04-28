@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace Kompo\Auth\Commands;
 
 use Illuminate\Console\Command;
 use Kompo\Auth\Models\User as ModelsUser;

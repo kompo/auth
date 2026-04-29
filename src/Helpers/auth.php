@@ -178,17 +178,16 @@ if (!function_exists('currentTeamRole') && config('kompo-auth.root-security', tr
 if (!function_exists('currentTeam') && config('kompo-auth.root-security', true)) {
     function currentTeam()
     {
-        if (!auth()->user()) {
-            return null;
-        }
+        $user = auth()->user();
+        if (!$user) return null;
 
         $currentTeam = app(UserContextCache::class)->currentTeam(
             auth()->id(),
             fn() => currentTeamRole()?->team
         );
 
-        if (!$currentTeam) {
-            if (method_exists(auth()->user(), 'resetToValidTeamRole')) auth()->user()->resetToValidTeamRole();
+        if (!$currentTeam && method_exists($user, 'resetToValidTeamRole')) {
+            $user->resetToValidTeamRole();
         }
 
         return $currentTeam;

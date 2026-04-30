@@ -263,10 +263,14 @@ class FieldProtectionService
             return false;
         }
 
-        // Fast bypass check only (flag + user_id match). Does NOT call usersIdsAllowedToManage()
-        // or scopeUserOwnedRecords() which trigger expensive/recursive DB queries on every
-        // attribute access. Full ownership checks run lazily only when strictly needed.
-        if ($this->bypassService->isSecurityBypassRequiredFast($model, $this->teamService)) {
+        // Full bypass check (incl. usersIdsAllowedToManage / scopeUserOwnedRecords), memoized
+        // per instance on ModelSecurityState->bypassed so the slow scope/allowlist queries
+        // run at most once per model instance per request.
+        $state = $model->getSecurityState();
+        if ($state->bypassed === null) {
+            $state->bypassed = $this->bypassService->isSecurityBypassRequired($model, $this->teamService);
+        }
+        if ($state->bypassed) {
             return false;
         }
 

@@ -323,9 +323,16 @@ class FieldProtectionService
     {
         $groups = $this->collectProtectionGroups($model, $permissionKey);
 
+        $state = $model->getSecurityState();
+        if ($state->bypassed === null) {
+            $state->bypassed = $this->bypassService->isSecurityBypassRequired($model, $this->teamService);
+        }
+        if ($state->bypassed) {
+            return;
+        }
+
         foreach ($groups as $group) {
             if (!permissionMustBeAuthorized($group['key'])) continue;
-            if ($this->bypassService->isSecurityBypassRequiredFast($model, $this->teamService)) continue;
             if ($this->hasPermissionForProtectionKey($model, $group['key'])) continue;
 
             if ($group['type'] === 'columns') {

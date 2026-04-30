@@ -81,6 +81,11 @@ class BatchPermissionService
             return $modelsCollection->all();
         }
 
+        // Bulk owner pre-resolution: if the model defines scopeUserOwnedRecords, run it ONCE
+        // for the whole collection and mark matches as bypassed. Avoids per-model
+        // usersIdsAllowedToManage()/scopeUserOwnedRecords() N+1 inside the per-model fast path.
+        $this->bulkResolveOwnedModels($modelsCollection, $firstModel);
+
         // Process each group using the batch team-intersection approach
         foreach ($groups as $group) {
             if (!permissionMustBeAuthorized($group['key'])) continue;
@@ -302,23 +307,70 @@ class BatchPermissionService
 
     /**
      * Check if a model is bypassed using fast O(1) checks only (flag + user_id match).
-     * Writes result to ModelSecurityState for O(1) lookups in getAttribute/interceptRelation.
-     * Does NOT call usersIdsAllowedToManage() or scopeUserOwnedRecords() which cause
-     * N+1 query explosions (10+ queries per model). Those expensive checks run lazily
-     * when individual attributes are accessed.
+     * Caches only TRUE results so lazy paths (FieldProtectionService) can still escalate
+     * to the full check (usersIdsAllowedToManage / scopeUserOwnedRecords) when needed.
+     * Bulk owner resolution happens once per collection in bulkResolveOwnedModels().
      */
     protected function isModelBypassed($model): bool
     {
         $state = $model->getSecurityState();
 
-        if ($state->bypassed !== null) {
-            return $state->bypassed;
+        if ($state->bypassed === true) {
+            return true;
         }
 
         $bypassed = $this->bypassService->isSecurityBypassRequiredFast($model, $this->teamService);
-        $state->bypassed = $bypassed;
+
+        if ($bypassed) {
+            $state->bypassed = true;
+        }
 
         return $bypassed;
+    }
+
+    /**
+     * Run scopeUserOwnedRecords ONCE for the whole collection and mark matches as bypassed.
+     * Replaces N+1 per-model owner queries (1 query for the whole batch instead of N).
+     * Models without scopeUserOwnedRecords fall back to lazy full-check in FieldProtectionService.
+     */
+    protected function bulkResolveOwnedModels($modelsCollection, $firstModel): void
+    {
+        if (!auth()->check()) {
+            return;
+        }
+
+        $modelClass = get_class($firstModel);
+        if (!method_exists($modelClass, 'scopeUserOwnedRecords')) {
+            return;
+        }
+
+        try {
+            SecurityBypassService::enterBypassContext();
+            try {
+                $keyName = $firstModel->getKeyName();
+                $ids = $modelClass::query()->userOwnedRecords()->pluck($keyName)->all();
+            } finally {
+                SecurityBypassService::exitBypassContext();
+            }
+
+            if (empty($ids)) {
+                return;
+            }
+
+            $ownedIds = array_flip($ids);
+
+            foreach ($modelsCollection as $model) {
+                if (isset($ownedIds[$model->getKey()])) {
+                    $model->getSecurityState()->bypassed = true;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Bulk owner resolution failed', [
+                'model_class' => $modelClass,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
 }

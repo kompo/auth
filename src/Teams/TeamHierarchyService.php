@@ -14,6 +14,7 @@ class TeamHierarchyService implements TeamHierarchyInterface
 {
     /**
      * Gets all descendant team IDs using recursive CTE (more efficient)
+     * IT INCLUDES THE INITIAL TEAM ID FOR CONVENIENCE
      */
     public function getDescendantTeamIds(int $teamId, ?string $search = null, ?int $maxDepth = null): Collection
     {

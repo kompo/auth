@@ -25,6 +25,13 @@ class TeamRole extends Model
 
     public static function booted()
     {        
+        //global scope to only get valid team roles. 
+        // Since teamRole it's a functional over visual entity
+        // I prefer to not return suspended or terminated team roles by default, and instead handle it in the places where we need to get all team roles (like in the team role management page).
+        static::addGlobalScope('validTeamRole', function ($builder) {
+            $builder->whereNull('terminated_at')->whereNull('suspended_at');
+        });
+
         static::saving(function ($teamRole) {
             if ($teamRole->isDirty('role')) {
                 $role = RoleModel::find($teamRole->role);
@@ -97,6 +104,11 @@ class TeamRole extends Model
     public function scopeWithValidTeamAndRole($query)
     {
         $query->has('team')->has('roleRelation');
+    }
+
+    public function scopeValid($query)
+    {
+        $query->whereNull('terminated_at')->whereNull('suspended_at');
     }
 
     /**

@@ -232,8 +232,7 @@ trait HasTeamPermissions
         // Pre-load team roles
         TeamRole::with(['team', 'roleRelation', 'permissions'])
             ->whereIn('user_id', $userIds)
-            ->whereNull('terminated_at')
-            ->whereNull('suspended_at')
+            ->valid()
             ->withoutGlobalScope('authUserHasPermissions')
             ->get()
             ->groupBy('user_id');

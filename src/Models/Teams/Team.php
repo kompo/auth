@@ -236,7 +236,9 @@ class Team extends Model
 
     public function scopeActive($query)
     {
-        $query; // This query was removed for performance reasons, just keeping it here for compatibility
+        $query->where(function ($q) {
+            $q->whereNull('inactive_at')->orWhere('inactive_at', '>', now());
+        })->whereNull('deleted_at');
     }
 
     public function scopeValidForTasks($query)

@@ -248,6 +248,8 @@
 	"register.the-terms": "the terms and conditions",
 	"reports-download-file": "Download file",
 	"reports-export-completed": "Export completed",
+	"rules.max-translatable": "The :key may not be greater than :maxLength characters.",
+    "rules.max-translatable-must-be-array-or-string": ":key must be array or string",
 	"tags.manage-tag": "Manage tag",
 	"tags.name": "Name",
 	"tags.save": "Save",

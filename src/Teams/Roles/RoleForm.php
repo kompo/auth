@@ -114,7 +114,7 @@ class RoleForm extends Modal
     public function rules()
     {
         return [
-            'name' => ['required', new MaxTranslatable(100), 'unique:roles,name,' . $this->model->id],
+            'name' => ['required', new MaxTranslatable(250), 'unique:roles,name,' . $this->model->id],
             'description' => ['nullable', new MaxTranslatable(1000)],
             'icon' => 'nullable',
             'profile' => 'required|string|in:' . implode(',', array_keys($this->profileOptions()->all())),

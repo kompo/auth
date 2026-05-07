@@ -149,7 +149,10 @@ class AssignRoleModal extends Modal
 
     public function searchUsers($search)
     {
+        $userCanAddHimself = isImpersonated() || auth()->user()->hasRole('super-admin') || isSuperAdmin();
+
         return User::hasNameLike($search)
+            ->when(!$userCanAddHimself, fn($q) => $q->where('id', '!=', auth()->id()))
             ->select('id', 'name')
             ->take(50)
             ->get()

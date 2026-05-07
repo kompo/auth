@@ -29,32 +29,48 @@ class SecuredModelCollection extends Collection
     protected static $processing = false;
 
     /**
-     * Create a new collection.
+     * Trigger auto-batch loading on this collection.
      *
-     * @param  mixed  $items
-     * @return void
+     * Called explicitly by HasSecurity::newCollection() on the primary collection
+     * produced by an Eloquent query. NOT called from __construct(), so derived
+     * collections produced by Laravel's `new static(...)` in map/filter/groupBy/etc.
+     * do not re-run batch loading on transformed items (Kompo elements, sub-collections,
+     * etc.) — that was the source of the "Auto-batch field protection loading failed"
+     * warnings.
      */
-    public function __construct($items = [])
+    public function autoBatch(): self
     {
-        parent::__construct($items);
-
-        // Auto-batch load permissions if enabled and we have models
-        if (static::$autoBatchEnabled && $this->isNotEmpty()) {
-            $this->autoBatchLoadPermissions();
+        if (!static::$autoBatchEnabled || static::$processing) {
+            return $this;
         }
+
+        if ($this->isEmpty()) {
+            return $this;
+        }
+
+        $first = $this->first();
+
+        // Only batch-load when items are Eloquent models that actually expose the
+        // HasSecurity per-instance state. Filters out:
+        //  - non-Eloquent objects (Kompo Rows / view components)
+        //  - Eloquent models without HasSecurity
+        //  - nested SecuredModelCollection items (groupBy/chunk/split outputs)
+        if (!$first instanceof \Illuminate\Database\Eloquent\Model
+            || !method_exists($first, 'getSecurityState')) {
+            return $this;
+        }
+
+        $this->autoBatchLoadPermissions($first);
+
+        return $this;
     }
 
     /**
-     * Automatically batch load field protection permissions for all models
+     * Automatically batch load field protection permissions for all models.
+     * Caller must ensure the collection is non-empty and items are HasSecurity models.
      */
-    protected function autoBatchLoadPermissions(): void
+    protected function autoBatchLoadPermissions($first): void
     {
-        // Guard: only process collections of Eloquent model instances
-        $first = $this->first();
-        if (!is_object($first)) {
-            return;
-        }
-
         // Set processing flag to prevent infinite loops
         static::$processing = true;
 

@@ -187,7 +187,11 @@ class HasSecurity extends ModelPlugin
             return new \Illuminate\Database\Eloquent\Collection($models);
         }
 
-        return new \Kompo\Auth\Support\SecuredModelCollection($models);
+        // Auto-batch is triggered explicitly here (the primary query path) rather than
+        // in the collection constructor, so derived collections from map/filter/groupBy/etc.
+        // — which Laravel produces via `new static(...)` and may contain non-models —
+        // do not attempt to batch-load field protection.
+        return (new \Kompo\Auth\Support\SecuredModelCollection($models))->autoBatch();
     }
 
     /**

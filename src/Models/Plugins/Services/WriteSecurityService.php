@@ -171,6 +171,17 @@ class WriteSecurityService
      */
     protected function throwWritePermissionException($teamIds = []): void
     {
+        // This is the last fallback so the idea is that never the user reaches this point
+        // since they shouldn't have seen the button for example or the place to execute action
+        // Logging it we can track if there are any edge cases where the permission checks are not working as expected and users are trying to perform unauthorized actions
+        \Log::warning('Write permission denied', [
+            'user_id' => auth()->id(),
+            'permission_key' => $this->permissionKey,
+            'team_ids' => $teamIds,
+            'current_route' => request()->route()->getName(),
+            'debug_backtrace' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10),
+        ]);
+
         throw new PermissionException(
             __('permissions-you-do-not-have-write-permissions'),
             $this->permissionKey,

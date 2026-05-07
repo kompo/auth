@@ -179,7 +179,7 @@ class WriteSecurityService
             'permission_key' => $this->permissionKey,
             'team_ids' => $teamIds,
             'current_route' => request()->route()->getName(),
-            'debug_backtrace' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10),
+            'debug_backtrace' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 30),
         ]);
 
         throw new PermissionException(

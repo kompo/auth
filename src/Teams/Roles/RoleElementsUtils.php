@@ -14,6 +14,11 @@ trait RoleElementsUtils
         return _MultiSelect()->name('roles', false)->placeholder('auth-roles')->options(
             getRoles()->mapWithKeys(fn($r) => [$r->id => _Html($r->name)->attr(['data-role-id' => $r->id, 'data-lowercase-name' => strtolower($r->name)])])->toArray()
         )->default($defaultRolesIds ?? [])
+            // Debounce so rapid multi-select changes merge into a single
+            // getRoleUpdate AJAX. Without this, sequential responses overwrite
+            // each other in #hidden-roles and earlier templates get lost,
+            // leaving spinners stuck "loading forever".
+            ->debounce(350)
             ->onChange(
                 fn($e) => $e->run('precreateRoleVisuals')
                     && $e->selfPost('getRoleUpdate')->inPanel('hidden-roles')->run('injectRoleContent')
@@ -23,19 +28,23 @@ trait RoleElementsUtils
     public function roleHeader($role, $i = 1)
     {
         return _Panel(
-            _FlexCenter(
-                _Text($role?->name ?? '&nbsp;')->maxChars(10)->showMoreText('')->showLessText('')
-                    ->balloon($role?->name),
+            _Flex(
+                _Html($role?->name ?? '&nbsp;')
+                    ->class('flex-1 text-center'),
                 !$role ? null : _TripleDotsDropdown(
                     _Link('permissions-edit')->class('py-1 px-2')->selfGet('getRoleForm', ['id' => $role?->id])->inModal(),
                     !$role->canSeeDeletedButton() ? null : (
-                        !$role->hasPendingActionsToDelete() ? _DeleteLink('permissions-delete')->class('py-1 px-2 text-red-500')->selfPost('deleteRole', ['id' => $role?->id])->refresh() : 
+                        !$role->hasPendingActionsToDelete() ? _DeleteLink('permissions-delete')->class('py-1 px-2 text-red-500')->selfPost('deleteRole', ['id' => $role?->id])->refresh() :
                             _Link('permissions-delete')->class('py-1 px-2 text-red-500')
                                 ->selfPost('getPendingActionsToDeleteRoleModal', ['id' => $role?->id])->inModal()
                     ),
-                )->class('absolute right-1')->checkAuthWrite('Role'),
-            )->class('h-full gap-2 w-full'),
-        )->class('w-full relative bg-white h-full')->when($i == 0, fn($e) => $e->class('border-r border-gray-300'))->id('role-header-' . $role?->id)->attr(['data-role-id' => $role?->id]);
+                )->class('flex-shrink-0')->checkAuthWrite('Role'),
+            )->class('h-full items-center gap-1 px-2 w-full'),
+        )
+        ->class('w-32 flex-shrink-0 relative bg-white h-full overflow-hidden')
+        ->when($i == 0, fn($e) => $e->class('border-r border-gray-300'))
+        ->id('role-header-' . $role?->id)
+        ->attr(['data-role-id' => $role?->id]);
     }
 
     public function getPendingActionsToDeleteRoleModal($roleId)
@@ -71,24 +80,14 @@ trait RoleElementsUtils
                 $this->sectionCheckbox($role, $permissionSection,
                     explode('|', $role->permissionsTypes->where('permission_section_id', $permissionSection->id)->first()?->permission_type ?: '0')
                 ),
-            )->attr(['data-role-id' => $role->id])),
+            )->class('w-32 flex-shrink-0 items-center')->attr(['data-role-id' => $role->id])),
         )
         ->attr(['data-permission-section-id' => $permissionSection->id])
         ->class('bg-level4 roles-manager-rows w-max')
         ->class('button-toggle' . $permissionSection->id)
-        ->class('hover:bg-level4 cursor-pointer')
-        ->selfMethods(['getSectionRows'])
-        ->onClick(fn($e) => $e->run('({ selfGet }) => {
-            const sectionId = ' . $permissionSection->id . ';
-            toggleSubGroup(sectionId, "");
-            const $panel = $("#section-rows-" + sectionId);
-            // Only fetch when actually expanding AND not already loaded.
-            if (!$panel.is(":visible")) return;
-            if ($panel.data("loaded")) return;
-            $panel.data("loaded", true);
-            selfGet("getSectionRows", { section_id: sectionId })
-                .inPanel("section-rows-" + sectionId);
-        }'));
+        ->class('hover:bg-level4 cursor-pointer');
+        // Click handler (slide-toggle + lazy-load) is added by _LazyCollapsible
+        // wrapping this header in RolesAndPermissionMatrix::render().
     }
 
     public function sectionRoleEl($role, $permission, $permissionSectionId, $permissionsIds, $default = null)
@@ -109,7 +108,7 @@ trait RoleElementsUtils
                     fn($e) => $e->selfPost('changeRolePermission', ['role' => $role->id, 'permission' => $permission->id])
                 )
             )
-        )->attr(['data-role-id' => $role->id]);
+        )->class('w-32 flex-shrink-0 items-center')->attr(['data-role-id' => $role->id]);
     }
 
     public function sectionCheckbox($role, $permissionSection, $types = [])

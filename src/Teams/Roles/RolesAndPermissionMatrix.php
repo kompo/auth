@@ -14,7 +14,7 @@ class RolesAndPermissionMatrix extends Query
     public $paginationType = 'Scroll';
     public $perPage = 10000;
 
-    public $class = 'overflow-x-auto max-w-full mini-scroll pt-5';
+    public $class = 'overflow-x-auto max-w-full mini-scroll overflow-y-hidden pt-5';
     public $itemsWrapperClass = 'w-max overflow-y-auto mini-scroll';
     public $itemsWrapperStyle = 'max-height:50vh; min-height:80px;';
     protected $defaultRolesIds;
@@ -26,7 +26,7 @@ class RolesAndPermissionMatrix extends Query
     {
         $this->defaultRolesIds = collect(session()->get('latest-roles') ?: getRolesOrderedByRelevance()->take(static::DEFAULT_ROLES_NUM)->pluck('id'));
 
-        session()->put('latest-roles', $this->defaultRolesIds);
+        session()->put('latest-roles', $this->defaultRolesIds->all());
     }
 
     public function top()
@@ -46,7 +46,7 @@ class RolesAndPermissionMatrix extends Query
                 collect([null])->merge(getRoles()->whereIn('id', $this->defaultRolesIds))->map(function ($role, $i) {
                     return static::roleHeader($role, $i);
                 }),
-            )->class('roles-manager-rows w-max'))->id('roles-header'),
+            )->class('roles-manager-rows w-max bg-white mt-4'))->id('roles-header'),
         );
     }
 
@@ -65,29 +65,20 @@ class RolesAndPermissionMatrix extends Query
 
         $rolesIds = request('roles') ?: $this->defaultRolesIds->all();
 
-        return _Rows(
-            $this->sectionHeader($permissionSection, $rolesIds),
-            // Hidden wrapper containing a skeleton. Slide-toggle target lives
-            // on the WRAPPER (not the panel) so AJAX-driven Vue rerenders of
-            // the inner panel don't reset jQuery's inline display. _Div (block)
-            // animates cleanly, unlike _Rows (flex). Tailwind's `hidden` class
-            // gives the initial display:none; jQuery slideToggle takes over
-            // from the first click onward via inline style.
-            _Div(
-                _Panel($this->rowsSkeleton())
-                    ->id('section-rows-' . $permissionSection->id),
-            )
-            ->class('subgroup-block' . $permissionSection->id)
-            ->class('hidden'),
-        );
-    }
+        // Capture only the section id; the body closure reads CURRENT roles
+        // at execute time (when user expands the section), not the matrix-
+        // render-time snapshot. Otherwise removed roles linger as phantom
+        // columns the next time a collapsed section is expanded.
+        $sectionId = $permissionSection->id;
 
-    protected function rowsSkeleton()
-    {
-        return _Rows(
-            ...collect(range(1, 4))->map(fn() =>
-                _Rows()->class('h-8 bg-gray-200 rounded my-1 animate-pulse')
-            ),
-        )->class('p-2 opacity-60');
+        return _LazyCollapsible(
+            $this->sectionHeader($permissionSection, $rolesIds),
+            fn() => new PermissionSectionRolesTable([
+                'permission_section_id' => $sectionId,
+                'roles_ids' => implode(',', collect(request('roles') ?: session('latest-roles') ?: [])->all()),
+            ]),
+            'rows',
+            'subgroup-toggle' . $permissionSection->id,
+        );
     }
 }

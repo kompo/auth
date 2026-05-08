@@ -80,23 +80,6 @@ trait RoleRequestsUtils
         ]);
     }
 
-    /**
-     * Lazy-load a single section's permission rows. Called by the section
-     * header's onClick (selfGet) when the user expands the section.
-     */
-    public function getSectionRows()
-    {
-        $sectionId = request('section_id');
-        abort_unless($sectionId, 400);
-
-        $rolesIds = request('roles') ?: ($this->defaultRolesIds?->all() ?? []);
-        $rolesIdsStr = is_array($rolesIds) ? implode(',', $rolesIds) : $rolesIds;
-
-        return new PermissionSectionRolesTable([
-            'permission_section_id' => $sectionId,
-            'roles_ids' => $rolesIdsStr,
-        ]);
-    }
 
     public function getRoleUpdate()
     {

@@ -85,20 +85,35 @@ function getSelectedRoles()
 
 function getHeaderTemplate(roleId, roleName)
 {
-    return $("<div>").attr("data-role-id", roleId).html(`$spinnerHtml`).addClass("bg-white")
+    return $("<div>").attr("data-role-id", roleId).html(`$spinnerHtml`)
+        .addClass("bg-white w-32 flex-shrink-0 flex items-center justify-center h-full")
         .attr("data-void", "true").attr("data-role-name", roleName);
 }
 
 function getContentTemplate(roleId)
 {
-    return $("<div>").attr("data-role-id", roleId).html(`
-        <div class="checkbox-island"></div>
-    `).attr("data-void", "true");
+    return $("<div>").attr("data-role-id", roleId)
+        .addClass("w-32 flex-shrink-0 flex items-center justify-center")
+        .html(`<div class="checkbox-island"></div>`)
+        .attr("data-void", "true");
+}
+
+// LazyCollapsible caches its body content via data('loaded') on the wrapper
+// — first expand fetches; subsequent toggles slide the cached content. After
+// a role add/remove, that cached body is stale (missing/phantom columns). On
+// each role change we clear the loaded flag so the next expand re-fetches
+// with the current role set. Currently-visible sections are kept up to date
+// by precreate + inject for adds and by the hide/show pass for removes.
+function invalidateRoleSectionLazies() {
+    $("#roles-manager-matrix [class*='lazy-collapsible-']").each((_, e) => {
+        $(e).data('loaded', false);
+    });
 }
 
 function precreateRoleVisuals() {
     const seq = ++_roleUpdateSeq;
     const roles = getSelectedRoles();
+    invalidateRoleSectionLazies();
 
     // Injecting template divs for selected roles
     roles.forEach(({roleId, roleName}) => {
@@ -131,6 +146,21 @@ function precreateRoleVisuals() {
     return seq;
 }
 
+// After a role is updated (existing role, name change), the matrix's column
+// header for that role still shows the old name. RoleWrap renders a fresh
+// template under #hidden-roles for the saved role; if a column with that
+// role's id already exists in the matrix, replace it with the template.
+// Updates are handled here; creates fall through to precreate+inject.
+function updateExistingRoleHeaders() {
+    $('#hidden-roles [data-role-header-example]').each((i, tpl) => {
+        const roleId = $(tpl).attr('data-role-header-example');
+        const $existing = $('#role-header-' + roleId);
+        if ($existing.length) {
+            $existing.replaceWith(tpl);
+        }
+    });
+}
+
 function injectRoleContent() {
     const seq = _roleUpdateSeq; // capture current
     const startedAt = Date.now();
@@ -151,6 +181,12 @@ function injectRoleContent() {
             }
             return setTimeout(tryInject, POLL_MS);
         }
+
+        // UPDATES first: if a role's column already exists (post-edit case),
+        // replace it with the fresh template (carries the new name). Templates
+        // for newly-created roles have no existing column → fall through to
+        // the placeholder-injection logic below.
+        updateExistingRoleHeaders();
 
         // Inject role headers
         $('#roles-header').find('div[data-void]').each((i, e) => {

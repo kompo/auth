@@ -61,7 +61,7 @@ class PermissionSectionRolesTable extends Query
         // RolesAndPermissionMatrix::render($section); this inner items wrapper
         // must NOT also carry .subgroup-block<id> or jQuery's slideToggle
         // would run on both elements and the animation goes inconsistent.
-        $this->itemsWrapperClass = 'PermissionSectionRoleWrapper mini-scroll';
+        $this->itemsWrapperClass = 'PermissionSectionRoleWrapper mini-scroll py-[0.2rem]';
     }
 
     // Section header lives on the matrix (RolesAndPermissionMatrix::sectionHeader)

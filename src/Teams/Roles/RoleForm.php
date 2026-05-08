@@ -47,7 +47,21 @@ class RoleForm extends Modal
     public function response()
     {
         $latestRoles = collect(session()->get('latest-roles') ?: []);
-        request()->merge(['roles' => $latestRoles->push($this->model->id)->unique()->all()]);
+
+        // Ensure saved role is in the selection.
+        $allRoles = $latestRoles->push($this->model->id)->unique()->values()->all();
+        request()->merge(['roles' => $allRoles]);
+
+        // Force the saved role into the diff so RoleWrap renders its templates
+        // (header, section aggregates, cells) for BOTH create and update.
+        // Without this, updates produce an empty diff and the matrix's column
+        // header keeps the old name. JS handlers then route appropriately:
+        //   - update → updateExistingRoleHeaders replaces the column header.
+        //   - create → precreateRoleVisuals + injectRoleContent fill placeholders.
+        session()->put(
+            'latest-roles',
+            $latestRoles->reject(fn($id) => $id === $this->model->id)->values()->all()
+        );
 
         return $this->getRoleUpdate();
     }
@@ -76,15 +90,20 @@ class RoleForm extends Modal
 
             _Flex(
                 $this->model->id ? _DeleteButton('permissions-delete')->outlined()->byKey($this->model)->class('w-full') : null,
-                _SubmitButton('permissions-save')->class('w-full')->onSuccess(
-                    fn($e) => $e->inPanel('hidden-roles')->closeModal()
+                _SubmitButton('permissions-save')->class('w-full')
+                    // 1) Submit response (RoleWrap templates) lands in #hidden-roles, modal closes.
+                    ->onSuccess(fn($e) => $e->inPanel('hidden-roles')->closeModal())
+                    // 2) Refresh the multiselect; ONLY when its tags reflect the new role
+                    //    do we run precreate + inject, otherwise precreate reads stale tags
+                    //    and never adds a column placeholder for the new role.
+                    ->onSuccess(fn($e) => $e
+                        ->selfGet('roleMultiSelect')
+                        ->inPanel('multi-select-roles')
                         ->run('() => {
-                            setTimeout(() => {
-                                precreateRoleVisuals(); 
-                                injectRoleContent();
-                            }, 500);
+                            precreateRoleVisuals();   // add placeholders for new roles
+                            injectRoleContent();      // updates existing headers + fills placeholders (polled, waits for templates)
                         }')
-                )->onSuccess(fn($e) => $e->selfGet('roleMultiSelect')->inPanel('multi-select-roles')),
+                    ),
             )->class('gap-4')
 
             // _Input('Role Permissions')->name('role_permissions')->required(),

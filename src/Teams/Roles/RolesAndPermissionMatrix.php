@@ -63,9 +63,31 @@ class RolesAndPermissionMatrix extends Query
             return null;
         }
 
-        return new PermissionSectionRolesTable([
-            'permission_section_id' => $permissionSection->id,
-            'roles_ids' => request('roles') ? implode(',', request('roles')) : $this->defaultRolesIds->implode(',')
-        ]);
+        $rolesIds = request('roles') ?: $this->defaultRolesIds->all();
+
+        return _Rows(
+            $this->sectionHeader($permissionSection, $rolesIds),
+            // Hidden wrapper containing a skeleton. Slide-toggle target lives
+            // on the WRAPPER (not the panel) so AJAX-driven Vue rerenders of
+            // the inner panel don't reset jQuery's inline display. _Div (block)
+            // animates cleanly, unlike _Rows (flex). Tailwind's `hidden` class
+            // gives the initial display:none; jQuery slideToggle takes over
+            // from the first click onward via inline style.
+            _Div(
+                _Panel($this->rowsSkeleton())
+                    ->id('section-rows-' . $permissionSection->id),
+            )
+            ->class('subgroup-block' . $permissionSection->id)
+            ->class('hidden'),
+        );
+    }
+
+    protected function rowsSkeleton()
+    {
+        return _Rows(
+            ...collect(range(1, 4))->map(fn() =>
+                _Rows()->class('h-8 bg-gray-200 rounded my-1 animate-pulse')
+            ),
+        )->class('p-2 opacity-60');
     }
 }

@@ -1,3 +1,7 @@
+// Sequence guard for role-multiselect changes. Each call to precreateRoleVisuals
+// bumps the seq; injectRoleContent aborts if its captured seq is no longer current.
+let _roleUpdateSeq = 0;
+
 function changeLinkGroupColor(optionClass)
 {
     let current = $("." + optionClass + ".perm-selected").eq(0)
@@ -93,6 +97,7 @@ function getContentTemplate(roleId)
 }
 
 function precreateRoleVisuals() {
+    const seq = ++_roleUpdateSeq;
     const roles = getSelectedRoles();
 
     // Injecting template divs for selected roles
@@ -122,47 +127,58 @@ function precreateRoleVisuals() {
             $(e).hide();
         }
     });
+
+    return seq;
 }
 
 function injectRoleContent() {
-    setTimeout(() => {
+    const seq = _roleUpdateSeq; // capture current
+    const startedAt = Date.now();
+    const MAX_WAIT_MS = 5000;
+    const POLL_MS = 50;
+
+    function tryInject() {
+        // Aborted by a later change?
+        if (seq !== _roleUpdateSeq) return;
+
+        // Have the templates been mounted yet?
+        const ready = $('#hidden-roles [data-role-header-example], #hidden-roles [data-role-template], #hidden-roles [data-permission-section-template]').length > 0;
+
+        if (!ready) {
+            if (Date.now() - startedAt > MAX_WAIT_MS) {
+                console.warn('injectRoleContent: templates never appeared in #hidden-roles within ' + MAX_WAIT_MS + 'ms');
+                return;
+            }
+            return setTimeout(tryInject, POLL_MS);
+        }
+
         // Inject role headers
-        $("#roles-header").find("div[data-void]").each((i, e) => {
-            const roleId = $(e).attr("data-role-id");
-            const roleName = $(e).attr("data-role-name");
-
-            if(!roleId) {
-                return;
-            }
-
-            $(e).text(roleName);
-            $(e).removeAttr("data-void");
-
-            e.parentNode.replaceChild(
-                $("div[data-role-header-example=\"" + roleId + "\"]").get(0), e
-            );
+        $('#roles-header').find('div[data-void]').each((i, e) => {
+            const roleId = $(e).attr('data-role-id');
+            const roleName = $(e).attr('data-role-name');
+            if (!roleId) return;
+            $(e).text(roleName).removeAttr('data-void');
+            const replacement = $('div[data-role-header-example="' + roleId + '"]').get(0);
+            if (replacement) e.parentNode.replaceChild(replacement, e);
         });
 
-        // Inject role content
-        $("#roles-manager-matrix .roles-manager-rows div[data-void=\"true\"]").each((i, e) => {
-            const permissionId = $(e).parent().data("permission-id");
-            const roleId = $(e).data("role-id");
-            const permissionSectionId = $(e).parent().data("permission-section-id");
+        // Inject role content cells
+        $('#roles-manager-matrix .roles-manager-rows div[data-void="true"]').each((i, e) => {
+            const permissionId = $(e).parent().data('permission-id');
+            const roleId = $(e).data('role-id');
+            const permissionSectionId = $(e).parent().data('permission-section-id');
+            if (!roleId || (!permissionId && !permissionSectionId)) return;
 
-            const visual = e;
-            if(!roleId || (!permissionId && !permissionSectionId)) {
-                return;
-            }
-
-            $("div[data-role-template=\"" + roleId + "-" + permissionId + "\"]").each((i, e) => {
-                visual.parentNode.replaceChild(e, visual);
+            $('div[data-role-template="' + roleId + '-' + permissionId + '"]').each((i, t) => {
+                e.parentNode.replaceChild(t, e);
             });
-
-            $("div[data-permission-section-template=\"" + roleId + "-" + permissionSectionId + "\"]").each((i, e) => {
-                visual.parentNode.replaceChild(e, visual);
+            $('div[data-permission-section-template="' + roleId + '-' + permissionSectionId + '"]').each((i, t) => {
+                e.parentNode.replaceChild(t, e);
             });
         });
-    }, 1000);
+    }
+
+    tryInject();
 }
 
 function searchLoadingOn(id) {
@@ -185,7 +201,7 @@ function setApplyingChangesAlert()
             .attr("id", "applying-changes-alert")
             .addClass("fixed z-50 bottom-8 right-8")
             .html(`
-                <div class="vlAlert h-min !border-positive !text-positive bg-positive-200 flex gap-6" role="alert">
+                <div class="vlAlert vlAlertSuccess h-min !border-positive !text-positive bg-positive-200 flex gap-6" role="alert">
                     <div class="vlAlert__content">
                         <div v-html="message" class="vlAlert__message">Applying changes...</div>
                     </div>

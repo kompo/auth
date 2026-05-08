@@ -43,10 +43,56 @@ trait RoleElementsUtils
         return new PendingActionsToDeleteRoleModal($roleId);
     }
 
+    /**
+     * The collapsible section header — section name + edit pencil + per-role
+     * aggregate widget. Lives on its own (outside PermissionSectionRolesTable)
+     * so the permission rows can be lazy-loaded below it.
+     *
+     * Clicking the header: toggles the rows panel below + fetches the rows
+     * via selfGet on first expand (subsequent toggles just slide-toggle the
+     * cached DOM via toggleSubGroup; idempotent re-fetch on re-expand is
+     * cheap and keeps state fresh).
+     */
+    public function sectionHeader($permissionSection, $rolesIds)
+    {
+        $roles = getRoles()->whereIn('id', $rolesIds)->values();
+        $roles->each(fn($role) => $role->setRelation('permissionsTypes',
+            $role->memoize('permissionsTypes', fn() => $role->permissionsTypes()->get())
+        ));
+
+        return _Flex(
+            _FlexCenter(
+                _Html()->icon('icon-up')->id('subgroup-toggle' . $permissionSection->id),
+                _Html($permissionSection->name)->class('text-gray-600'),
+                !isAppSuperAdmin() ? null : _Link()->icon('pencil')->class('right-2 top-2 absolute')
+                    ->selfGet('getEditSectionInfoForm', ['section_id' => $permissionSection->id])->inModal(),
+            )->class('gap-1 bg-level4 border-r border-level1/30 relative'),
+            ...$roles->map(fn($role) => _Rows(
+                $this->sectionCheckbox($role, $permissionSection,
+                    explode('|', $role->permissionsTypes->where('permission_section_id', $permissionSection->id)->first()?->permission_type ?: '0')
+                ),
+            )->attr(['data-role-id' => $role->id])),
+        )
+        ->attr(['data-permission-section-id' => $permissionSection->id])
+        ->class('bg-level4 roles-manager-rows w-max')
+        ->class('button-toggle' . $permissionSection->id)
+        ->class('hover:bg-level4 cursor-pointer')
+        ->selfMethods(['getSectionRows'])
+        ->onClick(fn($e) => $e->run('({ selfGet }) => {
+            const sectionId = ' . $permissionSection->id . ';
+            toggleSubGroup(sectionId, "");
+            const $panel = $("#section-rows-" + sectionId);
+            // Only fetch when actually expanding AND not already loaded.
+            if (!$panel.is(":visible")) return;
+            if ($panel.data("loaded")) return;
+            $panel.data("loaded", true);
+            selfGet("getSectionRows", { section_id: sectionId })
+                .inPanel("section-rows-" + sectionId);
+        }'));
+    }
+
     public function sectionRoleEl($role, $permission, $permissionSectionId, $permissionsIds, $default = null)
     {
-        $checkboxName = 'permissionSection' . $role->id . '-' . $permissionSectionId;
-
         $userHasWritePermission = auth()->user()->hasPermission('Role', PermissionTypeEnum::WRITE);
 
         return _Rows(_CheckboxMultipleStates(
@@ -56,14 +102,14 @@ trait RoleElementsUtils
             $default ?? $role->getPermissionTypeByPermissionId($permission->id),
             $userHasWritePermission
         )->class('!mb-0')
+            ->group($role->id . '-' . $permissionSectionId)
+            ->permissionId($permission->id)
             ->when($userHasWritePermission,
                 fn($el) => $el->onChange(
-                    fn($e) => $e
-                        ->selfPost('changeRolePermission', ['role' => $role->id, 'permission' => $permission->id]) &&
-                        $e->run('() => {checkMultipleLinkGroupColor("' . $checkboxName . '", "' . $role->id . '", "' . collect($permissionsIds)->implode(',') . '")}')
+                    fn($e) => $e->selfPost('changeRolePermission', ['role' => $role->id, 'permission' => $permission->id])
                 )
-            )->attr(['data-role-id' => $role->id])
-        );
+            )
+        )->attr(['data-role-id' => $role->id]);
     }
 
     public function sectionCheckbox($role, $permissionSection, $types = [])
@@ -79,16 +125,18 @@ trait RoleElementsUtils
             count($types) ? $types : $permissionSection->allPermissionsTypes($role)->toArray(),
             $userHasWritePermission
         )->class('!mb-0')
+        ->group($role->id . '-' . $permissionSection->id)
         ->when($userHasWritePermission,
             fn($el) => $el->onChange(
                 fn($e) => $e
-                    ->selfPost('changeRolePermissionSection', ['role' => $role->id, 'permissionSection' => $permissionSection->id, 'permission_name' => request('permission_name')])->run('reduceApplyingChangesAlert') &&
-                    $e->run('() => {
-                        setApplyingChangesAlert(); 
-                        changeMultipleLinkGroupColor("' . $checkboxName . '", "' . $role->id . '", "' . $permissionSection->getPermissions()->pluck('id')->implode(',') . '")}
-                    ')
-            ))->attr(['data-role-id' => $role->id])
-        );
+                    ->selfPost('changeRolePermissionSection', [
+                        'role' => $role->id,
+                        'permissionSection' => $permissionSection->id,
+                        'permission_name' => request('permission_name'),
+                    ])->run('reduceApplyingChangesAlert')
+                    && $e->run('() => { setApplyingChangesAlert(); }')
+            ))
+        )->attr(['data-role-id' => $role->id]);
     }
 
     public function deleteRole()

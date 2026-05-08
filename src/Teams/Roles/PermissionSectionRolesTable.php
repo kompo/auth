@@ -49,37 +49,26 @@ class PermissionSectionRolesTable extends Query
                 ->map(fn($items) => $items->pluck('permission_type', 'role'))
         );
 
-        $this->onLoad(fn($e) => $e->run('() => { 
-            $(".PermissionSectionRoleWrapper").css("display", "none");
-        }'));
-
+        // Sections start "collapsed" because the rows panel is empty until
+        // the user expands (sectionHeader's onClick fetches via getSectionRows).
+        // Once loaded, toggleSubGroup slide-toggles the items wrapper directly.
         $this->id = 'permission-section-roles-table' . $this->permissionSectionId;
     }
 
     public function createdDisplay()
     {
-        $this->itemsWrapperClass = 'PermissionSectionRoleWrapper mini-scroll subgroup-block'.$this->permissionSectionId;
-
-        // $this->itemsWrapperStyle = 'max-height:50vh;';
+        // The slide-toggle target is the OUTER wrapper in
+        // RolesAndPermissionMatrix::render($section); this inner items wrapper
+        // must NOT also carry .subgroup-block<id> or jQuery's slideToggle
+        // would run on both elements and the animation goes inconsistent.
+        $this->itemsWrapperClass = 'PermissionSectionRoleWrapper mini-scroll';
     }
 
+    // Section header lives on the matrix (RolesAndPermissionMatrix::sectionHeader)
+    // so it stays visible while the permission rows can lazy-load below it.
     public function top()
     {
-        return _Flex(
-            _FlexCenter(
-                _Html()->icon('icon-up')->id('subgroup-toggle'.$this->permissionSectionId),
-                _Html($this->permissionSection?->name)->class('text-gray-600'),
-                !isAppSuperAdmin() ? null : _Link()->icon('pencil')->class('right-2 top-2 absolute')->selfGet('getEditSectionInfoForm')->inModal(),
-            )->class('gap-1 bg-level4 border-r border-level1/30 relative'),
-            ...$this->roles->map(function ($role) {
-                return _Rows(
-                    $this->sectionCheckbox($role, $this->permissionSection,
-                        explode('|', $role->permissionsTypes->where('permission_section_id', $this->permissionSection->id)->first()?->permission_type ?: '0')
-                    ),
-                )->attr(['data-role-id' => $role->id]);
-            }),
-        )->attr(['data-permission-section-id' => $this->permissionSectionId])->class('bg-level4 roles-manager-rows w-max')->class('button-toggle' . $this->permissionSectionId)
-            ->run('() => { toggleSubGroup('.$this->permissionSectionId.', "") }')->class('hover:bg-level4 cursor-pointer');
+        return null;
     }
 
     public function query()
@@ -104,13 +93,6 @@ class PermissionSectionRolesTable extends Query
     public function getEditPermissionInfoForm($permissionId)
     {
         return new EditPermissionInfo($permissionId, [
-            'refresh_id' => $this->id,
-        ]);
-    }
-
-    public function getEditSectionInfoForm()
-    {
-        return new EditPermissionSectionInfo($this->permissionSectionId, [
             'refresh_id' => $this->id,
         ]);
     }

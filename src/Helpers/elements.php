@@ -2,82 +2,24 @@
 
 function _CheckboxMultipleStates($name, $values = [], $colors = [], $default = null, $ableToChangeIt = true)
 {
-    $values = $values instanceof \Illuminate\Support\Collection ? $values->all() : (array) $values;
-    $colors = $colors instanceof \Illuminate\Support\Collection ? $colors->all() : (array) $colors;
-
-    $allValues = [null, ...$values];
-    $allColors = [null, ...$colors];
-    $count = count($allValues);
-    $baseClass = $name . ' border border-black rounded w-4 h-4 ';
-    $parsedOptions = [];
-
-    for ($i = 0; $i < $count; $i++) {
-        $nextValue = ($i + 1 < $count) ? $allValues[$i + 1] : $allValues[0];
-        $color = $allColors[$i] ?? '';
-        $visibility = ($default == $allValues[$i]) ? ' perm-selected' : ' hidden';
-
-        $parsedOptions[$nextValue ?: 0] = _Html()->class($baseClass . $color . $visibility);
-    }
-
-    $el = _LinkGroup()->name($name, false)->options($parsedOptions)
-        ->containerClass(($ableToChangeIt ? '' : 'pointer-events-none'))->selectedClass('x', '');
-
-    if ($default) {
-        $el->default($default);
-    }
-
-    if (!$ableToChangeIt) {
-        return $el;
-    }
-
-    return $el->onChange(fn($e) => $e->run('() => {changeLinkGroupColor("' . $name . '")}'));
+    return \Kompo\Auth\Elements\MultiStateCheckbox::form(null)
+        ->name($name, false)
+        ->mode('single')
+        ->values($values)
+        ->colors($colors)
+        ->readonly(!$ableToChangeIt)
+        ->default($default);
 }
 
 function _CheckboxSectionMultipleStates($name, $values = [], $colors = [], $default = null, $ableToChangeIt = true)
 {
-    $values = $values instanceof \Illuminate\Support\Collection ? $values->all() : (array) $values;
-    $colors = $colors instanceof \Illuminate\Support\Collection ? $colors->all() : (array) $colors;
-
-    $isArray = is_array($default);
-    $count = count($values);
-
-    // Mixed-state option (multi-colored bars for partial coverage)
-    $subItems = [_Html()->class('flex-1 subsection-item value-0' . ($default && $isArray && !in_array(0, $default) ? ' hidden' : ''))];
-
-    for ($i = 0; $i < $count; $i++) {
-        $visible = $default && $isArray && in_array($values[$i], $default);
-        $subItems[] = _Html()->class(($colors[$i] ?? '') . ' flex-1 subsection-item' . ($visible ? '' : ' hidden'));
-    }
-
-    $mixedVisibility = ($isArray || !$default) ? ' perm-selected' : ' hidden';
-    $parsedOptions = [
-        $values[0] => _Rows(...$subItems)->class($name . ' flex flex-row-reverse w-4 h-4' . $mixedVisibility)
-    ];
-
-    // Single-state options
-    for ($i = 0; $i < $count; $i++) {
-        $nextValue = $values[$i + 1] ?? 0;
-        $color = $colors[$i] ?? '';
-        $isSelected = !$isArray && $default == $values[$i];
-
-        $parsedOptions[$nextValue] = _Html()->class($name . ' w-4 h-4 ' . $color . ($isSelected ? ' perm-selected' : ' hidden'));
-    }
-
-    $el = _LinkGroup()->name($name, false)->options($parsedOptions)
-        ->containerClass('checkbox-style ' . ($ableToChangeIt ? '' : 'pointer-events-none'))->selectedClass('x', '');
-
-    if ($default && !$isArray) {
-        $el->default($default);
-    }
-
-    if (!$ableToChangeIt) {
-        return $el;
-    }
-
-    return $el->onChange(fn($e) => $e->run('() => {
-        changeLinkGroupColor("' . $name . '");
-        cleanLinkGroupNullOption("' . $name . '");
-    }'));
+    return \Kompo\Auth\Elements\MultiStateCheckbox::form(null)
+        ->name($name, false)
+        ->mode('section')
+        ->values($values)
+        ->colors($colors)
+        ->readonly(!$ableToChangeIt)
+        ->default($default);
 }
 
 if (!function_exists('_ProfileImg')) {

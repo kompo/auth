@@ -156,7 +156,7 @@ class TeamRoleSwitcherNodeFactory
             ->class(self::GO_BUTTON_CLASS)
             ->attr(['title' => __('auth.switcher-switch-role'), 'aria-label' => __('auth.switcher-switch-role')])
             ->post($switchUrl, null, ['team_id' => $ctx->teamId, 'role_id' => $role['id'] ?? null])
-            ->run("() => location.reload()");
+            ->redirect('dashboard');
     }
 
     private function switchOnlyLink(HierarchyNodeContext $ctx, string $switchUrl)
@@ -177,6 +177,6 @@ class TeamRoleSwitcherNodeFactory
             ->class(self::GO_BUTTON_CLASS)
             ->attr(['title' => $title, 'aria-label' => $title])
             ->post($switchUrl, null, ['team_id' => $ctx->teamId, 'role_id' => $role['id'] ?? null])
-            ->run("() => location.reload()");
+            ->redirect('dashboard');
     }
 }

@@ -45,13 +45,13 @@ return [
         'write' => [
             'enabled'      => true,
             'current_team' => 'auto',
-            'multi_team'   => 'opt-in',
+            'multi_team'   => 'auto',
         ],
 
         'delete' => [
             'enabled'      => true,
             'current_team' => 'auto',
-            'multi_team'   => 'opt-in',
+            'multi_team'   => 'auto',
         ],
 
         'fields' => [
@@ -64,7 +64,7 @@ return [
             'global'          => env('BYPASS_SECURITY', false),  // process-wide kill switch
             'super_admin'     => true,
             'console'         => true,
-            'unauthenticated' => false,
+            'unauthenticated' => true,          // Check this. Because it's a fix, it doesn't mean in each place we use this is before auth process happened.
             'route_opt_out'   => true,          // honors `disable-automatic-security` middleware
         ],
 

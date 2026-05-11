@@ -1,0 +1,962 @@
+{
+    "total_cost": 2541799000,
+    "total_fns": 6434,
+    "security_fns": 381,
+    "top_self_50": [
+        {
+            "id": 2294,
+            "name": "Kompo\\Auth\\Teams\\Security\\SecurityMetadataRegistry::for",
+            "self": 33984940,
+            "incl": 94712310,
+            "calls": 8165,
+            "mem": 0
+        },
+        {
+            "id": 2916,
+            "name": "Kompo\\Auth\\Models\\Plugins\\HasSecurity->getAttribute",
+            "self": 13717000,
+            "incl": 61681470,
+            "calls": 14454,
+            "mem": 2116480
+        },
+        {
+            "id": 5233,
+            "name": "Kompo\\Auth\\Teams\\Cache\\CachedTeamHierarchyService->getBatchAncestorTeamIds",
+            "self": 9424550,
+            "incl": 89331780,
+            "calls": 1584,
+            "mem": 0
+        },
+        {
+            "id": 2883,
+            "name": "Kompo\\Auth\\Teams\\Cache\\AuthCacheLayer->remember",
+            "self": 6544090,
+            "incl": 534322170,
+            "calls": 4889,
+            "mem": 701256
+        },
+        {
+            "id": 2881,
+            "name": "Kompo\\Auth\\Teams\\Cache\\AuthCacheLayer->cacheRememberWithTags",
+            "self": 3844200,
+            "incl": 463134500,
+            "calls": 2109,
+            "mem": 0
+        },
+        {
+            "id": 5230,
+            "name": "Kompo\\Auth\\Teams\\Cache\\CachedTeamHierarchyService->getAncestorTeamsUntilLevel",
+            "self": 3479750,
+            "incl": 346305470,
+            "calls": 1584,
+            "mem": 0
+        },
+        {
+            "id": 5235,
+            "name": "Kompo\\Auth\\Teams\\Cache\\CachedTeamHierarchyService->getDescendantTeamIds",
+            "self": 1916800,
+            "incl": 57566190,
+            "calls": 1584,
+            "mem": 0
+        },
+        {
+            "id": 5006,
+            "name": "Kompo\\Auth\\Teams\\Cache\\AuthCacheLayer->ttlForTag",
+            "self": 1356160,
+            "incl": 62167460,
+            "calls": 2088,
+            "mem": 0
+        },
+        {
+            "id": 2293,
+            "name": "Kompo\\Auth\\Teams\\Security\\SecurityMetadataRegistry::compute",
+            "self": 785460,
+            "incl": 27527890,
+            "calls": 37,
+            "mem": 34992
+        },
+        {
+            "id": 5234,
+            "name": "Kompo\\Auth\\Teams\\CacheKeyBuilder::teamDescendants",
+            "self": 640100,
+            "incl": 1394050,
+            "calls": 1584,
+            "mem": 76032
+        },
+        {
+            "id": 2222,
+            "name": "Kompo\\Auth\\Teams\\Security\\ReadSecurityService->setupReadSecurity",
+            "self": 592630,
+            "incl": 2247200,
+            "calls": 37,
+            "mem": 29696
+        },
+        {
+            "id": 1491,
+            "name": "require_once::C:\\Users\\jkend\\Documents\\Projects\\kompo\\auth\\src\\Helpers\\auth.php",
+            "self": 591900,
+            "incl": 2000990,
+            "calls": 1,
+            "mem": 4224
+        },
+        {
+            "id": 2216,
+            "name": "Kompo\\Auth\\KompoAuthServiceProvider->Kompo\\Auth\\{closure:C:\\Users\\jkend\\Documents\\Projects\\kompo\\auth\\src\\KompoAuthServiceProvider.php:192-197}",
+            "self": 544070,
+            "incl": 3990220,
+            "calls": 201,
+            "mem": 0
+        },
+        {
+            "id": 2217,
+            "name": "globalSecurityBypass",
+            "self": 526990,
+            "incl": 6177450,
+            "calls": 201,
+            "mem": 0
+        },
+        {
+            "id": 5793,
+            "name": "Kompo\\Auth\\Teams\\Security\\BatchPermissionService->batchProcessGroup",
+            "self": 475540,
+            "incl": 12059150,
+            "calls": 16,
+            "mem": 0
+        },
+        {
+            "id": 2882,
+            "name": "Kompo\\Auth\\Teams\\Cache\\AuthCacheLayer->trackKeyForTag",
+            "self": 428170,
+            "incl": 856340,
+            "calls": 2144,
+            "mem": 100152
+        },
+        {
+            "id": 2106,
+            "name": "Kompo\\Auth\\Teams\\Security\\SecurityServiceFactory->createTeamSecurityServiceForModel",
+            "self": 385970,
+            "incl": 854970,
+            "calls": 45,
+            "mem": 14432
+        },
+        {
+            "id": 2299,
+            "name": "Kompo\\Auth\\Models\\Plugins\\HasSecurity->onBoot",
+            "self": 330830,
+            "incl": 36028330,
+            "calls": 37,
+            "mem": 0
+        },
+        {
+            "id": 2240,
+            "name": "Kompo\\Auth\\Teams\\Security\\SecurityMetadataRegistry::checkLazyProtectedFields",
+            "self": 249190,
+            "incl": 1791330,
+            "calls": 37,
+            "mem": 0
+        },
+        {
+            "id": 5788,
+            "name": "Kompo\\Auth\\Teams\\Cache\\CachedTeamSecurityService->getTeamOwnersIdsSafe",
+            "self": 219020,
+            "incl": 8631590,
+            "calls": 16,
+            "mem": 1600
+        },
+        {
+            "id": 2695,
+            "name": "Kompo\\Auth\\Teams\\CacheKeyBuilder::getTagsForCacheType",
+            "self": 204940,
+            "incl": 409880,
+            "calls": 2109,
+            "mem": 455544
+        },
+        {
+            "id": 2237,
+            "name": "Kompo\\Auth\\Teams\\Security\\SecurityMetadataRegistry::collectAllProtectionGroups",
+            "self": 183230,
+            "incl": 599750,
+            "calls": 37,
+            "mem": 14488
+        },
+        {
+            "id": 2122,
+            "name": "Kompo\\Auth\\Teams\\Security\\SecurityServiceFactory->createServicesForModel",
+            "self": 178850,
+            "incl": 1188750,
+            "calls": 37,
+            "mem": 39168
+        },
+        {
+            "id": 5794,
+            "name": "Kompo\\Auth\\Teams\\Security\\BatchPermissionService->batchLoadFieldProtectionPermissions",
+            "self": 149460,
+            "incl": 37761590,
+            "calls": 8,
+            "mem": 0
+        },
+        {
+            "id": 2123,
+            "name": "Kompo\\Auth\\Models\\Plugins\\HasSecurity->initializeServices",
+            "self": 145280,
+            "incl": 2801020,
+            "calls": 39,
+            "mem": 0
+        },
+        {
+            "id": 5071,
+            "name": "Kompo\\Auth\\Teams\\Cache\\UserContextCache->isSuperAdmin",
+            "self": 143310,
+            "incl": 2059630,
+            "calls": 34,
+            "mem": 1584
+        },
+        {
+            "id": 5255,
+            "name": "App\\Services\\Events\\EventAudienceService->App\\Services\\Events\\{closure:C:\\Users\\jkend\\Documents\\Projects\\kompo\\SISC\\app\\Services\\Events\\EventAudienceService.php:92-95}",
+            "self": 129310,
+            "incl": 19644710,
+            "calls": 4,
+            "mem": 0
+        },
+        {
+            "id": 2851,
+            "name": "Kompo\\Auth\\Models\\Plugins\\HasSecurity->newCollection",
+            "self": 128790,
+            "incl": 38150140,
+            "calls": 100,
+            "mem": 20768
+        },
+        {
+            "id": 2886,
+            "name": "permissionMustBeAuthorized",
+            "self": 112830,
+            "incl": 79273520,
+            "calls": 56,
+            "mem": 0
+        },
+        {
+            "id": 5075,
+            "name": "Kompo\\Auth\\Teams\\Cache\\CachedPermissionResolver->userHasPermission",
+            "self": 105600,
+            "incl": 2843700,
+            "calls": 50,
+            "mem": 4608
+        },
+        {
+            "id": 2124,
+            "name": "Kompo\\Auth\\Models\\Plugins\\HasSecurity->setupScopes",
+            "self": 102980,
+            "incl": 242310,
+            "calls": 37,
+            "mem": 168128
+        },
+        {
+            "id": 2885,
+            "name": "Kompo\\Auth\\Models\\Teams\\Permission::findByKey",
+            "self": 102330,
+            "incl": 77435570,
+            "calls": 57,
+            "mem": 0
+        },
+        {
+            "id": 2884,
+            "name": "Kompo\\Auth\\Teams\\Cache\\PermissionDefinitionCache->permissionByKey",
+            "self": 97330,
+            "incl": 76888750,
+            "calls": 57,
+            "mem": 0
+        },
+        {
+            "id": 5348,
+            "name": "Kompo\\Auth\\Teams\\TeamHierarchyService->executeDescendantsQuery",
+            "self": 86930,
+            "incl": 61295790,
+            "calls": 8,
+            "mem": 0
+        },
+        {
+            "id": 2214,
+            "name": "Kompo\\Auth\\Models\\Plugins\\HasSecurity::isInBypassContext",
+            "self": 86740,
+            "incl": 184130,
+            "calls": 201,
+            "mem": 19296
+        },
+        {
+            "id": 2887,
+            "name": "Kompo\\Auth\\Teams\\Security\\ReadSecurityService->Kompo\\Auth\\Teams\\Security\\{closure:C:\\Users\\jkend\\Documents\\Projects\\kompo\\auth\\src\\Teams\\Security\\ReadSecurityService.php:58-68}",
+            "self": 79950,
+            "incl": 1489452680,
+            "calls": 48,
+            "mem": 208
+        },
+        {
+            "id": 5197,
+            "name": "Kompo\\Auth\\Models\\User->getTeamsIdsWithPermission",
+            "self": 71410,
+            "incl": 2755040,
+            "calls": 20,
+            "mem": 0
+        },
+        {
+            "id": 2218,
+            "name": "Kompo\\Auth\\Teams\\Security\\SecurityBypassService->isGloballyBypassed",
+            "self": 69640,
+            "incl": 3538020,
+            "calls": 74,
+            "mem": 0
+        },
+        {
+            "id": 1492,
+            "name": "Kompo\\Auth\\KompoAuthServiceProvider->Kompo\\Auth\\{closure:C:\\Users\\jkend\\Documents\\Projects\\kompo\\auth\\src\\KompoAuthServiceProvider.php:751-755}",
+            "self": 69070,
+            "incl": 1947290,
+            "calls": 12,
+            "mem": 616
+        },
+        {
+            "id": 2292,
+            "name": "Kompo\\Auth\\Teams\\Security\\SecurityMetadataRegistry::resolveTeamIdColumn",
+            "self": 66170,
+            "incl": 14100800,
+            "calls": 37,
+            "mem": 960
+        },
+        {
+            "id": 5776,
+            "name": "Kompo\\Auth\\Teams\\Security\\BatchPermissionService->bulkResolveOwnedModels",
+            "self": 61900,
+            "incl": 19547650,
+            "calls": 8,
+            "mem": 1344
+        },
+        {
+            "id": 5933,
+            "name": "Kompo\\Flex->{closure:C:\\Users\\jkend\\Documents\\Projects\\kompo\\auth\\src\\Helpers\\auth.php:259-275}",
+            "self": 61350,
+            "incl": 4795030,
+            "calls": 25,
+            "mem": 48
+        },
+        {
+            "id": 5074,
+            "name": "Kompo\\Auth\\Teams\\Cache\\AuthCacheLayer->rememberRequest",
+            "self": 59780,
+            "incl": 1288597070,
+            "calls": 51,
+            "mem": 8128
+        },
+        {
+            "id": 2857,
+            "name": "Kompo\\Auth\\Teams\\Cache\\PermissionDefinitionCache->Kompo\\Auth\\Teams\\Cache\\{closure:C:\\Users\\jkend\\Documents\\Projects\\kompo\\auth\\src\\Teams\\Cache\\PermissionDefinitionCache.php:20-20}",
+            "self": 59080,
+            "incl": 58408300,
+            "calls": 19,
+            "mem": 0
+        },
+        {
+            "id": 2290,
+            "name": "Kompo\\Auth\\Support\\SchemaCache->hasColumn",
+            "self": 54750,
+            "incl": 9341320,
+            "calls": 41,
+            "mem": 0
+        },
+        {
+            "id": 2298,
+            "name": "Kompo\\Auth\\Models\\Plugins\\HasSecurity->setupCleanupEvents",
+            "self": 52800,
+            "incl": 223170,
+            "calls": 37,
+            "mem": 30784
+        },
+        {
+            "id": 5078,
+            "name": "Kompo\\Auth\\Support\\ElementPermissionCache::remember",
+            "self": 52160,
+            "incl": 4911320,
+            "calls": 31,
+            "mem": 5112
+        },
+        {
+            "id": 4941,
+            "name": "Kompo\\Auth\\KompoAuthServiceProvider->Kompo\\Auth\\{closure:C:\\Users\\jkend\\Documents\\Projects\\kompo\\auth\\src\\KompoAuthServiceProvider.php:108-113}",
+            "self": 51630,
+            "incl": 414670,
+            "calls": 214,
+            "mem": 8432
+        },
+        {
+            "id": 2112,
+            "name": "Kompo\\Auth\\Teams\\Security\\SecurityServiceFactory->createFieldProtectionService",
+            "self": 50520,
+            "incl": 149430,
+            "calls": 45,
+            "mem": 14432
+        },
+        {
+            "id": 2690,
+            "name": "Kompo\\Auth\\Teams\\Security\\ReadSecurityService->shouldBypassSecurityForQuery",
+            "self": 49140,
+            "incl": 909590,
+            "calls": 48,
+            "mem": 6288
+        }
+    ],
+    "top_incl_50": [
+        {
+            "id": 6280,
+            "name": "Kompo\\Auth\\Http\\Middleware\\EnsureResetPasswordWhenRequired->handle",
+            "self": 5110,
+            "incl": 2296593430,
+            "calls": 1,
+            "mem": 0
+        },
+        {
+            "id": 2887,
+            "name": "Kompo\\Auth\\Teams\\Security\\ReadSecurityService->Kompo\\Auth\\Teams\\Security\\{closure:C:\\Users\\jkend\\Documents\\Projects\\kompo\\auth\\src\\Teams\\Security\\ReadSecurityService.php:58-68}",
+            "self": 79950,
+            "incl": 1489452680,
+            "calls": 48,
+            "mem": 208
+        },
+        {
+            "id": 5276,
+            "name": "Kompo\\Auth\\Teams\\Security\\ReadSecurityService->applyReadSecurityScope",
+            "self": 15240,
+            "incl": 1426456890,
+            "calls": 4,
+            "mem": 0
+        },
+        {
+            "id": 5275,
+            "name": "Kompo\\Auth\\Teams\\Security\\ReadSecurityService->applyTeamBasedRestrictions",
+            "self": 15320,
+            "incl": 1426421560,
+            "calls": 4,
+            "mem": 0
+        },
+        {
+            "id": 5274,
+            "name": "Kompo\\Auth\\Teams\\Security\\ReadSecurityService->Kompo\\Auth\\Teams\\Security\\{closure:C:\\Users\\jkend\\Documents\\Projects\\kompo\\auth\\src\\Teams\\Security\\ReadSecurityService.php:126-132}",
+            "self": 12550,
+            "incl": 1415149970,
+            "calls": 4,
+            "mem": 0
+        },
+        {
+            "id": 5270,
+            "name": "Kompo\\Auth\\Teams\\Security\\ReadSecurityService->applyTeamRestrictions",
+            "self": 15710,
+            "incl": 1411820540,
+            "calls": 4,
+            "mem": 0
+        },
+        {
+            "id": 5269,
+            "name": "Kompo\\Auth\\Teams\\Security\\ReadSecurityService->applyScopeBasedTeamSecurity",
+            "self": 9240,
+            "incl": 1403760010,
+            "calls": 4,
+            "mem": 0
+        },
+        {
+            "id": 5265,
+            "name": "App\\Services\\Events\\EventAudienceService->applyVisibilityConstraint",
+            "self": 7370,
+            "incl": 1368638890,
+            "calls": 1,
+            "mem": 0
+        },
+        {
+            "id": 5266,
+            "name": "App\\Services\\Events\\Cache\\CachedEventAudienceService->applyVisibilityConstraint",
+            "self": 2990,
+            "incl": 1368637500,
+            "calls": 1,
+            "mem": 0
+        },
+        {
+            "id": 5074,
+            "name": "Kompo\\Auth\\Teams\\Cache\\AuthCacheLayer->rememberRequest",
+            "self": 59780,
+            "incl": 1288597070,
+            "calls": 51,
+            "mem": 8128
+        },
+        {
+            "id": 2883,
+            "name": "Kompo\\Auth\\Teams\\Cache\\AuthCacheLayer->remember",
+            "self": 6544090,
+            "incl": 534322170,
+            "calls": 4889,
+            "mem": 701256
+        },
+        {
+            "id": 2881,
+            "name": "Kompo\\Auth\\Teams\\Cache\\AuthCacheLayer->cacheRememberWithTags",
+            "self": 3844200,
+            "incl": 463134500,
+            "calls": 2109,
+            "mem": 0
+        },
+        {
+            "id": 5230,
+            "name": "Kompo\\Auth\\Teams\\Cache\\CachedTeamHierarchyService->getAncestorTeamsUntilLevel",
+            "self": 3479750,
+            "incl": 346305470,
+            "calls": 1584,
+            "mem": 0
+        },
+        {
+            "id": 2294,
+            "name": "Kompo\\Auth\\Teams\\Security\\SecurityMetadataRegistry::for",
+            "self": 33984940,
+            "incl": 94712310,
+            "calls": 8165,
+            "mem": 0
+        },
+        {
+            "id": 5233,
+            "name": "Kompo\\Auth\\Teams\\Cache\\CachedTeamHierarchyService->getBatchAncestorTeamIds",
+            "self": 9424550,
+            "incl": 89331780,
+            "calls": 1584,
+            "mem": 0
+        },
+        {
+            "id": 2886,
+            "name": "permissionMustBeAuthorized",
+            "self": 112830,
+            "incl": 79273520,
+            "calls": 56,
+            "mem": 0
+        },
+        {
+            "id": 2885,
+            "name": "Kompo\\Auth\\Models\\Teams\\Permission::findByKey",
+            "self": 102330,
+            "incl": 77435570,
+            "calls": 57,
+            "mem": 0
+        },
+        {
+            "id": 2884,
+            "name": "Kompo\\Auth\\Teams\\Cache\\PermissionDefinitionCache->permissionByKey",
+            "self": 97330,
+            "incl": 76888750,
+            "calls": 57,
+            "mem": 0
+        },
+        {
+            "id": 5006,
+            "name": "Kompo\\Auth\\Teams\\Cache\\AuthCacheLayer->ttlForTag",
+            "self": 1356160,
+            "incl": 62167460,
+            "calls": 2088,
+            "mem": 0
+        },
+        {
+            "id": 2916,
+            "name": "Kompo\\Auth\\Models\\Plugins\\HasSecurity->getAttribute",
+            "self": 13717000,
+            "incl": 61681470,
+            "calls": 14454,
+            "mem": 2116480
+        },
+        {
+            "id": 5348,
+            "name": "Kompo\\Auth\\Teams\\TeamHierarchyService->executeDescendantsQuery",
+            "self": 86930,
+            "incl": 61295790,
+            "calls": 8,
+            "mem": 0
+        },
+        {
+            "id": 5349,
+            "name": "Kompo\\Auth\\Teams\\TeamHierarchyService->getDescendantTeamIds",
+            "self": 17040,
+            "incl": 61242940,
+            "calls": 8,
+            "mem": 0
+        },
+        {
+            "id": 2857,
+            "name": "Kompo\\Auth\\Teams\\Cache\\PermissionDefinitionCache->Kompo\\Auth\\Teams\\Cache\\{closure:C:\\Users\\jkend\\Documents\\Projects\\kompo\\auth\\src\\Teams\\Cache\\PermissionDefinitionCache.php:20-20}",
+            "self": 59080,
+            "incl": 58408300,
+            "calls": 19,
+            "mem": 0
+        },
+        {
+            "id": 5235,
+            "name": "Kompo\\Auth\\Teams\\Cache\\CachedTeamHierarchyService->getDescendantTeamIds",
+            "self": 1916800,
+            "incl": 57566190,
+            "calls": 1584,
+            "mem": 0
+        },
+        {
+            "id": 5263,
+            "name": "App\\Services\\Events\\EventAudienceService->App\\Services\\Events\\{closure:C:\\Users\\jkend\\Documents\\Projects\\kompo\\SISC\\app\\Services\\Events\\EventAudienceService.php:75-99}",
+            "self": 7140,
+            "incl": 38598140,
+            "calls": 1,
+            "mem": 0
+        },
+        {
+            "id": 2851,
+            "name": "Kompo\\Auth\\Models\\Plugins\\HasSecurity->newCollection",
+            "self": 128790,
+            "incl": 38150140,
+            "calls": 100,
+            "mem": 20768
+        },
+        {
+            "id": 5797,
+            "name": "Kompo\\Auth\\Support\\SecuredModelCollection->autoBatch",
+            "self": 29140,
+            "incl": 37834800,
+            "calls": 8,
+            "mem": 0
+        },
+        {
+            "id": 5796,
+            "name": "Kompo\\Auth\\Support\\SecuredModelCollection->autoBatchLoadPermissions",
+            "self": 47520,
+            "incl": 37816520,
+            "calls": 8,
+            "mem": 0
+        },
+        {
+            "id": 5794,
+            "name": "Kompo\\Auth\\Teams\\Security\\BatchPermissionService->batchLoadFieldProtectionPermissions",
+            "self": 149460,
+            "incl": 37761590,
+            "calls": 8,
+            "mem": 0
+        },
+        {
+            "id": 2299,
+            "name": "Kompo\\Auth\\Models\\Plugins\\HasSecurity->onBoot",
+            "self": 330830,
+            "incl": 36028330,
+            "calls": 37,
+            "mem": 0
+        },
+        {
+            "id": 5260,
+            "name": "App\\Services\\Events\\EventAudienceService->App\\Services\\Events\\{closure:C:\\Users\\jkend\\Documents\\Projects\\kompo\\SISC\\app\\Services\\Events\\EventAudienceService.php:85-98}",
+            "self": 14680,
+            "incl": 31298440,
+            "calls": 1,
+            "mem": 0
+        },
+        {
+            "id": 5259,
+            "name": "App\\Services\\Events\\EventAudienceService->App\\Services\\Events\\{closure:C:\\Users\\jkend\\Documents\\Projects\\kompo\\SISC\\app\\Services\\Events\\EventAudienceService.php:90-97}",
+            "self": 18980,
+            "incl": 28895570,
+            "calls": 1,
+            "mem": 0
+        },
+        {
+            "id": 2293,
+            "name": "Kompo\\Auth\\Teams\\Security\\SecurityMetadataRegistry::compute",
+            "self": 785460,
+            "incl": 27527890,
+            "calls": 37,
+            "mem": 34992
+        },
+        {
+            "id": 2295,
+            "name": "Kompo\\Auth\\Models\\Plugins\\HasSecurity->setupFieldProtectionSafe",
+            "self": 31790,
+            "incl": 27288370,
+            "calls": 37,
+            "mem": 0
+        },
+        {
+            "id": 5255,
+            "name": "App\\Services\\Events\\EventAudienceService->App\\Services\\Events\\{closure:C:\\Users\\jkend\\Documents\\Projects\\kompo\\SISC\\app\\Services\\Events\\EventAudienceService.php:92-95}",
+            "self": 129310,
+            "incl": 19644710,
+            "calls": 4,
+            "mem": 0
+        },
+        {
+            "id": 5776,
+            "name": "Kompo\\Auth\\Teams\\Security\\BatchPermissionService->bulkResolveOwnedModels",
+            "self": 61900,
+            "incl": 19547650,
+            "calls": 8,
+            "mem": 1344
+        },
+        {
+            "id": 2292,
+            "name": "Kompo\\Auth\\Teams\\Security\\SecurityMetadataRegistry::resolveTeamIdColumn",
+            "self": 66170,
+            "incl": 14100800,
+            "calls": 37,
+            "mem": 960
+        },
+        {
+            "id": 5793,
+            "name": "Kompo\\Auth\\Teams\\Security\\BatchPermissionService->batchProcessGroup",
+            "self": 475540,
+            "incl": 12059150,
+            "calls": 16,
+            "mem": 0
+        },
+        {
+            "id": 5129,
+            "name": "Kompo\\Auth\\Common\\Plugins\\HasAuthorizationUtils->onBoot",
+            "self": 10980,
+            "incl": 11538070,
+            "calls": 3,
+            "mem": 912
+        },
+        {
+            "id": 5128,
+            "name": "Kompo\\Auth\\Common\\Plugins\\HasAuthorizationUtils->checkPermissions",
+            "self": 7930,
+            "incl": 11467190,
+            "calls": 3,
+            "mem": 0
+        },
+        {
+            "id": 2290,
+            "name": "Kompo\\Auth\\Support\\SchemaCache->hasColumn",
+            "self": 54750,
+            "incl": 9341320,
+            "calls": 41,
+            "mem": 0
+        },
+        {
+            "id": 5788,
+            "name": "Kompo\\Auth\\Teams\\Cache\\CachedTeamSecurityService->getTeamOwnersIdsSafe",
+            "self": 219020,
+            "incl": 8631590,
+            "calls": 16,
+            "mem": 1600
+        },
+        {
+            "id": 5789,
+            "name": "Kompo\\Auth\\Teams\\Security\\BatchPermissionService->groupModelsByTeams",
+            "self": 30870,
+            "incl": 8484810,
+            "calls": 16,
+            "mem": 4192
+        },
+        {
+            "id": 2241,
+            "name": "Kompo\\Auth\\Teams\\Security\\SecurityMetadataRegistry::resolveRestrictByTeam",
+            "self": 25160,
+            "incl": 8450690,
+            "calls": 37,
+            "mem": 0
+        },
+        {
+            "id": 5786,
+            "name": "Kompo\\Auth\\Teams\\Security\\TeamSecurityService->calculateTeamOwnersIds",
+            "self": 18220,
+            "incl": 8201260,
+            "calls": 4,
+            "mem": 0
+        },
+        {
+            "id": 5787,
+            "name": "Kompo\\Auth\\Teams\\Security\\TeamSecurityService->getTeamOwnersIdsSafe",
+            "self": 6680,
+            "incl": 8196400,
+            "calls": 4,
+            "mem": 0
+        },
+        {
+            "id": 5738,
+            "name": "Kompo\\Auth\\Teams\\Security\\ReadSecurityService->applyColumnBasedTeamSecurity",
+            "self": 11160,
+            "incl": 8043910,
+            "calls": 2,
+            "mem": 0
+        },
+        {
+            "id": 2217,
+            "name": "globalSecurityBypass",
+            "self": 526990,
+            "incl": 6177450,
+            "calls": 201,
+            "mem": 0
+        },
+        {
+            "id": 3319,
+            "name": "Kompo\\Auth\\KompoAuthServiceProvider->boot",
+            "self": 32690,
+            "incl": 5666780,
+            "calls": 1,
+            "mem": 0
+        },
+        {
+            "id": 5078,
+            "name": "Kompo\\Auth\\Support\\ElementPermissionCache::remember",
+            "self": 52160,
+            "incl": 4911320,
+            "calls": 31,
+            "mem": 5112
+        }
+    ],
+    "top_calls_50": [],
+    "top10_callers": [
+        {
+            "name": "Kompo\\Auth\\Teams\\Security\\SecurityMetadataRegistry::for",
+            "self": 33984940,
+            "callers": [
+                {
+                    "caller": "Kompo\\Auth\\Models\\Plugins\\HasSecurity->getAttribute",
+                    "count": 7994,
+                    "incl": 33503150
+                },
+                {
+                    "caller": "Kompo\\Auth\\Models\\Plugins\\HasSecurity->setupFieldProtectionSafe",
+                    "count": 37,
+                    "incl": 27203580
+                },
+                {
+                    "caller": "Kompo\\Auth\\Models\\Plugins\\HasSecurity->newCollection",
+                    "count": 100,
+                    "incl": 15590
+                },
+                {
+                    "caller": "Kompo\\Auth\\Models\\Plugins\\HasSecurity->interceptRelation",
+                    "count": 20,
+                    "incl": 2790
+                },
+                {
+                    "caller": "Kompo\\Auth\\Teams\\Security\\TeamSecurityService->massRestrictByTeam",
+                    "count": 4,
+                    "incl": 1090
+                }
+            ]
+        },
+        {
+            "name": "Kompo\\Auth\\Models\\Plugins\\HasSecurity->getAttribute",
+            "self": 13717000,
+            "callers": [
+                {
+                    "caller": "Condoedge\\Utils\\Models\\ModelBase->getAttribute",
+                    "count": 14454,
+                    "incl": 47964470
+                }
+            ]
+        },
+        {
+            "name": "Kompo\\Auth\\Teams\\Cache\\CachedTeamHierarchyService->getBatchAncestorTeamIds",
+            "self": 9424550,
+            "callers": [
+                {
+                    "caller": "App\\Services\\Events\\EventVisibilityDataResolverImpl->visibleEventTeamIdsForViewer",
+                    "count": 1584,
+                    "incl": 79907230
+                }
+            ]
+        },
+        {
+            "name": "Kompo\\Auth\\Teams\\Cache\\AuthCacheLayer->remember",
+            "self": 6544090,
+            "callers": [
+                {
+                    "caller": "Kompo\\Auth\\Teams\\Cache\\CachedTeamHierarchyService->getAncestorTeamsUntilLevel",
+                    "count": 1584,
+                    "incl": 339345970
+                },
+                {
+                    "caller": "Kompo\\Auth\\Teams\\Cache\\PermissionDefinitionCache->permissionByKey",
+                    "count": 57,
+                    "incl": 75360820
+                },
+                {
+                    "caller": "Kompo\\Auth\\Teams\\Cache\\CachedTeamHierarchyService->getBatchAncestorTeamIds",
+                    "count": 1584,
+                    "incl": 57518760
+                },
+                {
+                    "caller": "Kompo\\Auth\\Teams\\Cache\\CachedTeamHierarchyService->getDescendantTeamIds",
+                    "count": 1584,
+                    "incl": 52978640
+                },
+                {
+                    "caller": "Kompo\\Auth\\Teams\\Cache\\CachedPermissionResolver->getTeamsWithPermissionForUser",
+                    "count": 20,
+                    "incl": 1948790
+                }
+            ]
+        },
+        {
+            "name": "Kompo\\Auth\\Teams\\Cache\\AuthCacheLayer->cacheRememberWithTags",
+            "self": 3844200,
+            "callers": [
+                {
+                    "caller": "Kompo\\Auth\\Teams\\Cache\\AuthCacheLayer->remember",
+                    "count": 2109,
+                    "incl": 459290300
+                }
+            ]
+        },
+        {
+            "name": "Kompo\\Auth\\Teams\\Cache\\CachedTeamHierarchyService->getAncestorTeamsUntilLevel",
+            "self": 3479750,
+            "callers": [
+                {
+                    "caller": "App\\Services\\Events\\EventVisibilityDataResolverImpl->resolveAnchorId",
+                    "count": 1584,
+                    "incl": 342825720
+                }
+            ]
+        },
+        {
+            "name": "Kompo\\Auth\\Teams\\Cache\\CachedTeamHierarchyService->getDescendantTeamIds",
+            "self": 1916800,
+            "callers": [
+                {
+                    "caller": "App\\Services\\Events\\EventVisibilityDataResolverImpl->visibleEventTeamIdsForViewer",
+                    "count": 1584,
+                    "incl": 55649390
+                }
+            ]
+        },
+        {
+            "name": "Kompo\\Auth\\Teams\\Cache\\AuthCacheLayer->ttlForTag",
+            "self": 1356160,
+            "callers": [
+                {
+                    "caller": "Kompo\\Auth\\Teams\\Cache\\AuthCacheLayer->remember",
+                    "count": 2088,
+                    "incl": 60811300
+                }
+            ]
+        },
+        {
+            "name": "Kompo\\Auth\\Teams\\Security\\SecurityMetadataRegistry::compute",
+            "self": 785460,
+            "callers": [
+                {
+                    "caller": "Kompo\\Auth\\Teams\\Security\\SecurityMetadataRegistry::for",
+                    "count": 37,
+                    "incl": 26742430
+                }
+            ]
+        },
+        {
+            "name": "Kompo\\Auth\\Teams\\CacheKeyBuilder::teamDescendants",
+            "self": 640100,
+            "callers": [
+                {
+                    "caller": "Kompo\\Auth\\Teams\\Cache\\CachedTeamHierarchyService->getDescendantTeamIds",
+                    "count": 1584,
+                    "incl": 753950
+                }
+            ]
+        }
+    ]
+}

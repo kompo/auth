@@ -546,19 +546,19 @@ class AutoBatchFieldProtectionTest extends TestCase
 
     protected function mockBatchService($expects = null, $modelClassConstraint = TestSecuredModel::class)
     {
-        $securityServiceFactory = app()->make(\Kompo\Auth\Models\Plugins\Services\SecurityServiceFactory::class);
+        $securityServiceFactory = app()->make(\Kompo\Auth\Teams\Security\SecurityServiceFactory::class);
         $services = $securityServiceFactory->createServicesForModel(TestSecuredModel::class);
 
         $originalService = $services['batchPermission'];
 
-        $batchPermissionMock = $this->createMock(\Kompo\Auth\Models\Plugins\Services\BatchPermissionService::class);
+        $batchPermissionMock = $this->createMock(\Kompo\Auth\Teams\Security\BatchPermissionService::class);
         $batchPermissionMock->expects($expects)
             ->method('batchLoadFieldProtectionPermissions')
             ->willReturnCallback(function ($models) use ($originalService) {
                 return $originalService->batchLoadFieldProtectionPermissions($models);
             });
 
-        $securityServiceFactoryMock = $this->createMock(\Kompo\Auth\Models\Plugins\Services\SecurityServiceFactory::class);
+        $securityServiceFactoryMock = $this->createMock(\Kompo\Auth\Teams\Security\SecurityServiceFactory::class);
         $securityServiceFactoryMock->method('createServicesForModel')
             ->willReturnCallback(function ($modelClass) use ($services, $expects, $batchPermissionMock) {
                 $services['batchPermission'] = $batchPermissionMock;
@@ -573,6 +573,6 @@ class AutoBatchFieldProtectionTest extends TestCase
         $securityServiceFactoryMock->method('createFieldProtectionService')
             ->willReturn($services['fieldProtection']);
 
-        $this->app->instance(\Kompo\Auth\Models\Plugins\Services\SecurityServiceFactory::class, $securityServiceFactoryMock);
+        $this->app->instance(\Kompo\Auth\Teams\Security\SecurityServiceFactory::class, $securityServiceFactoryMock);
     }
 }

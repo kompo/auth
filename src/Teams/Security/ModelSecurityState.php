@@ -1,6 +1,6 @@
 <?php
 
-namespace Kompo\Auth\Models\Plugins\Services;
+namespace Kompo\Auth\Teams\Security;
 
 /**
  * Per-instance security state, stored directly on the model.

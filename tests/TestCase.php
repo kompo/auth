@@ -8,7 +8,9 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Kompo\Auth\Database\Factories\UserFactory;
 use Kompo\Auth\KompoAuthServiceProvider;
-use Kompo\Auth\Models\Plugins\Services\PermissionCacheService;
+use Kompo\Auth\Teams\Cache\CachedFieldProtectionService;
+use Kompo\Auth\Teams\Cache\CachedTeamSecurityService;
+use Kompo\Auth\Teams\Cache\GlobalSecurityBypassCache;
 use Kompo\KompoServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
@@ -48,7 +50,8 @@ abstract class TestCase extends Orchestra
         // Clear all caches before each test
         Cache::flush();
 
-        app(PermissionCacheService::class)->clearAllCaches();
+        CachedFieldProtectionService::flush();
+        CachedTeamSecurityService::flush();
     }
 
     /**
@@ -80,18 +83,17 @@ abstract class TestCase extends Orchestra
         Config::set('kompo-auth.security.lazy-protected-fields', false);
         Config::set('kompo-auth.security.batch-protected-fields', true);
 
-        // Overriding the bypass function because by default it bypass when running in console
-        $this->app->singleton('kompo-auth.security-bypass', function ($app) {
+        // Overriding the static portion (production registers `runningInConsole`
+        // first, which bypasses everything in test mode). Mirrors the new
+        // production split: static portion here, dynamic isInBypassContext()
+        // composed in `kompo-auth.security-bypass`.
+        $this->app->singleton('kompo-auth.security-bypass.static', function ($app) {
             return function () {
                 if (session()->isStarted() && config('kompo-auth.security.dont-check-if-not-logged-in', false) && !auth()->check()) {
                     return true;
                 }
 
                 if (auth()->user()?->isSuperAdmin()) {
-                    return true;
-                }
-
-                if (isInBypassContext()) {
                     return true;
                 }
 
@@ -102,6 +104,20 @@ abstract class TestCase extends Orchestra
                 return config('kompo-auth.security.bypass-security', false);
             };
         });
+
+        // Re-bind the composed binding to pick up the overridden static portion.
+        $this->app->forgetInstance('kompo-auth.security-bypass');
+        $this->app->singleton('kompo-auth.security-bypass', function ($app) {
+            $staticResolver = $app->make('kompo-auth.security-bypass.static');
+
+            return function () use ($staticResolver) {
+                return GlobalSecurityBypassCache::resolve($staticResolver)
+                    || isInBypassContext();
+            };
+        });
+
+        // Each test starts with an empty cache so the override above is exercised.
+        GlobalSecurityBypassCache::flush();
     }
 
     /**
@@ -313,6 +329,7 @@ abstract class TestCase extends Orchestra
     {
         // Clear caches after each test
         Cache::flush();
+        GlobalSecurityBypassCache::flush();
 
         // Clear query log if enabled
         if (\DB::logging()) {

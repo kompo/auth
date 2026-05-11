@@ -1,8 +1,9 @@
 <?php
 
-namespace Kompo\Auth\Models\Plugins\Services;
+namespace Kompo\Auth\Teams\Security;
 
-use Kompo\Auth\Models\Plugins\Services\Traits\SecurityConfigTrait;
+use Kompo\Auth\Teams\Security\Contracts\TeamSecurityServiceInterface;
+use Kompo\Auth\Teams\Security\Traits\SecurityConfigTrait;
 
 /**
  * Handles delete security operations
@@ -24,7 +25,7 @@ class DeleteSecurityService
     public function __construct(
         string $modelClass,
         SecurityBypassService $bypassService,
-        TeamSecurityService $teamService,
+        TeamSecurityServiceInterface $teamService,
         WriteSecurityService $writeService
     ) {
         $this->modelClass = $modelClass;

@@ -1,9 +1,13 @@
 <?php
 
-namespace Kompo\Auth\Models\Plugins\Services;
+namespace Kompo\Auth\Teams\Security;
 
-use Kompo\Auth\Models\Plugins\Services\Traits\SecurityConfigTrait;
+use Kompo\Auth\Teams\Security\Contracts\FieldProtectionServiceInterface;
+use Kompo\Auth\Teams\Security\Contracts\TeamSecurityServiceInterface;
+use Kompo\Auth\Teams\Security\SecurityMetadataRegistry;
+use Kompo\Auth\Teams\Security\Traits\SecurityConfigTrait;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+use Kompo\Auth\Models\Teams\Roles\InsufficientFieldPermissionException;
 use Kompo\Auth\Models\Teams\Roles\PermissionException;
 
 /**
@@ -26,7 +30,7 @@ class WriteSecurityService
     public function __construct(
         string $modelClass,
         SecurityBypassService $bypassService,
-        TeamSecurityService $teamService
+        TeamSecurityServiceInterface $teamService
     ) {
         $this->modelClass = $modelClass;
         $this->bypassService = $bypassService;
@@ -56,6 +60,54 @@ class WriteSecurityService
 
         if ($this->shouldValidateWritePermissions()) {
             $this->checkWritePermissions($model);
+            $this->validateDirtyProtectedFields($model);
+        }
+    }
+
+    /**
+     * For every dirty column that's part of a `HasProtectedFields` group on
+     * this model, require the user to have the group's permission. Strict AND
+     * across groups: a column in two groups needs both. Throws
+     * `InsufficientFieldPermissionException` on first failure; the `saving`
+     * listener aborts the whole save (Eloquent rolls back).
+     *
+     * Inserts are skipped unless `kompo-auth.security.fields.gate_inserts`
+     * is true — a fresh row is "all dirty" by definition and gating it would
+     * mostly fire on Person creation paths where the general write permission
+     * already gates the operation.
+     */
+    protected function validateDirtyProtectedFields($model): void
+    {
+        $meta = SecurityMetadataRegistry::for(get_class($model));
+        if (empty($meta['protectedColumns'])) {
+            return;
+        }
+
+        if (!$model->exists && !kompoAuthSecurityConfig('fields.gate_inserts', false)) {
+            return;
+        }
+
+        $dirtyKeys = array_keys($model->getDirty());
+        $dirtyProtected = array_intersect($dirtyKeys, array_keys($meta['protectedColumns']));
+        if (empty($dirtyProtected)) {
+            return;
+        }
+
+        $fieldProtection = app(FieldProtectionServiceInterface::class);
+
+        foreach ($dirtyProtected as $column) {
+            foreach ($meta['groups'] as $group) {
+                if ($group['type'] !== 'columns' || !in_array($column, $group['fields'], true)) {
+                    continue;
+                }
+                if (!$fieldProtection->hasPermissionForProtectionKey($model, $group['key'])) {
+                    throw new InsufficientFieldPermissionException(
+                        get_class($model),
+                        $column,
+                        $group['key'],
+                    );
+                }
+            }
         }
     }
 

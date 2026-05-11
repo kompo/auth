@@ -1,24 +1,36 @@
 <?php
 
-namespace Kompo\Auth\Models\Plugins\Services;
+namespace Kompo\Auth\Teams\Security;
+
+use Kompo\Auth\Teams\Cache\CachedFieldProtectionService;
+use Kompo\Auth\Teams\Cache\CachedTeamSecurityService;
+use Kompo\Auth\Teams\Contracts\PermissionResolverInterface;
+use Kompo\Auth\Teams\Security\Contracts\FieldProtectionServiceInterface;
+use Kompo\Auth\Teams\Security\Contracts\TeamSecurityServiceInterface;
 
 /**
  * Factory for creating security services with proper dependency injection
  *
  * This factory handles the creation of all security services, ensuring proper
  * dependency injection and avoiding initialization issues.
+ *
+ * Layering note (Phases 3 & 4):
+ *   - TeamSecurityService / FieldProtectionService are pure compute layers.
+ *   - CachedTeamSecurityService / CachedFieldProtectionService are per-request decorators.
+ *   - The factory returns the decorators everywhere callers expect those services,
+ *     so callers typehint the interface and stay agnostic about caching.
  */
 class SecurityServiceFactory
 {
     protected $bypassService;
-    protected $cacheService;
+    protected $permissionResolver;
 
     public function __construct(
         SecurityBypassService $bypassService,
-        PermissionCacheService $cacheService
+        PermissionResolverInterface $permissionResolver
     ) {
         $this->bypassService = $bypassService;
-        $this->cacheService = $cacheService;
+        $this->permissionResolver = $permissionResolver;
     }
 
     /**
@@ -32,19 +44,17 @@ class SecurityServiceFactory
         // Normalize modelClass to string
         $modelClassString = is_object($modelClass) ? get_class($modelClass) : $modelClass;
 
-        // Create team service first (foundation service)
-        $teamService = new TeamSecurityService($modelClassString, $this->cacheService);
+        // Create team service first (foundation service) — returns the cached decorator
+        $teamService = $this->createTeamSecurityServiceForModel($modelClassString);
 
-        // Create field protection service
-        $fieldProtectionService = new FieldProtectionService(
-            $this->bypassService,
-            $this->cacheService,
-            $teamService
-        );
+        // Field protection service is constructed via createFieldProtectionService
+        // so the cache decorator is always applied consistently.
+        $fieldProtectionService = $this->createFieldProtectionService($modelClassString, $teamService);
 
-        // Create batch permission service
+        // Create batch permission service — depends on the cached resolver,
+        // not on the legacy PermissionCacheService.
         $batchPermissionService = new BatchPermissionService(
-            $this->cacheService,
+            $this->permissionResolver,
             $teamService,
             $fieldProtectionService,
             $this->bypassService
@@ -74,7 +84,6 @@ class SecurityServiceFactory
 
         return [
             'bypass' => $this->bypassService,
-            'cache' => $this->cacheService,
             'team' => $teamService,
             'fieldProtection' => $fieldProtectionService,
             'batchPermission' => $batchPermissionService,
@@ -84,12 +93,17 @@ class SecurityServiceFactory
         ];
     }
 
-    public function createFieldProtectionService(string $modelClass, $teamService = null): FieldProtectionService
+    /**
+     * Returns the cached decorator. Callers should typehint
+     * FieldProtectionServiceInterface, not the concrete inner class.
+     */
+    public function createFieldProtectionService(string $modelClass, $teamService = null): FieldProtectionServiceInterface
     {
-        return new FieldProtectionService(
-            $this->bypassService,
-            $this->cacheService,
-            $teamService ?? $this->createTeamSecurityServiceForModel($modelClass)
+        return new CachedFieldProtectionService(
+            new FieldProtectionService(
+                $this->bypassService,
+                $teamService ?? $this->createTeamSecurityServiceForModel($modelClass)
+            )
         );
     }
 
@@ -98,16 +112,23 @@ class SecurityServiceFactory
         $teamService = $this->createTeamSecurityServiceForModel($modelClass);
 
         return new BatchPermissionService(
-            $this->cacheService,
+            $this->permissionResolver,
             $teamService,
             $this->createFieldProtectionService($modelClass, $teamService),
             $this->bypassService
         );
     }
 
-    public function createTeamSecurityServiceForModel(string $modelClass): TeamSecurityService
+    /**
+     * Returns the cached decorator. Callers should typehint
+     * TeamSecurityServiceInterface, not the concrete inner class.
+     */
+    public function createTeamSecurityServiceForModel(string $modelClass): TeamSecurityServiceInterface
     {
-        return new TeamSecurityService($modelClass, $this->cacheService);
+        return new CachedTeamSecurityService(
+            new TeamSecurityService($modelClass),
+            $modelClass,
+        );
     }
 
     /**
@@ -116,13 +137,5 @@ class SecurityServiceFactory
     public function getBypassService(): SecurityBypassService
     {
         return $this->bypassService;
-    }
-
-    /**
-     * Get the cache service (singleton)
-     */
-    public function getCacheService(): PermissionCacheService
-    {
-        return $this->cacheService;
     }
 }

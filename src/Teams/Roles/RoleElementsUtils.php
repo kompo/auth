@@ -96,8 +96,8 @@ trait RoleElementsUtils
 
         return _Rows(_CheckboxMultipleStates(
             $role->id . '-' . $permission->id,
-            PermissionTypeEnum::values(),
-            PermissionTypeEnum::colors(),
+            PermissionTypeEnum::forPermission($permission),
+            PermissionTypeEnum::colorsForPermission($permission),
             $default ?? $role->getPermissionTypeByPermissionId($permission->id),
             $userHasWritePermission
         )->class('!mb-0')
@@ -119,8 +119,8 @@ trait RoleElementsUtils
 
         return _Rows(_CheckboxSectionMultipleStates(
             $checkboxName,
-            PermissionTypeEnum::values(),
-            PermissionTypeEnum::colors(),
+            PermissionTypeEnum::forSection($permissionSection),
+            PermissionTypeEnum::colorsForSection($permissionSection),
             count($types) ? $types : $permissionSection->allPermissionsTypes($role)->toArray(),
             $userHasWritePermission
         )->class('!mb-0')

@@ -30,13 +30,12 @@ use Kompo\Auth\Teams\TeamRoleSwitcherScopeCodec;
 use Kompo\Auth\Teams\TeamRoleSwitcherScopeResolver;
 use Kompo\Auth\Teams\TeamRoleSwitcherTeamRepository;
 use Kompo\Auth\Http\Middleware\MonitorPermissionPerformance;
-use Kompo\Auth\Models\Plugins\Services\DeleteSecurityService;
-use Kompo\Auth\Models\Plugins\Services\FieldProtectionService;
-use Kompo\Auth\Models\Plugins\Services\PermissionCacheService;
-use Kompo\Auth\Models\Plugins\Services\ReadSecurityService;
-use Kompo\Auth\Models\Plugins\Services\SecurityBypassService;
-use Kompo\Auth\Models\Plugins\Services\SecurityMetadataRegistry;
-use Kompo\Auth\Models\Plugins\Services\WriteSecurityService;
+use Kompo\Auth\Teams\Security\DeleteSecurityService;
+use Kompo\Auth\Teams\Security\ReadSecurityService;
+use Kompo\Auth\Teams\Security\SecurityBypassService;
+use Kompo\Auth\Teams\Security\SecurityMetadataRegistry;
+use Kompo\Auth\Teams\Security\WriteSecurityService;
+use Kompo\Auth\Teams\Cache\GlobalSecurityBypassCache;
 use Kompo\Auth\Teams\PermissionCacheManager;
 use Kompo\Auth\Teams\PermissionResolver;
 use Kompo\Auth\Support\ElementPermissionCache;
@@ -153,39 +152,50 @@ class KompoAuthServiceProvider extends ServiceProvider
      */
     private function registerCoreServices(): void
     {
-        // Security bypass service (highest priority)
-        $this->app->singleton('kompo-auth.security-bypass', function ($app) {
+        // Static portion of the security-bypass check.
+        // Stable for the request lifetime (modulo login/logout/impersonation).
+        // Excludes isInBypassContext() — that is composed in `kompo-auth.security-bypass`.
+        // Memoized via GlobalSecurityBypassCache so the expensive routeIsByPassed()
+        // router match only runs once per request.
+        $this->app->singleton('kompo-auth.security-bypass.static', function ($app) {
             return function () {
-                 if (app()->runningInConsole()) {
+                if (app()->runningInConsole() && kompoAuthSecurityConfig('bypass.console', true)) {
                     return true;
                 }
 
-                if (session()->isStarted() && config('kompo-auth.security.dont-check-if-not-logged-in', false) && !auth()->check()) {
+                if (session()->isStarted()
+                    && kompoAuthSecurityConfig('bypass.unauthenticated', false)
+                    && !auth()->check()
+                ) {
                     return true;
                 }
 
-                if (auth()->user()?->isSuperAdmin()) {
+                if (kompoAuthSecurityConfig('bypass.super_admin', true) && auth()->user()?->isSuperAdmin()) {
                     return true;
                 }
 
-                if (isInBypassContext()) {
+                // routeIsByPassed() is the expensive one (Laravel router match
+                // when Kompo AJAX hits /_kompo). Kept last so cheap checks
+                // short-circuit it. Memoized via the cache class anyway.
+                if (kompoAuthSecurityConfig('bypass.route_opt_out', true) && routeIsByPassed()) {
                     return true;
                 }
 
-                if (routeIsByPassed()) {
-                    return true;
-                }
+                return (bool) kompoAuthSecurityConfig('bypass.global', false);
+            };
+        });
 
-                // // When is from National (in sisc)
-                // if (Schema::hasColumn('teams', 'team_level')
-                //     && auth()->user()?->teamRoles()->asSystemOperation()
-                //         ->whereHas('team', fn($q) => $q->where('team_level', 1))
-                //         ->exists()
-                // ) {
-                //     return true;
-                // }
+        // Composed binding: memoized static OR live bypass-context toggle.
+        // Public API surface used by globalSecurityBypass() helper.
+        // The static resolver is re-fetched from the container per call so that
+        // a later $app->bind('kompo-auth.security-bypass.static', …) override
+        // takes effect without forcing callers to forgetInstance() first.
+        $this->app->singleton('kompo-auth.security-bypass', function ($app) {
+            return function () use ($app) {
+                $staticResolver = $app->make('kompo-auth.security-bypass.static');
 
-                return config('kompo-auth.security.bypass-security', false);
+                return GlobalSecurityBypassCache::resolve($staticResolver)
+                    || isInBypassContext();
             };
         });
 
@@ -339,10 +349,13 @@ class KompoAuthServiceProvider extends ServiceProvider
     private function registerRequestLifecycleCleanup(): void
     {
         $this->app->terminating(function () {
+            GlobalSecurityBypassCache::flush();
             SecurityMetadataRegistry::clearAll();
-            FieldProtectionService::clearTracking();
             SecurityBypassService::clearTracking();
-            PermissionCacheService::clearAllCaches();
+            \Kompo\Auth\Teams\Security\TeamScopeIntent::reset();
+            \Kompo\Auth\Teams\Cache\CachedTeamSecurityService::flush();
+            \Kompo\Auth\Teams\Cache\CachedFieldProtectionService::flush();
+            \Kompo\Auth\Teams\Cache\CachedOwnedRecordsResolver::flush();
             ElementPermissionCache::clear();
 
             ReadSecurityService::clearSecurityConfigCache();
@@ -370,22 +383,29 @@ class KompoAuthServiceProvider extends ServiceProvider
     {
         // Register singleton services (stateless, shared across requests)
         $this->app->singleton(
-            \Kompo\Auth\Models\Plugins\Services\SecurityBypassService::class
-        );
-
-        $this->app->singleton(
-            \Kompo\Auth\Models\Plugins\Services\PermissionCacheService::class
+            \Kompo\Auth\Teams\Security\SecurityBypassService::class
         );
 
         // Register the factory as singleton (it manages service creation)
         $this->app->singleton(
-            \Kompo\Auth\Models\Plugins\Services\SecurityServiceFactory::class,
+            \Kompo\Auth\Teams\Security\SecurityServiceFactory::class,
             function ($app) {
-                return new \Kompo\Auth\Models\Plugins\Services\SecurityServiceFactory(
-                    $app->make(\Kompo\Auth\Models\Plugins\Services\SecurityBypassService::class),
-                    $app->make(\Kompo\Auth\Models\Plugins\Services\PermissionCacheService::class)
+                return new \Kompo\Auth\Teams\Security\SecurityServiceFactory(
+                    $app->make(\Kompo\Auth\Teams\Security\SecurityBypassService::class),
+                    $app->make(\Kompo\Auth\Teams\Contracts\PermissionResolverInterface::class),
                 );
             }
+        );
+
+        // Owned-records resolver: pure compute + per-request cache decorator.
+        // Callers bind to the interface and get the cached version.
+        $this->app->singleton(\Kompo\Auth\Teams\Security\OwnedRecordsResolver::class);
+
+        $this->app->singleton(
+            \Kompo\Auth\Teams\Security\Contracts\OwnedRecordsResolverInterface::class,
+            fn ($app) => new \Kompo\Auth\Teams\Cache\CachedOwnedRecordsResolver(
+                $app->make(\Kompo\Auth\Teams\Security\OwnedRecordsResolver::class)
+            ),
         );
     }
 
@@ -659,6 +679,25 @@ class KompoAuthServiceProvider extends ServiceProvider
         Event::listen(\Illuminate\Auth\Events\Login::class, \Kompo\Auth\Listeners\RecordSuccessLoginAttempt::class);
         Event::listen(\Illuminate\Auth\Events\Login::class, \Kompo\Auth\Listeners\WarmUserCacheOnLogin::class);
         Event::listen(\Illuminate\Auth\Events\Failed::class, \Kompo\Auth\Listeners\RecordFailedLoginAttempt::class);
+
+        // Flush the per-request auth caches when authenticated user identity
+        // changes — superadmin status, login state, and impersonation can flip
+        // cached answers (security-bypass static, field-protection permissions,
+        // team-owners resolution).
+        $flushPerRequestAuthCaches = function () {
+            GlobalSecurityBypassCache::flush();
+            \Kompo\Auth\Teams\Cache\CachedFieldProtectionService::flush();
+            \Kompo\Auth\Teams\Cache\CachedTeamSecurityService::flush();
+            \Kompo\Auth\Teams\Cache\CachedOwnedRecordsResolver::flush();
+        };
+        Event::listen(\Illuminate\Auth\Events\Login::class, $flushPerRequestAuthCaches);
+        Event::listen(\Illuminate\Auth\Events\Logout::class, $flushPerRequestAuthCaches);
+        if (class_exists(\Lab404\Impersonate\Events\TakeImpersonation::class)) {
+            Event::listen(\Lab404\Impersonate\Events\TakeImpersonation::class, $flushPerRequestAuthCaches);
+        }
+        if (class_exists(\Lab404\Impersonate\Events\LeaveImpersonation::class)) {
+            Event::listen(\Lab404\Impersonate\Events\LeaveImpersonation::class, $flushPerRequestAuthCaches);
+        }
     }
 
     /**

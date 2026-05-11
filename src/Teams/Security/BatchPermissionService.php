@@ -1,9 +1,14 @@
 <?php
 
-namespace Kompo\Auth\Models\Plugins\Services;
+namespace Kompo\Auth\Teams\Security;
 
+use Condoedge\Utils\Contracts\Security\HasOwnedRecords;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
-use Kompo\Auth\Models\Plugins\Services\SecurityMetadataRegistry;
+use Kompo\Auth\Teams\Contracts\PermissionResolverInterface;
+use Kompo\Auth\Teams\Security\Contracts\FieldProtectionServiceInterface;
+use Kompo\Auth\Teams\Security\Contracts\OwnedRecordsResolverInterface;
+use Kompo\Auth\Teams\Security\Contracts\TeamSecurityServiceInterface;
+use Kompo\Auth\Teams\Security\SecurityMetadataRegistry;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -13,22 +18,30 @@ use Illuminate\Support\Facades\Log;
  * - Batch load field protection permissions for collections
  * - Group models by teams for efficient processing
  * - Calculate processing plans based on team intersections
- * - Execute batch permission checks
+ * - Execute batch permission checks via the cached PermissionResolver
+ *
+ * Layering note (Phase 5):
+ *   This service used to keep its own per-request permission cache in
+ *   PermissionCacheService (buildBatchCacheKey / getBatchPermission /
+ *   setBatchPermission). That was redundant — `User->hasPermission` already
+ *   delegates to `CachedPermissionResolver`, which caches per request. The
+ *   local cache layer is removed; checks now go straight through
+ *   PermissionResolverInterface.
  */
 class BatchPermissionService
 {
-    protected $cacheService;
+    protected $permissionResolver;
     protected $teamService;
     protected $fieldProtectionService;
     protected $bypassService;
 
     public function __construct(
-        PermissionCacheService $cacheService,
-        TeamSecurityService $teamService,
-        FieldProtectionService $fieldProtectionService,
+        PermissionResolverInterface $permissionResolver,
+        TeamSecurityServiceInterface $teamService,
+        FieldProtectionServiceInterface $fieldProtectionService,
         SecurityBypassService $bypassService
     ) {
-        $this->cacheService = $cacheService;
+        $this->permissionResolver = $permissionResolver;
         $this->teamService = $teamService;
         $this->fieldProtectionService = $fieldProtectionService;
         $this->bypassService = $bypassService;
@@ -81,9 +94,8 @@ class BatchPermissionService
             return $modelsCollection->all();
         }
 
-        // Bulk owner pre-resolution: if the model defines scopeUserOwnedRecords, run it ONCE
-        // for the whole collection and mark matches as bypassed. Avoids per-model
-        // usersIdsAllowedToManage()/scopeUserOwnedRecords() N+1 inside the per-model fast path.
+        // Bulk owner pre-resolution: ask OwnedRecordsResolver once for the
+        // whole collection's owned IDs and mark matches as bypassed.
         $this->bulkResolveOwnedModels($modelsCollection, $firstModel);
 
         // Process each group using the batch team-intersection approach
@@ -101,37 +113,63 @@ class BatchPermissionService
     }
 
     /**
-     * Process a single protection group across all models using team-intersection batch logic
+     * Process a single protection group across all models using team-intersection batch logic.
+     *
+     * For each team that needs a check, ask PermissionResolverInterface once.
+     * The resolver caches the answer for the request; subsequent calls (and
+     * other code paths that go through `User->hasPermission`) share the same
+     * cached result.
      */
     protected function batchProcessGroup($modelsCollection, array $group, int $userId, $user): void
     {
-        PermissionCacheService::setCurrentBatchPermissionKey($group['key']);
+        $teamModelMap = $this->groupModelsByTeams($modelsCollection);
+        $authorizedTeams = $this->getAuthorizedTeams($user, $group['key']);
+        $processingPlan = $this->calculateProcessingPlan($teamModelMap, $authorizedTeams);
 
-        try {
-            $teamModelMap = $this->groupModelsByTeams($modelsCollection);
-            $authorizedTeams = $this->getAuthorizedTeams($user, $group['key']);
-            $processingPlan = $this->calculateProcessingPlan($teamModelMap, $authorizedTeams);
-            $this->executeBatchPermissionChecks($processingPlan, $user, $group['key'], $userId);
+        foreach ($processingPlan['needs_check'] as $teamKey => $models) {
+            $teamId = $teamKey === 'no_team' ? null : (int) str_replace('team_', '', $teamKey);
 
-            // Apply protection to models that lack permission AND are not bypassed (owners, etc.)
-            foreach ($processingPlan['needs_check'] as $teamKey => $models) {
-                $hasPermission = $this->getPermissionFromCache($teamKey, $userId);
-                if (!$hasPermission) {
-                    foreach ($models as $model) {
-                        if (!$this->isModelBypassed($model)) {
-                            $this->applyGroupProtection($model, $group);
-                        }
-                    }
-                }
+            if ($this->resolverAllows($userId, $group['key'], $teamId)) {
+                continue;
             }
 
-            foreach ($processingPlan['unauthorized_models'] as $model) {
+            foreach ($models as $model) {
                 if (!$this->isModelBypassed($model)) {
                     $this->applyGroupProtection($model, $group);
                 }
             }
-        } finally {
-            PermissionCacheService::setCurrentBatchPermissionKey(null);
+        }
+
+        // unauthorized_models is populated only by legacy callers; calculateProcessingPlan
+        // does not currently fill it. Kept for forward compatibility.
+        foreach ($processingPlan['unauthorized_models'] as $model) {
+            if (!$this->isModelBypassed($model)) {
+                $this->applyGroupProtection($model, $group);
+            }
+        }
+    }
+
+    /**
+     * Ask the cached resolver whether the user has $permissionKey for the given team.
+     * Single seam for both the per-team and the no-team checks.
+     */
+    protected function resolverAllows(int $userId, string $permissionKey, ?int $teamId): bool
+    {
+        try {
+            return $this->permissionResolver->userHasPermission(
+                $userId,
+                $permissionKey,
+                PermissionTypeEnum::READ,
+                $teamId,
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Batch permission check failed', [
+                'permission_key' => $permissionKey,
+                'user_id' => $userId,
+                'team_id' => $teamId,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
         }
     }
 
@@ -235,81 +273,8 @@ class BatchPermissionService
     }
 
     /**
-     * Execute batch permission checks only for teams/models that need it
-     */
-    protected function executeBatchPermissionChecks(array $processingPlan, $user, string $sensibleColumnsKey, int $userId): void
-    {
-        foreach ($processingPlan['needs_check'] as $teamKey => $models) {
-            if ($teamKey === 'no_team') {
-                // Check global permission for no-team models
-                $batchCacheKey = $this->cacheService->buildBatchCacheKey($userId, $sensibleColumnsKey, null);
-
-                if ($this->cacheService->getBatchPermission($batchCacheKey) === null) {
-                    try {
-                        $hasPermission = $user->hasPermission(
-                            $sensibleColumnsKey,
-                            PermissionTypeEnum::READ,
-                            null
-                        ) ?? false;
-                        $this->cacheService->setBatchPermission($batchCacheKey, $hasPermission);
-                    } catch (\Throwable $e) {
-                        Log::warning('Batch permission check failed for no-team models', [
-                            'permission_key' => $sensibleColumnsKey,
-                            'user_id' => $userId,
-                            'error' => $e->getMessage()
-                        ]);
-                        $this->cacheService->setBatchPermission($batchCacheKey, false);
-                    }
-                }
-            } else {
-                // Extract team ID from team key (team_123 -> 123)
-                $teamId = str_replace('team_', '', $teamKey);
-                $batchCacheKey = $this->cacheService->buildBatchCacheKey($userId, $sensibleColumnsKey, $teamId);
-
-                if ($this->cacheService->getBatchPermission($batchCacheKey) === null) {
-                    try {
-                        $hasPermission = $user->hasPermission(
-                            $sensibleColumnsKey,
-                            PermissionTypeEnum::READ,
-                            $teamId
-                        ) ?? false;
-                        $this->cacheService->setBatchPermission($batchCacheKey, $hasPermission);
-                    } catch (\Throwable $e) {
-                        Log::warning('Batch permission check failed for team', [
-                            'permission_key' => $sensibleColumnsKey,
-                            'user_id' => $userId,
-                            'team_id' => $teamId,
-                            'error' => $e->getMessage()
-                        ]);
-                        $this->cacheService->setBatchPermission($batchCacheKey, false);
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Get permission result from cache based on team key
-     */
-    protected function getPermissionFromCache(string $teamKey, int $userId): bool
-    {
-        $permissionKey = PermissionCacheService::getCurrentBatchPermissionKey();
-
-        if ($teamKey === 'no_team') {
-            $cacheKey = $this->cacheService->buildBatchCacheKey($userId, $permissionKey, null);
-        } else {
-            $teamId = str_replace('team_', '', $teamKey);
-            $cacheKey = $this->cacheService->buildBatchCacheKey($userId, $permissionKey, $teamId);
-        }
-
-        return $this->cacheService->getBatchPermission($cacheKey) ?? false;
-    }
-
-    /**
-     * Check if a model is bypassed using fast O(1) checks only (flag + user_id match).
-     * Caches only TRUE results so lazy paths (FieldProtectionService) can still escalate
-     * to the full check (usersIdsAllowedToManage / scopeUserOwnedRecords) when needed.
-     * Bulk owner resolution happens once per collection in bulkResolveOwnedModels().
+     * Fast O(1) bypass check (read-flag + user_id match). Bulk owner
+     * resolution happens once per collection in `bulkResolveOwnedModels`.
      */
     protected function isModelBypassed($model): bool
     {
@@ -329,9 +294,9 @@ class BatchPermissionService
     }
 
     /**
-     * Run scopeUserOwnedRecords ONCE for the whole collection and mark matches as bypassed.
-     * Replaces N+1 per-model owner queries (1 query for the whole batch instead of N).
-     * Models without scopeUserOwnedRecords fall back to lazy full-check in FieldProtectionService.
+     * Resolve owned records via OwnedRecordsResolverInterface — one resolver
+     * call per (user, modelClass) for the request. Matches are flagged as
+     * bypassed on ModelSecurityState.
      */
     protected function bulkResolveOwnedModels($modelsCollection, $firstModel): void
     {
@@ -340,37 +305,23 @@ class BatchPermissionService
         }
 
         $modelClass = get_class($firstModel);
-        if (!method_exists($modelClass, 'scopeUserOwnedRecords')) {
+
+        if (!is_subclass_of($modelClass, HasOwnedRecords::class)) {
             return;
         }
 
-        try {
-            SecurityBypassService::enterBypassContext();
-            try {
-                $keyName = $firstModel->getKeyName();
-                $ids = $modelClass::query()->userOwnedRecords()->pluck($keyName)->all();
-            } finally {
-                SecurityBypassService::exitBypassContext();
-            }
+        $ownedIds = array_flip(
+            app(OwnedRecordsResolverInterface::class)->forUser(auth()->id(), $modelClass)
+        );
 
-            if (empty($ids)) {
-                return;
-            }
+        if (empty($ownedIds)) {
+            return;
+        }
 
-            $ownedIds = array_flip($ids);
-
-            foreach ($modelsCollection as $model) {
-                if (isset($ownedIds[$model->getKey()])) {
-                    $model->getSecurityState()->bypassed = true;
-                }
+        foreach ($modelsCollection as $model) {
+            if (isset($ownedIds[$model->getKey()])) {
+                $model->getSecurityState()->bypassed = true;
             }
-        } catch (\Throwable $e) {
-            Log::warning('Bulk owner resolution failed', [
-                'model_class' => $modelClass,
-                'user_id' => auth()->id(),
-                'error' => $e->getMessage(),
-            ]);
         }
     }
-
 }

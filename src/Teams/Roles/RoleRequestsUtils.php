@@ -19,19 +19,26 @@ trait RoleRequestsUtils
         $value = (int) request('permissionSection' . request('role') . '-' . request('permissionSection'));
 
         $role = Role::findOrFail(request('role'));
+
+        // Pull each permission's `supported_types` so we can cap per row —
+        // the UI narrows the cycle but a stale POST might still send an
+        // unsupported type.
         $permissions = Permission::where('permission_section_id', request('permissionSection'))
             ->when(request('permission_name') && request('permission_name') !== "null", fn($q) => $q->where('permission_name', 'like', wildcardSpace(request('permission_name'))))
-            ->pluck('id');
+            ->get(['id', 'supported_types']);
 
-        if($value) {
-            $value = PermissionTypeEnum::from($value);
-        }
+        $requestedType = $value ? PermissionTypeEnum::tryFrom($value) : null;
 
-        if (!$value) {
-            $role->permissions()->detach($permissions);
+        if ($requestedType === null) {
+            $role->permissions()->detach($permissions->pluck('id'));
         } else {
-            foreach($permissions as $permission) {
-                $role->createOrUpdatePermission($permission, $value, false);
+            foreach ($permissions as $permission) {
+                $capped = $this->capToSupportedTypes($requestedType, $permission);
+                if ($capped === null) {
+                    $role->permissions()->detach([$permission->id]);
+                } else {
+                    $role->createOrUpdatePermission($permission->id, $capped, false);
+                }
             }
         }
 
@@ -45,20 +52,53 @@ trait RoleRequestsUtils
         }
 
         $value = (int) request(request('role') . '-' . request('permission'));
-
-        if($value) {
-            $value = PermissionTypeEnum::from($value);
-        } 
+        $requestedType = $value ? PermissionTypeEnum::tryFrom($value) : null;
 
         $role = Role::findOrFail(request('role'));
 
-        if (!$value) {
+        if ($requestedType === null) {
             $role->permissions()->detach(request('permission'));
-        } else{
-            $role->createOrUpdatePermission(request('permission'), $value, false);
+        } else {
+            $permission = Permission::findOrFail(request('permission'));
+            $capped = $this->capToSupportedTypes($requestedType, $permission);
+
+            if ($capped === null) {
+                $role->permissions()->detach([$permission->id]);
+            } else {
+                $role->createOrUpdatePermission($permission->id, $capped, false);
+            }
         }
 
         app(PermissionCacheInvalidator::class)->rolePermissionsChanged([$role->id]);
+    }
+
+    /**
+     * Clamp the requested type to the permission's `supported_types` bitmask.
+     * Returns the requested type if supported, the largest supported type
+     * below it (READ < WRITE < ALL), or `null` when nothing is at-or-below.
+     * `DENY` is always supported (separate axis).
+     */
+    protected function capToSupportedTypes(PermissionTypeEnum $requested, Permission $permission): ?PermissionTypeEnum
+    {
+        if ($permission->supportsType($requested)) {
+            return $requested;
+        }
+
+        if ($requested === PermissionTypeEnum::DENY) {
+            return $requested;
+        }
+
+        // Walk down the CRUD ladder ALL → WRITE → READ until we find a supported case.
+        foreach ([PermissionTypeEnum::ALL, PermissionTypeEnum::WRITE, PermissionTypeEnum::READ] as $candidate) {
+            if ($candidate->value > $requested->value) {
+                continue;
+            }
+            if ($permission->supportsType($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     public function getRoleForm($id = null)

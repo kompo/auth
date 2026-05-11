@@ -1,6 +1,6 @@
 <?php
 
-namespace Kompo\Auth\Models\Plugins\Services;
+namespace Kompo\Auth\Teams\Security;
 
 /**
  * Centralized debug logger for the security plugin system.

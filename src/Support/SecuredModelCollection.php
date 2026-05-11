@@ -4,8 +4,7 @@ namespace Kompo\Auth\Support;
 
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
-use Kompo\Auth\Models\Plugins\Services\FieldProtectionService;
-use Kompo\Auth\Models\Plugins\Services\SecurityServiceFactory;
+use Kompo\Auth\Teams\Security\SecurityServiceFactory;
 
 /**
  * Secured Model Collection
@@ -79,12 +78,6 @@ class SecuredModelCollection extends Collection
             $batchService = $securityFactory->createBatchPermissionServiceForModel(get_class($first));
 
             $this->items = $batchService->batchLoadFieldProtectionPermissions($this->all());
-
-            // Clean up fieldProtectionInProgress entries that accumulated during batch processing.
-            // We do NOT clear $blockedRelationshipsRegistry here because it's still needed
-            // for the fast-path lookup in isBlockedRelationship() during attribute access.
-            // The request-level cleanup (HasSecurity::registerRequestCleanup) handles full cleanup.
-            FieldProtectionService::clearInProgressTracking();
         } catch (\Throwable $e) {
             // Log but don't break - field protection will fall back to individual checks
             Log::warning('Auto-batch field protection loading failed', [

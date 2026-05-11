@@ -10,6 +10,7 @@ use Kompo\Auth\Models\Teams\Roles\Role;
 use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 use Kompo\Auth\Teams\Cache\PermissionDefinitionCache;
 use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
+use Kompo\Auth\Teams\Roles\TeamRoleAssignmentGuard;
 use Kompo\Auth\Teams\TeamHierarchyRoleProcessor;
 
 class TeamRole extends Model
@@ -33,19 +34,16 @@ class TeamRole extends Model
         });
 
         static::saving(function ($teamRole) {
-            // Ensuring the role is available for the user because it could be even assigning it to himself
-            if ($teamRole->isDirty('role') && !$teamRole->roleRelation()->availableForUserPermissions(auth()->user())->exists()) {
-                abort(403, __('auth.with-values.invalid-role'));
+            if (!$teamRole->_bypassSecurity
+                && ($teamRole->isDirty('role') || $teamRole->isDirty('user_id'))) {
+                TeamRoleAssignmentGuard::assertCanAssign(auth()->user(), $teamRole);
             }
 
             if ($teamRole->isDirty('role')) {
                 $role = RoleModel::find($teamRole->role);
-
-                if ($role) {
-                    $teamRole->role_hierarchy = static::catchRightHiearchyBasedOnRole($role);
-                } else {
-                    $teamRole->role_hierarchy = RoleHierarchyEnum::DIRECT;
-                }
+                $teamRole->role_hierarchy = $role
+                    ? static::catchRightHiearchyBasedOnRole($role)
+                    : RoleHierarchyEnum::DIRECT;
             }
         });
 

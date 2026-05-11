@@ -135,6 +135,17 @@ class Role extends Model implements OptsOutOfSecurity
 
     // SCOPES
 
+    /**
+     * Default: no restriction. Apps that need to gate specific roles (e.g.
+     * super-admin) override this in their own Role subclass — keep the
+     * conditions aligned with TeamRoleAssignmentGuard::actorBypassesRestrictions
+     * so UI filters and the save guard stay consistent.
+     */
+    public function scopeAvailableForUserPermissions($query, $user)
+    {
+        return $query;
+    }
+
     // ACTIONS
     public function deletable()
     {

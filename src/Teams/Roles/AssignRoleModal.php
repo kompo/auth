@@ -149,10 +149,13 @@ class AssignRoleModal extends Modal
 
     public function searchUsers($search)
     {
-        $userCanAddHimself = isImpersonated() || auth()->user()->hasRole('super-admin') || isSuperAdmin();
+        $actor = auth()->user();
 
         return User::hasNameLike($search)
-            ->when(!$userCanAddHimself, fn($q) => $q->where('id', '!=', auth()->id()))
+            ->when(
+                !TeamRoleAssignmentGuard::actorBypassesRestrictions($actor),
+                fn($q) => $q->where('id', '!=', $actor?->id)
+            )
             ->select('id', 'name')
             ->take(50)
             ->get()

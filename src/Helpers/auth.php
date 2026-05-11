@@ -138,7 +138,7 @@ if (!function_exists('permissionMustBeAuthorized')) {
             return false;
         }
 
-        if (!Permission::findByKey($permissionKey) && !kompoAuthSecurityConfig('permission.check_even_if_missing', false)) {
+        if (!Permission::findByKey($permissionKey) && !kompoAuthSecurityConfig('permission.unknown_keys.enforce_in_scope', false)) {
             return false;
         }
 

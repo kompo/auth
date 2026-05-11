@@ -69,9 +69,23 @@ return [
         ],
 
         'permission' => [
-            // When false, `permissionMustBeAuthorized` returns false for unknown keys (skips the
-            // gate). When true, treats unknown keys as still authorized (stricter).
-            'check_even_if_missing' => false,
+            // Behavior when a permission key isn't found in the `permissions`
+            // table. The two flags below cover the two code paths that hit a
+            // permission key — implicit scope enforcement and explicit checks.
+            'unknown_keys' => [
+                // Scope-level gate (`permissionMustBeAuthorized`).
+                //   false (default): scope short-circuits → no enforcement.
+                //   true : enforce the gate even when the key is missing
+                //          (stricter — surfaces unseeded keys as denied).
+                'enforce_in_scope' => false,
+
+                // Explicit checks: `auth()->user()->hasPermission()`,
+                // `checkAuthPermission`, and the `checkAuth` macro.
+                //   false (default): unknown key returns false (fail-closed).
+                //   true : unknown key returns true 
+                // — useful when permissions want to be completely dynamic based on db entries.
+                'grant_in_explicit' => false,
+            ],
         ],
 
         'owned_records' => [

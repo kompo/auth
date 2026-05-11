@@ -6,6 +6,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Kompo\Auth\Facades\TeamModel;
 use Kompo\Auth\Facades\UserModel;
+use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Teams\Cache\AuthCacheLayer;
@@ -58,12 +59,18 @@ class PermissionResolver implements PermissionResolverInterface
      * Main permission checking method with optimized resolution
      */
     public function userHasPermission(
-        int $userId, 
-        string $permissionKey, 
-        PermissionTypeEnum $type = PermissionTypeEnum::ALL, 
+        int $userId,
+        string $permissionKey,
+        PermissionTypeEnum $type = PermissionTypeEnum::ALL,
         $teamIds = null
     ): bool {
         if ($this->shouldBypassSecurity($userId)) {
+            return true;
+        }
+
+        // By passing if the permission is not in the db. (On purpose since we don't populate. Allowing dynamic db permission handling)
+        if (kompoAuthSecurityConfig('permission.unknown_keys.grant_in_explicit', false)
+            && !Permission::findByKey($permissionKey)) {
             return true;
         }
 

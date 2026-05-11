@@ -94,7 +94,7 @@ class ReadSecurityService
      */
     protected function applyReadSecurityScope(Builder $builder): void
     {
-        if ($this->teamService->massRestrictByTeam()) {
+        if ($this->teamService->massRestrictByTeam($this->modelClass)) {
             $this->applyTeamBasedRestrictions($builder);
         } else {
             $this->applyNonTeamRestrictions($builder);

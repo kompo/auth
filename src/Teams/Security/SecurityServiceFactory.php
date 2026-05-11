@@ -9,131 +9,108 @@ use Kompo\Auth\Teams\Security\Contracts\FieldProtectionServiceInterface;
 use Kompo\Auth\Teams\Security\Contracts\TeamSecurityServiceInterface;
 
 /**
- * Factory for creating security services with proper dependency injection
+ * Factory for creating security services with proper dependency injection.
  *
- * This factory handles the creation of all security services, ensuring proper
- * dependency injection and avoiding initialization issues.
- *
- * Layering note (Phases 3 & 4):
- *   - TeamSecurityService / FieldProtectionService are pure compute layers.
- *   - CachedTeamSecurityService / CachedFieldProtectionService are per-request decorators.
- *   - The factory returns the decorators everywhere callers expect those services,
- *     so callers typehint the interface and stay agnostic about caching.
+ * Two service flavors:
+ *   - Singletons (bypass, team, fieldProtection, batchPermission,
+ *     owned-records): resolved straight from the container via
+ *     `app(Interface::class)`. Methods take the relevant model/class at call
+ *     time so a single shared instance covers every model class.
+ *   - Model-class-bound (read, write, delete): need `$modelClass` at
+ *     construction because they register event listeners on a specific class
+ *     (`addGlobalScope`, `saving`, `deleting`). Resolved via
+ *     `app()->makeWith()` so the container auto-resolves the rest of the deps.
  */
 class SecurityServiceFactory
 {
-    protected $bypassService;
-    protected $permissionResolver;
-
     public function __construct(
-        SecurityBypassService $bypassService,
-        PermissionResolverInterface $permissionResolver
-    ) {
-        $this->bypassService = $bypassService;
-        $this->permissionResolver = $permissionResolver;
-    }
+        protected SecurityBypassService $bypassService,
+    ) {}
 
     /**
-     * Create all services for a specific model class
+     * Create all services for a specific model class.
      *
-     * @param string|object $modelClass The model class or instance
-     * @return array Array of initialized services
+     * @param  string|object  $modelClass
+     * @return array
      */
     public function createServicesForModel($modelClass): array
     {
-        // Normalize modelClass to string
         $modelClassString = is_object($modelClass) ? get_class($modelClass) : $modelClass;
 
-        // Create team service first (foundation service) — returns the cached decorator
-        $teamService = $this->createTeamSecurityServiceForModel($modelClassString);
-
-        // Field protection service is constructed via createFieldProtectionService
-        // so the cache decorator is always applied consistently.
-        $fieldProtectionService = $this->createFieldProtectionService($modelClassString, $teamService);
-
-        // Create batch permission service — depends on the cached resolver,
-        // not on the legacy PermissionCacheService.
-        $batchPermissionService = new BatchPermissionService(
-            $this->permissionResolver,
-            $teamService,
-            $fieldProtectionService,
-            $this->bypassService
-        );
-
-        // Create read security service
-        $readSecurityService = new ReadSecurityService(
-            $modelClassString,
-            $this->bypassService,
-            $teamService
-        );
-
-        // Create write security service
-        $writeSecurityService = new WriteSecurityService(
-            $modelClassString,
-            $this->bypassService,
-            $teamService
-        );
-
-        // Create delete security service
-        $deleteSecurityService = new DeleteSecurityService(
-            $modelClassString,
-            $this->bypassService,
-            $teamService,
-            $writeSecurityService
-        );
+        $teamService   = $this->createTeamSecurityServiceForModel($modelClassString);
+        $writeSecurity = app()->makeWith(WriteSecurityService::class, [
+            'modelClass'  => $modelClassString,
+            'teamService' => $teamService,
+        ]);
 
         return [
-            'bypass' => $this->bypassService,
-            'team' => $teamService,
-            'fieldProtection' => $fieldProtectionService,
-            'batchPermission' => $batchPermissionService,
-            'readSecurity' => $readSecurityService,
-            'writeSecurity' => $writeSecurityService,
-            'deleteSecurity' => $deleteSecurityService,
+            'bypass'           => $this->bypassService,
+            'team'             => $teamService,
+            'fieldProtection'  => $this->createFieldProtectionService(),
+            'batchPermission'  => $this->createBatchPermissionServiceForModel($modelClassString),
+            'readSecurity'     => app()->makeWith(ReadSecurityService::class, [
+                'modelClass'  => $modelClassString,
+                'teamService' => $teamService,
+            ]),
+            'writeSecurity'    => $writeSecurity,
+            'deleteSecurity'   => app()->makeWith(DeleteSecurityService::class, [
+                'modelClass'   => $modelClassString,
+                'teamService'  => $teamService,
+                'writeService' => $writeSecurity,
+            ]),
         ];
     }
 
     /**
-     * Returns the cached decorator. Callers should typehint
-     * FieldProtectionServiceInterface, not the concrete inner class.
+     * Singleton bound in KompoAuthServiceProvider when auth's register() runs.
+     * The fallback covers the edge case where a consumer provider registers
+     * before auth and triggers a model boot via HasSecurity — auto-discovery
+     * is alphabetical, so e.g. `Condoedge\Crm` registers before `Kompo\Auth`.
      */
-    public function createFieldProtectionService(string $modelClass, $teamService = null): FieldProtectionServiceInterface
+    public function createFieldProtectionService(): FieldProtectionServiceInterface
     {
+        if (app()->bound(FieldProtectionServiceInterface::class)) {
+            return app(FieldProtectionServiceInterface::class);
+        }
+
         return new CachedFieldProtectionService(
-            new FieldProtectionService(
-                $this->bypassService,
-                $teamService ?? $this->createTeamSecurityServiceForModel($modelClass)
-            )
-        );
-    }
-
-    public function createBatchPermissionServiceForModel(string $modelClass): BatchPermissionService
-    {
-        $teamService = $this->createTeamSecurityServiceForModel($modelClass);
-
-        return new BatchPermissionService(
-            $this->permissionResolver,
-            $teamService,
-            $this->createFieldProtectionService($modelClass, $teamService),
-            $this->bypassService
+            new FieldProtectionService($this->bypassService, $this->createTeamSecurityServiceForModel('')),
         );
     }
 
     /**
-     * Returns the cached decorator. Callers should typehint
-     * TeamSecurityServiceInterface, not the concrete inner class.
+     * Singleton bound in KompoAuthServiceProvider. The model class parameter
+     * is preserved for API compatibility but no longer affects construction —
+     * BatchPermissionService methods take models at call time.
+     */
+    public function createBatchPermissionServiceForModel(string $modelClass): BatchPermissionService
+    {
+        if (app()->bound(BatchPermissionService::class)) {
+            return app(BatchPermissionService::class);
+        }
+
+        return new BatchPermissionService(
+            app(PermissionResolverInterface::class),
+            $this->createTeamSecurityServiceForModel($modelClass),
+            $this->createFieldProtectionService(),
+            $this->bypassService,
+        );
+    }
+
+    /**
+     * Singleton bound in KompoAuthServiceProvider. The model class parameter
+     * is preserved for API compatibility but no longer affects construction —
+     * every method on the service takes the relevant class/model at call time.
      */
     public function createTeamSecurityServiceForModel(string $modelClass): TeamSecurityServiceInterface
     {
-        return new CachedTeamSecurityService(
-            new TeamSecurityService($modelClass),
-            $modelClass,
-        );
+        if (app()->bound(TeamSecurityServiceInterface::class)) {
+            return app(TeamSecurityServiceInterface::class);
+        }
+
+        return new CachedTeamSecurityService(new TeamSecurityService());
     }
 
-    /**
-     * Get the bypass service (singleton)
-     */
     public function getBypassService(): SecurityBypassService
     {
         return $this->bypassService;

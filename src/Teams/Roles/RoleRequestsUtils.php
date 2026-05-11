@@ -123,10 +123,6 @@ trait RoleRequestsUtils
 
     public function getRoleUpdate()
     {
-        if (!auth()->user()->hasPermission('Role', PermissionTypeEnum::WRITE)) {
-            abort(403, 'Unauthorized');
-        }
-
         $latestRoles = session()->get('latest-roles') ?: [];
         session()->put('latest-roles', request('roles'));
 

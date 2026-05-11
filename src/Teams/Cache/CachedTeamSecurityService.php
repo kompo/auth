@@ -11,22 +11,22 @@ use Kompo\Auth\Teams\Security\TeamSecurityService;
  * Why this exists:
  *   `getTeamOwnersIdsSafe` is called once per model in BatchPermissionService
  *   and again in FieldProtectionService, plus once per query in the read scope.
- *   The team resolution can fall through to a DB query (Strategy 4) — caching
- *   per model instance for the request lifetime avoids the N+1.
+ *   The team resolution can fall through to a DB query — caching per model
+ *   instance for the request lifetime avoids the N+1.
  *
  * What is cached:
- *   `getTeamOwnersIdsSafe($model)` only — keyed by model class + spl_object_hash.
- *   The other interface methods are class-level decisions and either trivial or
- *   already short — proxy straight through.
+ *   `getTeamOwnersIdsSafe($model)` only — keyed by `get_class($model)` +
+ *   `spl_object_hash($model)`. The other interface methods are class-level
+ *   decisions and either trivial or short — proxy straight through.
  *
  * Cache lifetime:
  *   One request. Flushed by `KompoAuthServiceProvider::registerRequestLifecycleCleanup`
  *   via the static `flush()` method.
  *
  * Layering:
- *   The inner TeamSecurityService is pure — no static state, no cache imports.
- *   This decorator implements the same interface so callers can typehint
- *   TeamSecurityServiceInterface and remain agnostic about which layer they got.
+ *   The inner TeamSecurityService is pure and stateless. This decorator
+ *   implements the same interface so callers can typehint
+ *   TeamSecurityServiceInterface and stay agnostic about which layer they got.
  */
 class CachedTeamSecurityService implements TeamSecurityServiceInterface
 {
@@ -40,19 +40,19 @@ class CachedTeamSecurityService implements TeamSecurityServiceInterface
 
     public function __construct(
         protected TeamSecurityService $inner,
-        protected string $modelClass,
     ) {}
 
     public function getTeamOwnersIdsSafe($model)
     {
-        $hash = spl_object_hash($model);
+        $class = get_class($model);
+        $hash  = spl_object_hash($model);
 
-        if (isset(static::$teamOwnersCache[$this->modelClass][$hash])
-            || array_key_exists($hash, static::$teamOwnersCache[$this->modelClass] ?? [])) {
-            return static::$teamOwnersCache[$this->modelClass][$hash];
+        if (isset(static::$teamOwnersCache[$class][$hash])
+            || array_key_exists($hash, static::$teamOwnersCache[$class] ?? [])) {
+            return static::$teamOwnersCache[$class][$hash];
         }
 
-        return static::$teamOwnersCache[$this->modelClass][$hash] = $this->inner->getTeamOwnersIdsSafe($model);
+        return static::$teamOwnersCache[$class][$hash] = $this->inner->getTeamOwnersIdsSafe($model);
     }
 
     public function shouldValidateOwnedRecords($model): bool
@@ -60,9 +60,9 @@ class CachedTeamSecurityService implements TeamSecurityServiceInterface
         return $this->inner->shouldValidateOwnedRecords($model);
     }
 
-    public function massRestrictByTeam(): bool
+    public function massRestrictByTeam(string $modelClass): bool
     {
-        return $this->inner->massRestrictByTeam();
+        return $this->inner->massRestrictByTeam($modelClass);
     }
 
     public function individualRestrictByTeam($model): bool

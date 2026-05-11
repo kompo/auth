@@ -4,29 +4,22 @@ namespace Kompo\Auth\Teams\Security;
 
 use Kompo\Auth\Contracts\Security\ScopedToTeam;
 use Kompo\Auth\Teams\Security\Contracts\TeamSecurityServiceInterface;
-use Kompo\Auth\Teams\Security\Traits\ModelHelperTrait;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Handles team-related security logic
+ * Handles team-related security logic.
+ *
+ * Stateless — every method derives the relevant model class from its argument
+ * (model instance for instance-level methods, explicit string for the
+ * class-level `massRestrictByTeam`). Safe to bind as a singleton.
  *
  * Responsibilities:
- * - Calculate team owners IDs for models
- * - Check team restrictions
- * - Get team ID column
- * - Validate owned records settings
+ * - Calculate team owners IDs for a model instance
+ * - Decide if owner-bypass applies
+ * - Decide if read/write/delete team-restriction applies
  */
 class TeamSecurityService implements TeamSecurityServiceInterface
 {
-    use ModelHelperTrait;
-
-    protected $modelClass;
-
-    public function __construct(string $modelClass)
-    {
-        $this->modelClass = $modelClass;
-    }
-
     /**
      * Get team owners IDs with bypass context protection.
      *
@@ -42,7 +35,7 @@ class TeamSecurityService implements TeamSecurityServiceInterface
             Log::warning('Failed to get team owners IDs safely', [
                 'model_class' => get_class($model),
                 'model_id' => $model->getKey(),
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             return null;
         }
@@ -93,14 +86,6 @@ class TeamSecurityService implements TeamSecurityServiceInterface
     }
 
     /**
-     * Check if mass restrict by team applies (for read security scopes).
-     *
-     * Reads class-stable values from SecurityMetadataRegistry — the previous
-     * implementation did `new ($this->modelClass)` per query (every Eloquent
-     * read goes through the auth scope) just to reflect on a non-static
-     * property. Now resolved once at metadata compute time.
-     */
-    /**
      * Whether the read scope should apply team filtering for this model class.
      *
      * True for:
@@ -110,9 +95,9 @@ class TeamSecurityService implements TeamSecurityServiceInterface
      * False when the model implements `NoTeamScope` (explicit opt-out) or has
      * neither contract nor column.
      */
-    public function massRestrictByTeam(): bool
+    public function massRestrictByTeam(string $modelClass): bool
     {
-        $meta = SecurityMetadataRegistry::for($this->modelClass);
+        $meta = SecurityMetadataRegistry::for($modelClass);
 
         if ($meta['optedOutOfTeamScope']) {
             return false;

@@ -30,10 +30,12 @@ interface TeamSecurityServiceInterface
     public function shouldValidateOwnedRecords($model): bool;
 
     /**
-     * Whether the model class participates in team-based read scopes —
-     * i.e. it implements `ScopedToTeam`.
+     * Whether the given model class participates in team-based read scopes
+     * (implements `ScopedToTeam` or has an auto-detected `team_id` column,
+     * and isn't opted out via `NoTeamScope`). Class is passed at call time so
+     * implementations can be shared across model classes (singleton-friendly).
      */
-    public function massRestrictByTeam(): bool;
+    public function massRestrictByTeam(string $modelClass): bool;
 
     /**
      * Whether the given model instance participates in team-based write/delete checks.

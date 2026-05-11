@@ -55,6 +55,16 @@ use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
 use Kompo\Auth\Teams\Contracts\TeamRoleAccessDataSourceInterface;
 use Kompo\Auth\Teams\Contracts\TeamRoleAccessResolverInterface;
 use Kompo\Auth\Http\Middleware\EnsureResetPasswordWhenRequired;
+use Kompo\Auth\Teams\Cache\CachedFieldProtectionService;
+use Kompo\Auth\Teams\Cache\CachedOwnedRecordsResolver;
+use Kompo\Auth\Teams\Cache\CachedTeamSecurityService;
+use Kompo\Auth\Teams\Security\BatchPermissionService;
+use Kompo\Auth\Teams\Security\Contracts\FieldProtectionServiceInterface;
+use Kompo\Auth\Teams\Security\Contracts\OwnedRecordsResolverInterface;
+use Kompo\Auth\Teams\Security\FieldProtectionService;
+use Kompo\Auth\Teams\Security\OwnedRecordsResolver;
+use Kompo\Auth\Teams\Security\SecurityServiceFactory;
+use Kompo\Auth\Teams\Security\TeamSecurityService;
 
 
 class KompoAuthServiceProvider extends ServiceProvider
@@ -127,16 +137,20 @@ class KompoAuthServiceProvider extends ServiceProvider
         }
 
         if (config('kompo-auth.root-security', true)) {
-            // Register model plugins
+            // Bind core + security services FIRST so consumer providers that
+            // register before auth (auto-discovery is alphabetical, so e.g.
+            // `Condoedge\Crm` comes before `Kompo\Auth`) can still resolve
+            // auth's interfaces during their own register() phase.
+            $this->registerCoreServices();
+            $this->registerOptimizedPermissionServices();
+            $this->registerSecurityServices();
+
+            // Model plugins next — these are lazy (only fire when a model boots)
+            // and depend on the security bindings being in place.
             ModelBase::setPlugins([HasSecurity::class]);
             Query::setPlugins([HasAuthorizationUtils::class]);
             Form::setPlugins([HasAuthorizationUtils::class]);
             Modal::setPlugins([HasAuthorizationUtils::class]);
-
-            // Register core services in correct order
-            $this->registerCoreServices();
-            $this->registerOptimizedPermissionServices();
-            $this->registerSecurityServices();
         }
 
         if (config('kompo-auth.include-auth-routes', true)) {
@@ -280,6 +294,7 @@ class KompoAuthServiceProvider extends ServiceProvider
                 $app->make(UserPermissionSet::class),
             );
         });
+        
 
         // Backward-compatible manager facade over the cache invalidator/warmer behavior.
         $this->app->singleton(PermissionCacheManager::class, function ($app) {
@@ -377,34 +392,59 @@ class KompoAuthServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register security services with proper dependency injection (Laravel standard)
+     * Container bindings for the security layer.
+     *
+     * All public services are bound as singletons via their interface — the
+     * services are stateless (or only hold per-request caches) and every method
+     * takes the relevant model/class at call time. The factory still exposes
+     * model-class-bound construction for services that *register event
+     * listeners* on a specific class (Read/Write/Delete), but those are built
+     * lazily via `app()->makeWith()`.
      */
     private function registerSecurityServices(): void
     {
-        // Register singleton services (stateless, shared across requests)
+        // --- Stateless singletons ------------------------------------------
+        $this->app->singleton(SecurityBypassService::class);
+        $this->app->singleton(SecurityServiceFactory::class);
+
+        // --- Team security: compute + per-request cache decorator ----------
+        // Singleton — class is passed at call time to massRestrictByTeam.
+        $this->app->singleton(TeamSecurityService::class);
         $this->app->singleton(
-            \Kompo\Auth\Teams\Security\SecurityBypassService::class
+            TeamSecurityServiceInterface::class,
+            fn ($app) => new CachedTeamSecurityService(
+                $app->make(TeamSecurityService::class),
+            ),
         );
 
-        // Register the factory as singleton (it manages service creation)
+        // --- Owned-records: compute + per-request cache decorator ----------
+        $this->app->singleton(OwnedRecordsResolver::class);
         $this->app->singleton(
-            \Kompo\Auth\Teams\Security\SecurityServiceFactory::class,
-            function ($app) {
-                return new \Kompo\Auth\Teams\Security\SecurityServiceFactory(
-                    $app->make(\Kompo\Auth\Teams\Security\SecurityBypassService::class),
-                    $app->make(\Kompo\Auth\Teams\Contracts\PermissionResolverInterface::class),
-                );
-            }
+            OwnedRecordsResolverInterface::class,
+            fn ($app) => new CachedOwnedRecordsResolver(
+                $app->make(OwnedRecordsResolver::class),
+            ),
         );
 
-        // Owned-records resolver: pure compute + per-request cache decorator.
-        // Callers bind to the interface and get the cached version.
-        $this->app->singleton(\Kompo\Auth\Teams\Security\OwnedRecordsResolver::class);
-
+        // --- Field-protection: compute + per-request cache decorator -------
         $this->app->singleton(
-            \Kompo\Auth\Teams\Security\Contracts\OwnedRecordsResolverInterface::class,
-            fn ($app) => new \Kompo\Auth\Teams\Cache\CachedOwnedRecordsResolver(
-                $app->make(\Kompo\Auth\Teams\Security\OwnedRecordsResolver::class)
+            FieldProtectionServiceInterface::class,
+            fn ($app) => new CachedFieldProtectionService(
+                new FieldProtectionService(
+                    $app->make(SecurityBypassService::class),
+                    $app->make(TeamSecurityServiceInterface::class),
+                ),
+            ),
+        );
+
+        // --- Batch permission service: collection-level entry point --------
+        $this->app->singleton(
+            BatchPermissionService::class,
+            fn ($app) => new BatchPermissionService(
+                $app->make(PermissionResolverInterface::class),
+                $app->make(TeamSecurityServiceInterface::class),
+                $app->make(FieldProtectionServiceInterface::class),
+                $app->make(SecurityBypassService::class),
             ),
         );
     }

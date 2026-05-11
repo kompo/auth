@@ -3,6 +3,7 @@
 namespace Kompo\Auth\Models\Teams\Roles;
 
 use Condoedge\Utils\Models\Model;
+use Kompo\Auth\Contracts\Security\OptsOutOfSecurity;
 use Kompo\Auth\Facades\UserModel;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
@@ -12,7 +13,7 @@ use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 use Condoedge\Utils\Models\Traits\MemoizesResults;
 use Kompo\Database\HasTranslations;
 
-class Role extends Model
+class Role extends Model implements OptsOutOfSecurity
 {
     use BelongsToManyPivotlessTrait;
     use MemoizesResults;
@@ -25,8 +26,12 @@ class Role extends Model
 
     protected $translatable = ['name', 'description'];
 
-    // It's impossible to set this kind of restriction because we read the role to get the permissions it would be getting a infinite loop.
-    protected $readSecurityRestrictions = false;
+    // Role rows feed the auth check itself — restricting reads here would
+    // recurse infinitely.
+    public function getSkippedSecurityOperations(): array
+    {
+        return ['read'];
+    }
 
     public static function booted()
     {

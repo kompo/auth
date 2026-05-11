@@ -3,13 +3,15 @@
 namespace Kompo\Auth\Models\Teams;
 
 use Condoedge\Utils\Models\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Kompo\Auth\Contracts\Security\ScopedToTeam;
 use Kompo\Auth\Facades\UserModel;
 use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
 use Kompo\Auth\Teams\TeamHierarchyRoleProcessor;
 
-class Team extends Model
+class Team extends Model implements ScopedToTeam
 {
     use \Condoedge\Utils\Models\Tags\MorphToManyTagsTrait;
     use \Condoedge\Utils\Models\Files\MorphManyFilesTrait;
@@ -102,24 +104,40 @@ class Team extends Model
         return $this->users()->where('email', $email)->count();
     }
 
+    /** Cached CTE — avoids the parentTeam belongsTo-per-hop walk. */
     public static function getMainParentTeam($team)
     {
-        if (!$team->parentTeam) {
+        // CTE orders DESC by depth; first() = deepest ancestor (or self when no parent).
+        $rootId = app(TeamHierarchyInterface::class)
+            ->getAncestorTeamIds($team->id)
+            ->first();
+
+        if (!$rootId || $rootId === $team->id) {
             return $team;
         }
 
-        return static::getMainParentTeam($team->parentTeam);
+        return static::withoutGlobalScope('authUserHasPermissions')->find($rootId);
     }
 
+    /** Cached CTE. Immediate-parent-first (excludes self) to match the prior contract. */
     public function getAllParents()
     {
-        if ($this->parent_team_id) {
-            $parentTeam = $this->parentTeam;
+        $parentIds = app(TeamHierarchyInterface::class)
+            ->getAncestorTeamIds($this->id)
+            ->filter(fn($id) => $id !== $this->id)
+            ->values();
 
-            return $parentTeam->getAllParents()->prepend($parentTeam);
+        if ($parentIds->isEmpty()) {
+            return collect();
         }
 
-        return collect();
+        $teams = static::withoutGlobalScope('authUserHasPermissions')
+            ->whereIn('id', $parentIds)
+            ->get()
+            ->keyBy('id');
+
+        // CTE is deepest-first; the contract is immediate-parent-first.
+        return $parentIds->reverse()->values()->map(fn($id) => $teams->get($id))->filter()->values();
     }
 
     /**
@@ -246,9 +264,20 @@ class Team extends Model
         return $query;
     }
 
-    public function scopeSecurityForTeams($query, $teamIds)
+    public function applyTeamSecurityScope(Builder $query, array $teamIds): void
     {
-        $query->where(fn($q) => $q->whereIn('teams.id', $teamIds)->orWhere('teams.id', currentTeamId())->orWhereIn('teams.parent_team_id', $teamIds)->orWhere('parent_team_id', currentTeamId()));
+        $currentTeamId = currentTeamId();
+        $query->where(fn($q) => $q
+            ->whereIn('teams.id', $teamIds)
+            ->orWhere('teams.id', $currentTeamId)
+            ->orWhereIn('teams.parent_team_id', $teamIds)
+            ->orWhere('parent_team_id', $currentTeamId)
+        );
+    }
+
+    public function getRelatedTeamIds(): array
+    {
+        return array_filter([$this->getKey(), $this->parent_team_id]);
     }
 
     /* ACTIONS */

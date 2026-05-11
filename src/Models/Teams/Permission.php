@@ -2,6 +2,7 @@
 
 namespace Kompo\Auth\Models\Teams;
 
+use Kompo\Auth\Contracts\Security\OptsOutOfSecurity;
 use Kompo\Auth\Facades\RoleModel;
 use Condoedge\Utils\Models\Model;
 use Kompo\Auth\Facades\UserModel;
@@ -9,7 +10,7 @@ use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 use Kompo\Auth\Teams\Cache\PermissionDefinitionCache;
 use Kompo\Database\HasTranslations;
 
-class Permission extends Model
+class Permission extends Model implements OptsOutOfSecurity
 {
     use HasTranslations;
 
@@ -19,6 +20,7 @@ class Permission extends Model
         'permission_description',
         'permission_section_id',
         'object_type',
+        'supported_types',
         'added_by',
         'modified_by'
     ];
@@ -30,10 +32,47 @@ class Permission extends Model
 
     protected $casts = [
         'object_type' => PermissionObjectTypeEnum::class,
+        'supported_types' => 'integer',
     ];
 
-    // It's impossible to set this kind of restriction because we read the permission it would be getting a infinite loop.
-    protected $readSecurityRestrictions = false;
+    /**
+     * Whether this permission accepts the given type. Bitmask AND;
+     * `DENY` is always accepted (separate axis).
+     */
+    public function supportsType(PermissionTypeEnum $type): bool
+    {
+        return $type->isSupportedBy((int) ($this->supported_types ?? PermissionTypeEnum::ALL->value));
+    }
+
+    /** @var list<PermissionTypeEnum>|null */
+    protected ?array $cachedSupportedTypes = null;
+
+    /**
+     * The list of `PermissionTypeEnum` cases this permission accepts — memoized
+     * per instance so per-cell matrix renders don't redecode the bitmask.
+     *
+     * @return list<PermissionTypeEnum>
+     */
+    public function supportedTypes(): array
+    {
+        if ($this->cachedSupportedTypes !== null) {
+            return $this->cachedSupportedTypes;
+        }
+
+        $supported = (int) ($this->supported_types ?? PermissionTypeEnum::ALL->value);
+        return $this->cachedSupportedTypes = collect(PermissionTypeEnum::cases())
+            ->filter(fn($case) => $case->isSupportedBy($supported))
+            ->values()
+            ->all();
+    }
+
+    // Permission rows must be readable without going through the auth scope —
+    // reading the permission table is part of the auth check itself, so any
+    // read restriction here causes infinite recursion.
+    public function getSkippedSecurityOperations(): array
+    {
+        return ['read'];
+    }
 
     public static function booted()
     {

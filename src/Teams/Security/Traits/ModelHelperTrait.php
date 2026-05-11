@@ -1,6 +1,6 @@
 <?php
 
-namespace Kompo\Auth\Models\Plugins\Services\Traits;
+namespace Kompo\Auth\Teams\Security\Traits;
 
 /**
  * Trait with common model utility methods

@@ -24,5 +24,11 @@ interface TeamHierarchyInterface
 
     public function getBatchSiblingTeamIdsBySource(array $teamIds, ?string $search = ''): Collection;
 
+    /** Ancestors with team_level, deepest-first; rows = {id, team_level, depth}. */
+    public function getAncestorTeamsUntilLevel(int $teamId, int $maxLevelValue): Collection;
+
+    /** Batch variant — keyed by target team id. */
+    public function getBatchAncestorTeamsUntilLevel(array $teamIds, int $maxLevelValue): Collection;
+
     public function clearCache(?int $teamId = null): void;
 }

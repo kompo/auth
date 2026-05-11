@@ -1,7 +1,10 @@
 <?php
 
-namespace Kompo\Auth\Models\Plugins\Services;
+namespace Kompo\Auth\Teams\Security;
 
+use Condoedge\Utils\Contracts\Security\HasOwnedRecords;
+use Kompo\Auth\Teams\Security\Contracts\OwnedRecordsResolverInterface;
+use Kompo\Auth\Teams\Security\Contracts\TeamSecurityServiceInterface;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -20,8 +23,8 @@ class SecurityBypassService
     protected static $bypassedModels = [];
 
     /**
-     * Tracks when we're in a security bypass context (like usersIdsAllowedToManage)
-     * When true, all security checks are bypassed to prevent infinite loops
+     * Bypass context flag — set while running code that needs to read auth-gated
+     * data without recursing (e.g. inside `HasOwnedRecords::ownedRecordIdsForUser`).
      */
     protected static $inBypassContext = false;
 
@@ -91,18 +94,17 @@ class SecurityBypassService
     }
 
     /**
-     * Fast bypass check using only cheap O(1) checks (no DB queries).
-     * Used by batch processing to avoid N+1 query explosion from
-     * usersIdsAllowedToManage() and scopeUserOwnedRecords().
+     * Fast bypass check for the READ side (field protection, lazy resolution,
+     * batch bypass). Honors both the full `_bypassSecurity` flag and the
+     * read-only `_bypassReadSecurity` flag. O(1), no DB.
      */
-    public function isSecurityBypassRequiredFast($model, TeamSecurityService $teamService): bool
+    public function isSecurityBypassRequiredFast($model, TeamSecurityServiceInterface $teamService): bool
     {
-
         if ($this->isGloballyBypassed()) {
             return true;
         }
 
-        if ($this->hasBypassByFlag($model)) {
+        if ($this->hasBypassByReadFlag($model)) {
             return true;
         }
 
@@ -118,16 +120,16 @@ class SecurityBypassService
     }
 
     /**
-     * Enhanced security bypass check with bypass context
+     * Full bypass check. The owned-record check (hasBypassByScope) routes
+     * through OwnedRecordsResolverInterface, which manages its own bypass
+     * context internally — no enter/exit wrapper needed here anymore.
      */
-    public function isSecurityBypassRequired($model, TeamSecurityService $teamService): bool
+    public function isSecurityBypassRequired($model, TeamSecurityServiceInterface $teamService): bool
     {
-        // If we're in bypass context, always bypass
         if ($this->isGloballyBypassed()) {
             return true;
         }
 
-        // Check simple flags first (no database queries)
         if ($this->hasBypassByFlag($model)) {
             return true;
         }
@@ -136,52 +138,47 @@ class SecurityBypassService
             return true;
         }
 
-        // Check custom method
         if ($this->hasBypassMethod($model)) {
             return true;
         }
 
-        // Enter bypass context for methods that might query related models
-        static::enterBypassContext();
-
-        try {
-            // Check allowlist (potential recursion risk)
-            if ($this->hasBypassByAllowlist($model)) {
-                return true;
-            }
-
-            // Check scope (potential recursion risk)
-            if ($this->hasBypassByScope($model, $teamService)) {
-                return true;
-            }
-
-            return false;
-        } finally {
-            // Always exit bypass context
-            static::exitBypassContext();
-        }
+        return $this->hasBypassByScope($model, $teamService);
     }
 
     /**
-     * Check if bypass by flag applies
+     * Full-bypass flag — set by `asSystemOperation()` and by explicit
+     * `markModelAsBypassed()` calls. Honored by write/delete paths.
      */
     protected function hasBypassByFlag($model): bool
     {
-        return $model->getAttribute('_bypassSecurity') == true ||
-            (static::$bypassedModels[spl_object_hash($model)] ?? false);
+        return $model->getAttribute('_bypassSecurity') == true
+            || (static::$bypassedModels[spl_object_hash($model)] ?? false);
     }
 
     /**
-     * Check if bypass by user ID match applies
+     * Either flag — used by the read-side fast path. The read-only macros
+     * (e.g. `alreadyVerifiedAccess`, `withReadOnlyBypass`) emit
+     * `_bypassReadSecurity`; full-bypass paths emit `_bypassSecurity`. Read
+     * security treats both the same; write/delete only honor the full flag.
      */
-    protected function hasBypassByUserId($model, TeamSecurityService $teamService): bool
+    protected function hasBypassByReadFlag($model): bool
     {
-        // Check if owner validation is enforced
+        return $this->hasBypassByFlag($model)
+            || $model->getAttribute('_bypassReadSecurity') == true;
+    }
+
+    /**
+     * Bypass when the model's `user_id` matches the auth user. Gated by
+     * `shouldValidateOwnedRecords` — `EnforcesStrictPermissions` short-circuits
+     * this off without needing the legacy `$disableOwnerBypass` property.
+     */
+    protected function hasBypassByUserId($model, TeamSecurityServiceInterface $teamService): bool
+    {
         if ($teamService->shouldValidateOwnedRecords($model)) {
             return false;
         }
 
-        if ($model->getAttribute('user_id') && auth()->user() && !getPrivateProperty($model, 'disableOwnerBypass')) {
+        if ($model->getAttribute('user_id') && auth()->user()) {
             return $model->getAttribute('user_id') === auth()->user()->id;
         }
 
@@ -209,56 +206,26 @@ class SecurityBypassService
     }
 
     /**
-     * Check bypass by allowlist method
+     * Bypass via owned-records resolver. O(1) check against the cached id set
+     * produced by the model's `HasOwnedRecords` contract.
      */
-    protected function hasBypassByAllowlist($model): bool
+    protected function hasBypassByScope($model, TeamSecurityServiceInterface $teamService): bool
     {
-        if (!method_exists($model, 'usersIdsAllowedToManage') || !auth()->user()) {
-            return false;
-        }
-
-        try {
-            // Caller (isSecurityBypassRequired) already entered bypass context
-            $allowedUserIds = $model->usersIdsAllowedToManage();
-
-            return collect($allowedUserIds)->contains(auth()->user()->id);
-        } catch (\Throwable $e) {
-            Log::warning('usersIdsAllowedToManage check failed', [
-                'model_class' => get_class($model),
-                'model_id' => $model->getKey(),
-                'user_id' => auth()->id(),
-                'error' => $e->getMessage()
-            ]);
-            return false;
-        }
-    }
-
-    /**
-     * Check bypass by scope method
-     */
-    protected function hasBypassByScope($model, TeamSecurityService $teamService): bool
-    {
-        // Check if owner validation is enforced
         if ($teamService->shouldValidateOwnedRecords($model)) {
             return false;
         }
 
-        if (!method_exists($model, 'scopeUserOwnedRecords') || !auth()->user()) {
+        $userId = auth()->id();
+        if (!$userId) {
             return false;
         }
 
-        try {
-            // Caller (isSecurityBypassRequired) already entered bypass context
-            return $model->userOwnedRecords()->where($model->getKeyName(), $model->getKey())->exists();
-        } catch (\Throwable $e) {
-            Log::warning('scopeUserOwnedRecords check failed', [
-                'model_class' => get_class($model),
-                'model_id' => $model->getKey(),
-                'user_id' => auth()->id(),
-                'error' => $e->getMessage()
-            ]);
+        if (!is_subclass_of(get_class($model), HasOwnedRecords::class)) {
             return false;
         }
+
+        return app(OwnedRecordsResolverInterface::class)
+            ->isOwnedBy($userId, get_class($model), $model->getKey());
     }
 
     /**

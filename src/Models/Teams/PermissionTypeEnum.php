@@ -76,4 +76,76 @@ enum PermissionTypeEnum: int
     {
         return ($given->value & $expected->value) == $expected->value;
     }
+
+    /**
+     * Visible cases narrowed to those the given permission supports.
+     * DENY is always included — it's a separate axis from CRUD.
+     *
+     * @return list<int> raw enum values (matches `values()` shape)
+     */
+    public static function forPermission(\Kompo\Auth\Models\Teams\Permission $permission): array
+    {
+        $supported = (int) ($permission->supported_types ?? self::ALL->value);
+
+        return collect(self::cases())
+            ->filter(fn($case) => $case->visibleInSelects() && $case->isSupportedBy($supported))
+            ->pluck('value')
+            ->values()
+            ->all();
+    }
+
+    public static function colorsForPermission(\Kompo\Auth\Models\Teams\Permission $permission): array
+    {
+        $supported = (int) ($permission->supported_types ?? self::ALL->value);
+
+        return collect(self::cases())
+            ->filter(fn($case) => $case->visibleInSelects() && $case->isSupportedBy($supported))
+            ->map(fn($case) => $case->color())
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Union of supported types across every permission in the section.
+     */
+    public static function forSection(\Kompo\Auth\Models\Teams\PermissionSection $section): array
+    {
+        $union = $section->permissions->reduce(
+            fn(int $acc, $p) => $acc | (int) ($p->supported_types ?? self::ALL->value),
+            0,
+        );
+
+        return collect(self::cases())
+            ->filter(fn($case) => $case->visibleInSelects() && $case->isSupportedBy($union))
+            ->pluck('value')
+            ->values()
+            ->all();
+    }
+
+    public static function colorsForSection(\Kompo\Auth\Models\Teams\PermissionSection $section): array
+    {
+        $union = $section->permissions->reduce(
+            fn(int $acc, $p) => $acc | (int) ($p->supported_types ?? self::ALL->value),
+            0,
+        );
+
+        return collect(self::cases())
+            ->filter(fn($case) => $case->visibleInSelects() && $case->isSupportedBy($union))
+            ->map(fn($case) => $case->color())
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Is this enum case supported by the given bitmask? DENY is always
+     * supported regardless of `supported_types` (separate axis).
+     */
+    public function isSupportedBy(int $bitmask): bool
+    {
+        if ($this === self::DENY) {
+            return true;
+        }
+
+        return ($bitmask & $this->value) === $this->value;
+    }
 }

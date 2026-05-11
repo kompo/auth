@@ -79,15 +79,55 @@ function checkAuthPermission($id, $type = PermissionTypeEnum::READ, $specificTea
 if (!function_exists('globalSecurityBypass')) {
     function globalSecurityBypass(): bool
     {
-        $bypass = false;
-
         if (app()->bound('kompo-auth.security-bypass')) {
-            $bypass = app()->make('kompo-auth.security-bypass')();
-        } else {
-            $bypass = config('kompo-auth.security.bypass-security', false);
+            return (bool) app()->make('kompo-auth.security-bypass')();
         }
 
-        return $bypass;
+        return (bool) kompoAuthSecurityConfig('bypass.global', false);
+    }
+}
+
+if (!function_exists('staticGlobalSecurityBypass')) {
+    /**
+     * The static portion of globalSecurityBypass — stable for the request
+     * lifetime (modulo login/logout/impersonation). Excludes isInBypassContext().
+     * Memoized via GlobalSecurityBypassCache.
+     */
+    function staticGlobalSecurityBypass(): bool
+    {
+        if (app()->bound('kompo-auth.security-bypass.static')) {
+            return \Kompo\Auth\Teams\Cache\GlobalSecurityBypassCache::resolve(
+                app()->make('kompo-auth.security-bypass.static'),
+            );
+        }
+
+        return (bool) kompoAuthSecurityConfig('bypass.global', false);
+    }
+}
+
+if (!function_exists('flushStaticGlobalSecurityBypass')) {
+    function flushStaticGlobalSecurityBypass(): void
+    {
+        \Kompo\Auth\Teams\Cache\GlobalSecurityBypassCache::flush();
+    }
+}
+
+if (!function_exists('kompoAuthSecurityConfig')) {
+    /**
+     * Read a security config value from the per-concern tree
+     * (`kompo-auth.security.{path}`). Thin wrapper over `config()` — kept as a
+     * single entry point so every security-config read is greppable and the
+     * tree shape is the only surface.
+     *
+     * Examples:
+     *   kompoAuthSecurityConfig('read.enabled')            → bool
+     *   kompoAuthSecurityConfig('read.current_team')       → 'auto' | 'opt-in' | 'off'
+     *   kompoAuthSecurityConfig('bypass.global', false)    → bool
+     *   kompoAuthSecurityConfig('fields.gate_inserts')     → bool
+     */
+    function kompoAuthSecurityConfig(string $path, $default = null)
+    {
+        return config('kompo-auth.security.' . $path, $default);
     }
 }
 
@@ -98,7 +138,7 @@ if (!function_exists('permissionMustBeAuthorized')) {
             return false;
         }
 
-        if (!Permission::findByKey($permissionKey) && !config('kompo-auth.security.check-even-if-permission-does-not-exist', false)) {
+        if (!Permission::findByKey($permissionKey) && !kompoAuthSecurityConfig('permission.check_even_if_missing', false)) {
             return false;
         }
 

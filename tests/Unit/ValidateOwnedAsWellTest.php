@@ -5,7 +5,7 @@ namespace Kompo\Auth\Tests\Unit;
 use Illuminate\Support\Facades\Config;
 use Kompo\Auth\Database\Factories\UserFactory;
 use Kompo\Auth\Models\Plugins\HasSecurity;
-use Kompo\Auth\Models\Plugins\Services\SecurityBypassService;
+use Kompo\Auth\Teams\Security\SecurityBypassService;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\RoleHierarchyEnum;
 use Kompo\Auth\Tests\Helpers\AssertionHelpers;

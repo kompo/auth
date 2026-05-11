@@ -145,6 +145,31 @@ class CachedTeamHierarchyService implements TeamHierarchyInterface
         );
     }
 
+    public function getAncestorTeamsUntilLevel(int $teamId, int $maxLevelValue): Collection
+    {
+        return $this->cache->remember(
+            'ancestors_until_level.' . $teamId . '.' . $maxLevelValue,
+            CacheKeyBuilder::TEAM_ANCESTORS,
+            fn() => $this->inner->getAncestorTeamsUntilLevel($teamId, $maxLevelValue)
+        );
+    }
+
+    public function getBatchAncestorTeamsUntilLevel(array $teamIds, int $maxLevelValue): Collection
+    {
+        if (empty($teamIds)) {
+            return $this->inner->getBatchAncestorTeamsUntilLevel($teamIds, $maxLevelValue);
+        }
+
+        $normalized = collect($teamIds)->filter()->unique()->sort()->values()->all();
+        $key = 'batch_ancestors_until_level.' . $maxLevelValue . '.' . md5(json_encode($normalized));
+
+        return $this->cache->remember(
+            $key,
+            CacheKeyBuilder::TEAM_ANCESTORS,
+            fn() => $this->inner->getBatchAncestorTeamsUntilLevel($normalized, $maxLevelValue)
+        );
+    }
+
     public function clearCache(?int $teamId = null): void
     {
         $this->cache->invalidateTags(CacheKeyBuilder::getTeamHierarchyCacheTypes());

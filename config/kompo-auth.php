@@ -13,23 +13,80 @@ return [
 
     'load-migrations' => true,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Security
+    |--------------------------------------------------------------------------
+    |
+    | Per-concern config tree. Every behavior knob lives here; the package
+    | reads it via `kompoAuthSecurityConfig('{concern}.{key}')`.
+    |
+    | Behavior values where shown:
+    |   'auto'   — applied by default; caller can opt out via a Builder macro.
+    |   'opt-in' — off by default; caller opts in via a Builder macro.
+    |   'off'    — never applied; the underlying scope/macro is a no-op.
+    |
+    */
     'security' => [
-        'bypass-security' => env('BYPASS_SECURITY', false),
-        'default-read-security-restrictions' => true,
-        'default-delete-security-restrictions' => true,
-        'default-save-security-restrictions' => true,
-        'default-restrict-by-team' => true,
 
-        'dont-check-if-not-logged-in' => false,
-        'dont-check-if-impersonating' => false,
+        /*
+         * Read scope. Defaults preserve the pre-refactor behavior — the user
+         * sees every team they have permission in. To restrict to current team
+         * by default, set `multi_team` to `'opt-in'` and call
+         * `->withMultiTeamAccess()` on lists that legitimately span teams.
+         */
+        'read' => [
+            'enabled'       => true,
+            'current_team'  => 'auto',   // narrows to currentTeamId; ->withoutCurrentTeamScope() drops it
+            'multi_team'    => 'auto',   // exposes every permitted team; ->withCurrentTeamOnly() narrows
+            'owned_records' => 'auto',   // OR-clause for HasOwnedRecords on team-scoped reads
+        ],
 
-        'check-even-if-permission-does-not-exist' => false,
+        'write' => [
+            'enabled'      => true,
+            'current_team' => 'auto',
+            'multi_team'   => 'auto',
+        ],
 
-        'batch-protected-fields' => true,
+        'delete' => [
+            'enabled'      => true,
+            'current_team' => 'auto',
+            'multi_team'   => 'auto',
+        ],
 
-        'lazy-protected-fields' => false, // Better performance but the attributes internal array will contain unsafe fields
+        'fields' => [
+            'enabled'               => true,
+            'eager_load_protection' => true,    // toggles InterceptsRelations
+            'gate_inserts'          => false,   // dirty-write check on fresh inserts too
+        ],
 
-        'default-validate-owned-as-well' => false, // Enforce owner validation by default in addition to permissions
+        'bypass' => [
+            'global'          => env('BYPASS_SECURITY', false),  // process-wide kill switch
+            'super_admin'     => true,
+            'console'         => true,
+            'unauthenticated' => true,          // Check this. Because it's a fix, it doesn't mean in each place we use this is before auth process happened.
+            'route_opt_out'   => true,          // honors `disable-automatic-security` middleware
+        ],
+
+        'permission' => [
+            // When false, `permissionMustBeAuthorized` returns false for unknown keys (skips the
+            // gate). When true, treats unknown keys as still authorized (stricter).
+            'check_even_if_missing' => false,
+        ],
+
+        'owned_records' => [
+            // Even owners must hold the permission — disables the user_id and
+            // HasOwnedRecords bypass paths in addition to permission checks.
+            'validate_as_well' => false,
+        ],
+
+        // Warn once per class when a model with a `team_id` column lacks
+        // `ScopedToTeam`. The package falls back to `whereIn('team_id', ...)`.
+        'warn_on_missing_team_contract' => true,
+
+        // Warn once per class when a model with a `user_id` column lacks
+        // `HasOwnedRecords`. No auto-detect — the warning only.
+        'warn_on_missing_owned_records_contract' => true,
     ],
 
     'notifications' => [

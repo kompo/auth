@@ -106,6 +106,13 @@ class SecurityMetadataRegistry
             $autoTeamIdColumn = static::resolveAutoTeamIdColumn($model, $modelClass);
         }
 
+        $autoUserIdColumn = null;
+        if (!$usesHasOwnedRecords) {
+            $autoUserIdColumn = static::resolveAutoUserIdColumn($model, $modelClass);
+        }
+
+        $optsOutOfSecurity = $model instanceof OptsOutOfSecurity;
+
         // Loud fallback — fires once per class per request because the
         // registry caches the result. Suppressible by NoTeamScope.
         if (!$usesScopedToTeam && !$optedOutOfTeamScope && $autoTeamIdColumn !== null
@@ -119,13 +126,32 @@ class SecurityMetadataRegistry
             ));
         }
 
-        if (!$usesHasOwnedRecords && static::hasUserIdColumn($model)
+        if (!$usesHasOwnedRecords && $autoUserIdColumn !== null
             && kompoAuthSecurityConfig('warn_on_missing_owned_records_contract', true)) {
             Log::warning(sprintf(
-                '[kompo-auth] %s has a `user_id` column but does not implement HasOwnedRecords. '
-                . 'No owner-bypass is applied. Declare `implements HasOwnedRecords + use OwnedByUserIdColumn` '
-                . 'to restore the legacy behavior, or ignore if intentional.',
+                '[kompo-auth] %s has a `%s` column but does not implement HasOwnedRecords — '
+                . 'auto-detecting owner-bypass. Declare `implements HasOwnedRecords + use OwnedByUserIdColumn` '
+                . 'to silence this warning.',
                 $modelClass,
+                $autoUserIdColumn,
+            ));
+        }
+
+        // No scoping path at all and not explicitly opted out — surface so
+        // unscoped models don't slip through silently. Opt-in (default off)
+        // because legitimate non-scoped models exist (lookup tables, etc.).
+        $noTeamScopePath  = !$usesScopedToTeam && $autoTeamIdColumn === null && !$optedOutOfTeamScope && !$optsOutOfSecurity;
+        $noOwnerScopePath = !$usesHasOwnedRecords && $autoUserIdColumn === null && !$optsOutOfSecurity;
+        if (($noTeamScopePath || $noOwnerScopePath)
+            && kompoAuthSecurityConfig('error_on_unscoped_models', false)) {
+            Log::error(sprintf(
+                '[kompo-auth] %s has no scoping path (team: %s, owner: %s). '
+                . 'Records are visible to anyone passing permission checks. '
+                . 'Declare ScopedToTeam/HasOwnedRecords, add a team_id/user_id column, '
+                . 'or implement NoTeamScope/OptsOutOfSecurity to silence.',
+                $modelClass,
+                $noTeamScopePath ? 'missing' : 'ok',
+                $noOwnerScopePath ? 'missing' : 'ok',
             ));
         }
 
@@ -142,6 +168,9 @@ class SecurityMetadataRegistry
             // ReadSecurityService falls back to `whereIn('team_id', $teamIds)`.
             'autoTeamIdColumn' => $autoTeamIdColumn,
             'usesHasOwnedRecordsContract' => $usesHasOwnedRecords,
+            // Set when the model lacks HasOwnedRecords but has a `user_id`
+            // column. OwnedRecordsResolver falls back to `where('user_id', ...)`.
+            'autoUserIdColumn' => $autoUserIdColumn,
             'usesHasProtectedFieldsContract' => $model instanceof HasProtectedFields,
             'enforcesStrictPermissions' => $model instanceof EnforcesStrictPermissions,
             'skippedOperations' => static::resolveSkippedOperations($model),
@@ -161,13 +190,17 @@ class SecurityMetadataRegistry
         return null;
     }
 
-    protected static function hasUserIdColumn($model): bool
+    protected static function resolveAutoUserIdColumn($model, string $modelClass): ?string
     {
         try {
-            return hasColumnCached($model->getTable(), 'user_id');
+            $table = $model->getTable();
+            if (hasColumnCached($table, 'user_id')) {
+                return 'user_id';
+            }
         } catch (\Throwable $e) {
-            return false;
+            // fall through
         }
+        return null;
     }
 
     /**
@@ -200,6 +233,7 @@ class SecurityMetadataRegistry
             'usesScopedToTeamContract' => false,
             'optedOutOfTeamScope' => false,
             'autoTeamIdColumn' => null,
+            'autoUserIdColumn' => null,
             'usesHasOwnedRecordsContract' => false,
             'usesHasProtectedFieldsContract' => false,
             'enforcesStrictPermissions' => false,

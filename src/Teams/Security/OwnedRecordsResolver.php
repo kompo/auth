@@ -47,6 +47,17 @@ class OwnedRecordsResolver implements OwnedRecordsResolverInterface
             return array_values((array) $prototype->ownedRecordIdsForUser($userId));
         }
 
+        // Auto fallback — parallel to team auto-column. Models with a
+        // `user_id` column but no HasOwnedRecords contract still get bulk
+        // owner resolution. Registry warns once per class.
+        $autoCol = SecurityMetadataRegistry::for($modelClass)['autoUserIdColumn'] ?? null;
+        if ($autoCol !== null) {
+            return $modelClass::query()
+                ->where($autoCol, $userId)
+                ->pluck($prototype->getKeyName())
+                ->all();
+        }
+
         return [];
     }
 }

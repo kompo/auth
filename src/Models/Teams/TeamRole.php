@@ -33,6 +33,11 @@ class TeamRole extends Model
         });
 
         static::saving(function ($teamRole) {
+            // Ensuring the role is available for the user because it could be even assigning it to himself
+            if ($teamRole->isDirty('role') && !$teamRole->roleRelation()->availableForUserPermissions(auth()->user())->exists()) {
+                abort(403, __('auth.with-values.invalid-role'));
+            }
+
             if ($teamRole->isDirty('role')) {
                 $role = RoleModel::find($teamRole->role);
 

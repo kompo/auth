@@ -85,8 +85,16 @@ return [
         'warn_on_missing_team_contract' => true,
 
         // Warn once per class when a model with a `user_id` column lacks
-        // `HasOwnedRecords`. No auto-detect — the warning only.
+        // `HasOwnedRecords`. The package falls back to `where('user_id', ...)`
+        // for bulk owner resolution. Per-instance bypass via user_id is
+        // unaffected and always applies (gated by validate_as_well).
         'warn_on_missing_owned_records_contract' => true,
+
+        // When true, log an error once per class for models with NO scoping
+        // path (no team contract/column AND no owner contract/column) that
+        // also don't opt out via NoTeamScope/OptsOutOfSecurity. Opt-in
+        // (default off) — legitimate non-scoped models exist (lookup tables).
+        'error_on_unscoped_models' => true,
     ],
 
     'notifications' => [

@@ -49,21 +49,28 @@ class TeamSecurityService implements TeamSecurityServiceInterface
     }
 
     /**
-     * Team owners IDs come from `ScopedToTeam::getRelatedTeamIds`. Uncontracted
-     * models return null (no team binding). The Team model itself implements
+     * Team owners IDs come from `ScopedToTeam::getRelatedTeamIds`. Models
+     * without the contract fall back to the auto-detected `team_id` column
+     * (parallel to the read-scope behavior). The Team model itself implements
      * the contract and returns `[id, parent_team_id]`.
      */
     protected function calculateTeamOwnersIds($model)
     {
-        if (!$model instanceof ScopedToTeam) {
-            return null;
-        }
-
         $wasInBypassContext = SecurityBypassService::isInBypassContext();
         SecurityBypassService::enterBypassContext();
 
         try {
-            return array_values($model->getRelatedTeamIds());
+            if ($model instanceof ScopedToTeam) {
+                return array_values($model->getRelatedTeamIds());
+            }
+
+            $autoCol = SecurityMetadataRegistry::for(get_class($model))['autoTeamIdColumn'] ?? null;
+            if ($autoCol !== null) {
+                $value = $model->getAttribute($autoCol);
+                return $value === null ? [] : [$value];
+            }
+
+            return null;
         } finally {
             if (!$wasInBypassContext) {
                 SecurityBypassService::exitBypassContext();
@@ -116,9 +123,17 @@ class TeamSecurityService implements TeamSecurityServiceInterface
 
     /**
      * Whether write/delete operations should team-check this instance.
+     * True for contract-bound models or those with an auto-detected `team_id`
+     * column — same pair as the bulk read scope.
      */
     public function individualRestrictByTeam($model): bool
     {
-        return (bool) SecurityMetadataRegistry::for(get_class($model))['usesScopedToTeamContract'];
+        $meta = SecurityMetadataRegistry::for(get_class($model));
+
+        if ($meta['optedOutOfTeamScope']) {
+            return false;
+        }
+
+        return $meta['usesScopedToTeamContract'] || $meta['autoTeamIdColumn'] !== null;
     }
 }

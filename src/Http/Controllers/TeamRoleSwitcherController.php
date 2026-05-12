@@ -15,7 +15,7 @@ class TeamRoleSwitcherController extends Controller
         ]);
 
         if (!$request->user()->switchToTeamWithRole($data['team_id'], $data['role_id'])) {
-            abort(403);
+            abort(403, __('auth-you-dont-have-access-to-this-team'));
         }
 
         return response()->json([

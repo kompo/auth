@@ -34,7 +34,7 @@ class TeamRoleAssignmentGuard
 
         return RoleModel::query()
             ->where('id', $roleId)
-            ->availableForUserPermissions($actor)
+            ->availableForUserPermissions($actor) // By default avoiding super-admin if actorBypassesRestrictions returns false
             ->exists();
     }
 
@@ -51,17 +51,30 @@ class TeamRoleAssignmentGuard
         return true;
     }
 
+    public static function canAssignToTeam($actor, $targetTeamId): bool
+    {
+        if (!$actor || !$targetTeamId) {
+            return false;
+        }
+
+        return $actor->getAllAccessibleTeamIds()->contains($targetTeamId);
+    }
+
     /**
      * Throw 403 unless the actor may assign $teamRole's role to $teamRole's user.
      */
     public static function assertCanAssign($actor, TeamRole $teamRole): void
     {
         if (!static::canAssignRole($actor, $teamRole->role)) {
-            abort(403, __('auth.with-values.invalid-role'));
+            abort(403, __('auth-you-cannot-assign-this-role'));
         }
 
         if (!static::canAssignToUser($actor, $teamRole->user_id)) {
-            abort(403, __('auth.with-values.invalid-role'));
+            abort(403, __('auth-you-cannot-assign-this-role-to-this-user'));
+        }
+
+        if (!static::canAssignToTeam($actor, $teamRole->team_id)) {
+            abort(403, __('auth-you-cannot-assign-this-role-in-this-team'));
         }
     }
 }

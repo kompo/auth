@@ -35,7 +35,7 @@ class TeamRole extends Model
 
         static::saving(function ($teamRole) {
             if (!$teamRole->_bypassSecurity
-                && ($teamRole->isDirty('role') || $teamRole->isDirty('user_id'))) {
+                && ($teamRole->isDirty('role') || $teamRole->isDirty('user_id') || $teamRole->isDirty('team_id'))) {
                 TeamRoleAssignmentGuard::assertCanAssign(auth()->user(), $teamRole);
             }
 

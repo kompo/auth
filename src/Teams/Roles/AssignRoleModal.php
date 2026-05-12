@@ -23,6 +23,30 @@ class AssignRoleModal extends Modal
     {
         $this->defaultTeamId = $this->prop('team_id');
         $this->defaultUserId = $this->prop('user_id');
+
+        static::throwIfCannotBeOpenedForTeamAndUser(auth()->user(), $this->defaultTeamId, $this->defaultUserId);
+    }
+
+    public static function canBeOpenedForTeamAndUser($author, $userId = null, $teamId = null): bool
+    {
+        try {
+            static::throwIfCannotBeOpenedForTeamAndUser($author, $userId, $teamId);
+        } catch (\Exception $e) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public static function throwIfCannotBeOpenedForTeamAndUser($author, $userId = null, $teamId = null): void
+    {
+        if ($userId && !TeamRoleAssignmentGuard::canAssignToUser($author, $userId)) {
+            abort(403, __('auth-you-cannot-assign-roles-to-yourself'));
+        }
+
+        if ($teamId && !TeamRoleAssignmentGuard::canAssignToTeam($author, $teamId)) {
+            abort(403, __('auth-you-cannot-assign-roles-in-this-team'));
+        }
     }
 
     public function beforeSave()
@@ -135,7 +159,8 @@ class AssignRoleModal extends Modal
 
     protected function getRolesByTeam($teamId)
     {
-        return RoleModel::all();
+        return RoleModel::availableForUserPermissions(auth()->user())
+            ->get();
     }
 
     public function searchTeams($search)

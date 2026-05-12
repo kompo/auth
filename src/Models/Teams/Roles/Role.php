@@ -11,6 +11,7 @@ use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Models\Traits\BelongsToManyPivotlessTrait;
 use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 use Condoedge\Utils\Models\Traits\MemoizesResults;
+use Kompo\Auth\Teams\Roles\TeamRoleAssignmentGuard;
 use Kompo\Database\HasTranslations;
 
 class Role extends Model implements OptsOutOfSecurity
@@ -143,7 +144,7 @@ class Role extends Model implements OptsOutOfSecurity
      */
     public function scopeAvailableForUserPermissions($query, $user)
     {
-        return $query;
+        return $query->unless(TeamRoleAssignmentGuard::actorBypassesRestrictions($user), fn ($q) => $q->where('id', '!=', 'super-admin'));
     }
 
     // ACTIONS

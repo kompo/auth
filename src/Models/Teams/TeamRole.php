@@ -521,7 +521,7 @@ class TeamRole extends Model
     public function createChildForHierarchy($teamId)
     {
         if (!$this->hasAccessToTeam($teamId)) {
-            abort(403);
+            abort(403, __('auth-you-dont-have-access-to-this-team'));
         }
 
         $teamRole = new static;

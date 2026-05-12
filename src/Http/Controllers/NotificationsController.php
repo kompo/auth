@@ -12,7 +12,7 @@ class NotificationsController extends Controller
 	{
 		$notification = NotificationModel::findOrFail($notification_id);
 		if($notification->user_id != auth()->user()->id) {
-			abort(403);
+			abort(403, __('auth-you-dont-have-access-to-this-notification'));
 		}
 		$notification->markSeen();
 
@@ -22,7 +22,7 @@ class NotificationsController extends Controller
 			if (auth()->user()->hasAccessToTeam($notification->team_id)) {
 				auth()->user()->switchToFirstTeamRole($notification->team_id);
 			} else {
-				abort(403, __('You do not have access to the team related to this notification.'));
+				abort(403, __('auth-you-dont-have-access-to-the-team-related-to-this-notification'));
 			}
 		}
 
@@ -34,7 +34,7 @@ class NotificationsController extends Controller
     	$notification = NotificationModel::findOrFail($id);
 
     	if ($notification->user_id !== auth()->user()->id) {
-    		abort(403);
+    		abort(403, __('auth-you-dont-have-access-to-this-notification'));
     	}
 
     	$notification->status = 1;
@@ -47,7 +47,7 @@ class NotificationsController extends Controller
     	$notification = NotificationModel::findOrFail($id);
 
     	if ($notification->user_id !== auth()->user()->id) {
-    		abort(403);
+    		abort(403, __('auth-you-dont-have-access-to-this-notification'));
     	}
 
         //Delete other notifications of same type and parent

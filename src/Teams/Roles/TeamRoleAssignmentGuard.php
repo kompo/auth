@@ -57,7 +57,7 @@ class TeamRoleAssignmentGuard
             return false;
         }
 
-        return $actor->getAllAccessibleTeamIds()->contains($targetTeamId);
+        return collect($actor->getAllAccessibleTeamIds())->contains($targetTeamId);
     }
 
     /**

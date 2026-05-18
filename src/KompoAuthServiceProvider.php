@@ -35,7 +35,6 @@ use Kompo\Auth\Teams\Security\ReadSecurityService;
 use Kompo\Auth\Teams\Security\SecurityBypassService;
 use Kompo\Auth\Teams\Security\SecurityMetadataRegistry;
 use Kompo\Auth\Teams\Security\WriteSecurityService;
-use Kompo\Auth\Teams\Cache\GlobalSecurityBypassCache;
 use Kompo\Auth\Teams\PermissionCacheManager;
 use Kompo\Auth\Teams\PermissionResolver;
 use Kompo\Auth\Support\ElementPermissionCache;
@@ -166,11 +165,6 @@ class KompoAuthServiceProvider extends ServiceProvider
      */
     private function registerCoreServices(): void
     {
-        // Static portion of the security-bypass check.
-        // Stable for the request lifetime (modulo login/logout/impersonation).
-        // Excludes isInBypassContext() — that is composed in `kompo-auth.security-bypass`.
-        // Memoized via GlobalSecurityBypassCache so the expensive routeIsByPassed()
-        // router match only runs once per request.
         $this->app->singleton('kompo-auth.security-bypass.static', function ($app) {
             return function () {
                 if (app()->runningInConsole() && kompoAuthSecurityConfig('bypass.console', true)) {
@@ -188,9 +182,6 @@ class KompoAuthServiceProvider extends ServiceProvider
                     return true;
                 }
 
-                // routeIsByPassed() is the expensive one (Laravel router match
-                // when Kompo AJAX hits /_kompo). Kept last so cheap checks
-                // short-circuit it. Memoized via the cache class anyway.
                 if (kompoAuthSecurityConfig('bypass.route_opt_out', true) && routeIsByPassed()) {
                     return true;
                 }
@@ -208,8 +199,7 @@ class KompoAuthServiceProvider extends ServiceProvider
             return function () use ($app) {
                 $staticResolver = $app->make('kompo-auth.security-bypass.static');
 
-                return GlobalSecurityBypassCache::resolve($staticResolver)
-                    || isInBypassContext();
+                return $staticResolver || isInBypassContext();
             };
         });
 
@@ -364,7 +354,6 @@ class KompoAuthServiceProvider extends ServiceProvider
     private function registerRequestLifecycleCleanup(): void
     {
         $this->app->terminating(function () {
-            GlobalSecurityBypassCache::flush();
             SecurityMetadataRegistry::clearAll();
             SecurityBypassService::clearTracking();
             \Kompo\Auth\Teams\Security\TeamScopeIntent::reset();
@@ -725,9 +714,7 @@ class KompoAuthServiceProvider extends ServiceProvider
         // cached answers (security-bypass static, field-protection permissions,
         // team-owners resolution).
         $flushPerRequestAuthCaches = function () {
-            GlobalSecurityBypassCache::flush();
             \Kompo\Auth\Teams\Cache\CachedFieldProtectionService::flush();
-            \Kompo\Auth\Teams\Cache\CachedTeamSecurityService::flush();
             \Kompo\Auth\Teams\Cache\CachedOwnedRecordsResolver::flush();
         };
         Event::listen(\Illuminate\Auth\Events\Login::class, $flushPerRequestAuthCaches);

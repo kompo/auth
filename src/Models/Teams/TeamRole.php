@@ -391,21 +391,18 @@ class TeamRole extends Model
     public function terminate()
     {
         $this->terminated_at = now();
-        $this->deleted_at = now();
         $this->save();
     }
 
     public function suspend()
     {
         $this->suspended_at = now();
-        $this->deleted_at = now();
         $this->save();
     }
 
     public function removeSuspention()
     {
         $this->suspended_at = null;
-        $this->deleted_at = null;
         $this->save();
     }
 
@@ -530,7 +527,8 @@ class TeamRole extends Model
         $teamRole->role = $this->role;
         $teamRole->parent_team_role_id = $this->id;
         $teamRole->role_hierarchy = RoleHierarchyEnum::DIRECT;
-        $teamRole->save();
+        // Bypassing the gate to check if user has access to give himself the role. Since it's not assigning himself, it's just an internal operation to give the user the right team role based on the hierarchy.
+        $teamRole->systemSave();
 
         return $teamRole;
     }

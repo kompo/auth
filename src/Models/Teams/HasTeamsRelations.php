@@ -67,7 +67,7 @@ trait HasTeamsRelations
 
     public function activeTeamRoles()
     {
-        return $this->teamRoles()->whereHas('team', fn($q) => $q->active()
+        return $this->teamRoles()->valid()->whereHas('team', fn($q) => $q->active()
             ->when(auth()->id() == $this->id, function ($q) {
                 $q->withoutGlobalScope('authUserHasPermissions');
             })

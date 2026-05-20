@@ -99,6 +99,8 @@
 	"auth.switcher-teams": "Teams",
 	"auth.with-values-code-sent-to": "",
 	"auth.with-values.role-limit-exceeded": "Role limit exceeded: :role",
+	"auth.you-dont-have-permissions-to-change-the-assignations": "You don't have permission to change the assignments",
+	"auth.you-dont-have-permissions-to-change-the-assignations-sub": "Contact an administrator to modify role and permission assignments.",
 	"auth.you-must-select-at-least-one-role": "You must select at least one role",
 	"auth.your-invitation-email": "Your invitation email",
 	"crm-contact-click-here-to-add-an-address": "Click here to add an address",

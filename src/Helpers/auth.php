@@ -87,31 +87,6 @@ if (!function_exists('globalSecurityBypass')) {
     }
 }
 
-if (!function_exists('staticGlobalSecurityBypass')) {
-    /**
-     * The static portion of globalSecurityBypass — stable for the request
-     * lifetime (modulo login/logout/impersonation). Excludes isInBypassContext().
-     * Memoized via GlobalSecurityBypassCache.
-     */
-    function staticGlobalSecurityBypass(): bool
-    {
-        if (app()->bound('kompo-auth.security-bypass.static')) {
-            return \Kompo\Auth\Teams\Cache\GlobalSecurityBypassCache::resolve(
-                app()->make('kompo-auth.security-bypass.static'),
-            );
-        }
-
-        return (bool) kompoAuthSecurityConfig('bypass.global', false);
-    }
-}
-
-if (!function_exists('flushStaticGlobalSecurityBypass')) {
-    function flushStaticGlobalSecurityBypass(): void
-    {
-        \Kompo\Auth\Teams\Cache\GlobalSecurityBypassCache::flush();
-    }
-}
-
 if (!function_exists('kompoAuthSecurityConfig')) {
     /**
      * Read a security config value from the per-concern tree

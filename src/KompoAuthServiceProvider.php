@@ -165,7 +165,7 @@ class KompoAuthServiceProvider extends ServiceProvider
      */
     private function registerCoreServices(): void
     {
-        $this->app->singleton('kompo-auth.security-bypass.static', function ($app) {
+        $this->app->singleton('kompo-auth.security-bypass', function ($app) {
             return function () {
                 if (app()->runningInConsole() && kompoAuthSecurityConfig('bypass.console', true)) {
                     return true;
@@ -186,20 +186,7 @@ class KompoAuthServiceProvider extends ServiceProvider
                     return true;
                 }
 
-                return (bool) kompoAuthSecurityConfig('bypass.global', false);
-            };
-        });
-
-        // Composed binding: memoized static OR live bypass-context toggle.
-        // Public API surface used by globalSecurityBypass() helper.
-        // The static resolver is re-fetched from the container per call so that
-        // a later $app->bind('kompo-auth.security-bypass.static', …) override
-        // takes effect without forcing callers to forgetInstance() first.
-        $this->app->singleton('kompo-auth.security-bypass', function ($app) {
-            return function () use ($app) {
-                $staticResolver = $app->make('kompo-auth.security-bypass.static');
-
-                return $staticResolver || isInBypassContext();
+                return (bool) kompoAuthSecurityConfig('bypass.global', false) || isInBypassContext();
             };
         });
 

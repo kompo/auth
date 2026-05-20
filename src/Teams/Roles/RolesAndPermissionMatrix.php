@@ -4,6 +4,7 @@ namespace Kompo\Auth\Teams\Roles;
 
 use Condoedge\Utils\Kompo\Common\Query;
 use Kompo\Auth\Models\Teams\PermissionSection;
+use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 
 class RolesAndPermissionMatrix extends Query
 {
@@ -32,6 +33,9 @@ class RolesAndPermissionMatrix extends Query
     public function top()
     {
         return _Rows(
+            auth()->user()->hasPermission('Role', PermissionTypeEnum::WRITE) ? null :
+                $this->warningElNoWritePermissions(),
+
             _Panel()->id('hidden-roles')->class('opacity-0'),
             _Panel(
                 $this->multiSelect($this->defaultRolesIds),
@@ -80,5 +84,10 @@ class RolesAndPermissionMatrix extends Query
             'rows',
             'subgroup-toggle' . $permissionSection->id,
         );
+    }
+
+    protected function warningElNoWritePermissions()
+    {
+        return _WarningBanner('auth.you-dont-have-permissions-to-change-the-assignations', 'auth.you-dont-have-permissions-to-change-the-assignations-sub')->class('mb-4');
     }
 }

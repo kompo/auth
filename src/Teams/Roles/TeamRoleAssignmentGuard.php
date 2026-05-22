@@ -32,6 +32,10 @@ class TeamRoleAssignmentGuard
             return false;
         }
 
+        if (static::actorBypassesRestrictions($actor)) {
+            return true;
+        }
+
         return RoleModel::query()
             ->where('id', $roleId)
             ->availableForUserPermissions($actor) // By default avoiding super-admin if actorBypassesRestrictions returns false
@@ -44,8 +48,12 @@ class TeamRoleAssignmentGuard
             return false;
         }
 
+        if (static::actorBypassesRestrictions($actor)) {
+            return true;
+        }
+
         if ((int) $targetUserId === (int) $actor->id) {
-            return static::actorBypassesRestrictions($actor);
+            return false;
         }
 
         return true;
@@ -57,6 +65,10 @@ class TeamRoleAssignmentGuard
             return false;
         }
 
+        if (static::actorBypassesRestrictions($actor)) {
+            return true;
+        }
+
         return collect($actor->getAllAccessibleTeamIds())->contains($targetTeamId);
     }
 
@@ -65,6 +77,10 @@ class TeamRoleAssignmentGuard
      */
     public static function assertCanAssign($actor, TeamRole $teamRole): void
     {
+        if (static::actorBypassesRestrictions($actor)) {
+            return;
+        }
+
         if (!static::canAssignRole($actor, $teamRole->role)) {
             abort(403, __('auth-you-cannot-assign-this-role'));
         }

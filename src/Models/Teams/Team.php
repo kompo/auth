@@ -145,9 +145,6 @@ class Team extends Model implements ScopedToTeam
      */
     public function getAllChildrenRawSolution($depth = null, $staticExtraSelect = null, $search = '')
     {
-        // Mantener por compatibilidad pero marcar como deprecated
-        \Log::warning('getAllChildrenRawSolution is deprecated. Use TeamHierarchyInterface instead.');
-
         $service = app(TeamHierarchyInterface::class);
 
         if ($staticExtraSelect && $search) {

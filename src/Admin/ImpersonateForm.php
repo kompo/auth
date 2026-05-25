@@ -39,7 +39,9 @@ class ImpersonateForm extends Form
 		$label = $user->name;
 
 		if ($user->current_team_id != $this->lastTeamId) {
-			$label = '<div class="font-semibold">'.$user->currentTeamRole->getTeamName().'</div>'.$label;
+			$currentTeamRole = $user->currentTeamRole ?: $user->currentTeamRole()->with('team')->first();
+			$teamName = $currentTeamRole?->getTeamName() ?? 'No Team';
+			$label = '<div class="font-semibold">'.$teamName.'</div>'.$label;
 			$this->lastTeamId = $user->current_team_id;
 		}
 

@@ -49,7 +49,9 @@ class TeamSecurityService implements TeamSecurityServiceInterface
      */
     protected function calculateTeamOwnersIds($model)
     {
-        $wasInBypassContext = SecurityBypassService::isInBypassContext();
+        // Reference-counted bypass — pair every enter with an exit. With the
+        // counter, nesting is safe: depth increments here and decrements in
+        // the finally; outer bypass (if any) is preserved.
         SecurityBypassService::enterBypassContext();
 
         try {
@@ -65,9 +67,7 @@ class TeamSecurityService implements TeamSecurityServiceInterface
 
             return null;
         } finally {
-            if (!$wasInBypassContext) {
-                SecurityBypassService::exitBypassContext();
-            }
+            SecurityBypassService::exitBypassContext();
         }
     }
 

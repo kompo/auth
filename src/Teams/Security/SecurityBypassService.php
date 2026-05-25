@@ -23,10 +23,15 @@ class SecurityBypassService
     protected static $bypassedModels = [];
 
     /**
-     * Bypass context flag — set while running code that needs to read auth-gated
-     * data without recursing (e.g. inside `HasOwnedRecords::ownedRecordIdsForUser`).
+     * Reference-counted bypass depth.
+     *
+     * Previously a boolean flag — nesting was unsafe: any inner caller that
+     * paired its own enter/exit would clobber the outer context. The counter
+     * makes nesting safe: each `enterBypassContext()` increments, each
+     * `exitBypassContext()` decrements, and cleanup (model reboot, tracking
+     * clear) only fires when the depth drops back to zero.
      */
-    protected static $inBypassContext = false;
+    protected static int $bypassDepth = 0;
 
     /**
      * Tracks models that were booted during bypass context and need rebooting
@@ -42,27 +47,37 @@ class SecurityBypassService
     }
 
     /**
-     * Check if bypass context is active
+     * Check if bypass context is active (depth > 0).
      */
     public static function isInBypassContext(): bool
     {
-        return static::$inBypassContext;
+        return static::$bypassDepth > 0;
     }
 
     /**
-     * Enter bypass context
+     * Enter bypass context. Safe to nest — each call must be paired with an
+     * `exitBypassContext()`.
      */
     public static function enterBypassContext(): void
     {
-        static::$inBypassContext = true;
+        static::$bypassDepth++;
     }
 
     /**
-     * Exit bypass context
+     * Exit bypass context. Decrements the depth; cleanup (model reboot,
+     * tracking clear) runs only when the depth reaches zero. Underflow is
+     * floored at 0 so an over-call can't put us into a negative state.
      */
     public static function exitBypassContext(): void
     {
-        static::$inBypassContext = false;
+        if (static::$bypassDepth > 0) {
+            static::$bypassDepth--;
+        }
+
+        if (static::$bypassDepth > 0) {
+            // Still nested inside an outer bypass — defer cleanup.
+            return;
+        }
 
         // Reboot models that were booted during bypass context
         foreach (static::$modelsBootedDuringBypass as $modelClass => $true) {
@@ -88,7 +103,7 @@ class SecurityBypassService
      */
     public static function trackModelBootedDuringBypass(string $modelClass): void
     {
-        if (static::$inBypassContext) {
+        if (static::isInBypassContext()) {
             static::$modelsBootedDuringBypass[$modelClass] = true;
         }
     }
@@ -229,12 +244,15 @@ class SecurityBypassService
     }
 
     /**
-     * Clear all bypass tracking
+     * Clear all bypass tracking. Resets the depth counter too — used by the
+     * request-lifecycle terminator so a leaked enter (missing exit) from one
+     * request can't bleed into the next.
      */
     public static function clearTracking(): void
     {
         static::$bypassedModels = [];
         static::$modelsBootedDuringBypass = [];
+        static::$bypassDepth = 0;
     }
 
     /**

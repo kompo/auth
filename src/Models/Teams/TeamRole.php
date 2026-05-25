@@ -5,6 +5,8 @@ namespace Kompo\Auth\Models\Teams;
 use Kompo\Auth\Facades\RoleModel;
 use Condoedge\Utils\Models\Model;
 use Illuminate\Support\Facades\Log;
+use Kompo\Auth\Contracts\Security\ScopedToTeam;
+use Kompo\Auth\Models\Concerns\Security\BelongsToOneTeam;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\Roles\Role;
 use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
@@ -13,8 +15,9 @@ use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
 use Kompo\Auth\Teams\Roles\TeamRoleAssignmentGuard;
 use Kompo\Auth\Teams\TeamHierarchyRoleProcessor;
 
-class TeamRole extends Model
+class TeamRole extends Model implements ScopedToTeam
 {
+    use BelongsToOneTeam;
     use \Kompo\Auth\Models\Teams\BelongsToTeamTrait;
     use \Kompo\Auth\Models\Traits\BelongsToUserTrait;
 

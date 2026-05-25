@@ -112,14 +112,6 @@ class KompoAuthServiceProvider extends ServiceProvider
         $this->registerRequestLifecycleCleanup();
         $this->setupPerformanceMonitoring();
 
-        // Setup missing translation handling
-        app('translator')->handleMissingKeysUsing(function ($key) {
-            $hasTranslatableSyntax = preg_match('/^([a-zA-Z]*\.[a-zA-Z]*)+$/', $key);
-            if ($hasTranslatableSyntax) {
-                Log::warning("MISSING TRANSLATION KEY: $key");
-            }
-        });
-
         // Bind user model
         $this->app->bind(defined('USER_MODEL_KEY') ? USER_MODEL_KEY : 'user-model-namespace', function () {
             return new (config('kompo-auth.user-model-namespace'));

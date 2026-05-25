@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Teams\Security;
 
-use Kompo\Auth\Contracts\Security\ScopedToTeam;
+use Condoedge\Utils\Contracts\Security\ScopedToTeam;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Teams\Security\Contracts\OwnedRecordsResolverInterface;
 use Kompo\Auth\Teams\Security\Contracts\TeamSecurityServiceInterface;

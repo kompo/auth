@@ -2,7 +2,7 @@
 
 namespace Kompo\Auth\Teams\Security;
 
-use Kompo\Auth\Contracts\Security\ScopedToTeam;
+use Condoedge\Utils\Contracts\Security\ScopedToTeam;
 use Kompo\Auth\Teams\Security\Contracts\TeamSecurityServiceInterface;
 use Illuminate\Support\Facades\Log;
 

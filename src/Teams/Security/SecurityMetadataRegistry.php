@@ -9,7 +9,7 @@ use Kompo\Auth\Contracts\Security\HasPermissionKey;
 use Kompo\Auth\Contracts\Security\HasProtectedFields;
 use Kompo\Auth\Contracts\Security\NoTeamScope;
 use Kompo\Auth\Contracts\Security\OptsOutOfSecurity;
-use Kompo\Auth\Contracts\Security\ScopedToTeam;
+use Condoedge\Utils\Contracts\Security\ScopedToTeam;
 
 /**
  * SecurityMetadataRegistry

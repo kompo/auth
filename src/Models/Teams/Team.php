@@ -255,8 +255,8 @@ class Team extends Model implements ScopedToTeam
     public function scopeActive($query)
     {
         $query->where(function ($q) {
-            $q->whereNull('inactive_at')->orWhere('inactive_at', '>', now());
-        })->whereNull('deleted_at');
+            $q->whereNull('teams.inactive_at')->orWhere('teams.inactive_at', '>', now());
+        })->whereNull('teams.deleted_at');
     }
 
     public function scopeValidForTasks($query)

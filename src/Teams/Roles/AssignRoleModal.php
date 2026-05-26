@@ -6,6 +6,8 @@ use Condoedge\Utils\Facades\UserModel;
 use Condoedge\Utils\Kompo\Common\Modal;
 use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Facades\TeamModel;
+use Kompo\Auth\Models\Teams\Permission;
+use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Models\User;
 
@@ -18,6 +20,8 @@ class AssignRoleModal extends Modal
     protected $defaultTeamId = null;
     protected $defaultUserId = null;
     protected $refreshId = UserRolesTable::ID;
+
+    protected $permissionKey = 'TeamRole';
 
     public function created()
     {
@@ -165,9 +169,12 @@ class AssignRoleModal extends Modal
 
     public function searchTeams($search)
     {
-        $teamsIds = auth()->user()->getAllAccessibleTeamIds($search);
+        $teamsIds = !Permission::findByKey($this->permissionKey) ? auth()->user()->getAllAccessibleTeamIds() :
+            auth()->user()->getTeamsIdsWithPermission($this->permissionKey, PermissionTypeEnum::WRITE);
 
-        return TeamModel::whereIn('id', $teamsIds)
+        // If bypass global security, show all teams
+        return TeamModel::when(!globalSecurityBypass(), fn($q) => $q->whereIn('id', $teamsIds))
+            ->search($search)
             ->take(30)
             ->pluck('team_name', 'id');
     }

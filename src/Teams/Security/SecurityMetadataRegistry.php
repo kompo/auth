@@ -117,24 +117,34 @@ class SecurityMetadataRegistry
         // registry caches the result. Suppressible by NoTeamScope.
         if (!$usesScopedToTeam && !$optedOutOfTeamScope && $autoTeamIdColumn !== null
             && kompoAuthSecurityConfig('warn_on_missing_team_contract', true)) {
-            Log::warning(sprintf(
-                '[kompo-auth] %s has a `%s` column but does not implement ScopedToTeam — '
-                . 'auto-detecting team scope. Declare `implements ScopedToTeam` (or '
-                . '`NoTeamScope` to opt out) to silence this warning.',
-                $modelClass,
-                $autoTeamIdColumn,
-            ));
+            \Cache::remember(
+                "kompo-auth:warned_team_scope:$modelClass",
+                now()->addDay(),
+                function () use ($modelClass, $autoTeamIdColumn) {
+                    Log::warning(sprintf(
+                        '[kompo-auth] %s has a `%s` column but does not implement ScopedToTeam — '
+                        . 'auto-detecting team scope. Declare `implements ScopedToTeam` (or '
+                        . '`NoTeamScope` to opt out) to silence this warning.',
+                        $modelClass,
+                        $autoTeamIdColumn,
+                    ));
+            });
         }
 
         if (!$usesHasOwnedRecords && $autoUserIdColumn !== null
             && kompoAuthSecurityConfig('warn_on_missing_owned_records_contract', true)) {
-            Log::warning(sprintf(
-                '[kompo-auth] %s has a `%s` column but does not implement HasOwnedRecords — '
-                . 'auto-detecting owner-bypass. Declare `implements HasOwnedRecords + use OwnedByUserIdColumn` '
-                . 'to silence this warning.',
-                $modelClass,
-                $autoUserIdColumn,
-            ));
+            \Cache::remember(
+                "kompo-auth:warned_owned_records:$modelClass",
+                now()->addDay(),
+                function () use ($modelClass, $autoUserIdColumn) {
+                    Log::warning(sprintf(
+                        '[kompo-auth] %s has a `%s` column but does not implement HasOwnedRecords — '
+                        . 'auto-detecting owner-bypass. Declare `implements HasOwnedRecords + use OwnedByUserIdColumn` '
+                        . 'to silence this warning.',
+                        $modelClass,
+                        $autoUserIdColumn,
+                    ));
+            });
         }
 
         // No scoping path at all and not explicitly opted out — surface so
@@ -144,15 +154,20 @@ class SecurityMetadataRegistry
         $noOwnerScopePath = !$usesHasOwnedRecords && $autoUserIdColumn === null && !$optsOutOfSecurity;
         if (($noTeamScopePath || $noOwnerScopePath)
             && kompoAuthSecurityConfig('error_on_unscoped_models', false)) {
-            Log::error(sprintf(
-                '[kompo-auth] %s has no scoping path (team: %s, owner: %s). '
-                . 'Records are visible to anyone passing permission checks. '
-                . 'Declare ScopedToTeam/HasOwnedRecords, add a team_id/user_id column, '
-                . 'or implement NoTeamScope/OptsOutOfSecurity to silence.',
-                $modelClass,
-                $noTeamScopePath ? 'missing' : 'ok',
-                $noOwnerScopePath ? 'missing' : 'ok',
-            ));
+            \Cache::remember(
+                "kompo-auth:warned_unscoped:$modelClass",
+                now()->addDay(),
+                function () use ($modelClass, $noTeamScopePath, $noOwnerScopePath) {
+                    Log::error(sprintf(
+                        '[kompo-auth] %s has no scoping path (team: %s, owner: %s). '
+                        . 'Records are visible to anyone passing permission checks. '
+                        . 'Declare ScopedToTeam/HasOwnedRecords, add a team_id/user_id column, '
+                        . 'or implement NoTeamScope/OptsOutOfSecurity to silence.',
+                        $modelClass,
+                        $noTeamScopePath ? 'missing' : 'ok',
+                        $noOwnerScopePath ? 'missing' : 'ok',
+                    ));
+            });
         }
 
         return [

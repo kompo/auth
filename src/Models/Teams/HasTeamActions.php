@@ -40,6 +40,7 @@ trait HasTeamActions
         if ($teamRole = $this->teamRoles()->where('team_id', $team->id)->where('role', $role)->first()) {
             if ($hierarchy) {
                 $teamRole->role_hierarchy = $hierarchy;
+                $teamRole->_skipAssignmentGuard = true;
                 $teamRole->systemSave();
             }
 
@@ -52,6 +53,7 @@ trait HasTeamActions
         $teamRole->user_id = $this->id;
         $teamRole->role = $role;
         $teamRole->role_hierarchy = $hierarchy ?: RoleHierarchyEnum::DIRECT;
+        $teamRole->_skipAssignmentGuard = true;
         $teamRole->systemSave();
 
         return $teamRole;

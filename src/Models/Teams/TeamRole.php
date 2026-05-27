@@ -40,7 +40,7 @@ class TeamRole extends Model implements ScopedToTeam, HasOwnedRecords
         });
 
         static::saving(function ($teamRole) {
-            if (!$teamRole->getAttribute('_hierarchyAssignment')
+            if (!$teamRole->getAttribute('_skipAssignmentGuard')
                 && ($teamRole->isDirty('role') || $teamRole->isDirty('user_id') || $teamRole->isDirty('team_id'))) {
                 TeamRoleAssignmentGuard::assertCanAssign(auth()->user(), $teamRole);
             }
@@ -52,7 +52,7 @@ class TeamRole extends Model implements ScopedToTeam, HasOwnedRecords
                     : RoleHierarchyEnum::DIRECT;
             }
 
-            $teamRole->offsetUnset('_hierarchyAssignment');
+            $teamRole->offsetUnset('_skipAssignmentGuard');
         });
 
         static::saved(function ($teamRole) {
@@ -535,8 +535,7 @@ class TeamRole extends Model implements ScopedToTeam, HasOwnedRecords
         $teamRole->role = $this->role;
         $teamRole->parent_team_role_id = $this->id;
         $teamRole->role_hierarchy = RoleHierarchyEnum::DIRECT;
-        $teamRole->_hierarchyAssignment = true;
-        // Bypassing the gate to check if user has access to give himself the role. Since it's not assigning himself, it's just an internal operation to give the user the right team role based on the hierarchy.
+        $teamRole->_skipAssignmentGuard = true;
         $teamRole->systemSave();
 
         return $teamRole;

@@ -5,14 +5,17 @@ namespace Kompo\Auth\Models\Teams;
 use Condoedge\Utils\Models\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Kompo\Auth\Contracts\Security\HasOwnedRecords;
 use Kompo\Auth\Contracts\Security\ScopedToTeam;
 use Kompo\Auth\Facades\UserModel;
+use Kompo\Auth\Models\Concerns\Security\OwnedByUserIdColumn;
 use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
 use Kompo\Auth\Teams\TeamHierarchyRoleProcessor;
 
-class Team extends Model implements ScopedToTeam
+class Team extends Model implements ScopedToTeam, HasOwnedRecords
 {
+    use OwnedByUserIdColumn;
     use \Condoedge\Utils\Models\Tags\MorphToManyTagsTrait;
     use \Condoedge\Utils\Models\Files\MorphManyFilesTrait;
     use \Condoedge\Utils\Models\ContactInfo\Maps\MorphManyAddresses;

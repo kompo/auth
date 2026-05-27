@@ -3,12 +3,16 @@
 namespace Kompo\Auth\Models\Monitoring;
 
 use Condoedge\Utils\Models\Model;
+use Kompo\Auth\Contracts\Security\HasOwnedRecords;
+use Kompo\Auth\Contracts\Security\NoTeamScope;
+use Kompo\Auth\Models\Concerns\Security\OwnedByUserIdColumn;
 use Kompo\Auth\Models\Teams\BelongsToTeamTrait;
 use Kompo\Auth\Models\Traits\BelongsToUserTrait;
 use Kompo\Auth\Monitoring\NotificationCache;
 
-class Notification extends Model
+class Notification extends Model implements NoTeamScope, HasOwnedRecords
 {
+    use OwnedByUserIdColumn;
     use BelongsToUserTrait;
     use BelongsToTeamTrait;
 

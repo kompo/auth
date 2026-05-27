@@ -2,6 +2,7 @@
 
 namespace Kompo\Auth\Teams\Security;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Kompo\Auth\Contracts\Security\EnforcesStrictPermissions;
 use Condoedge\Utils\Contracts\Security\HasOwnedRecords;
@@ -117,7 +118,7 @@ class SecurityMetadataRegistry
         // registry caches the result. Suppressible by NoTeamScope.
         if (!$usesScopedToTeam && !$optedOutOfTeamScope && $autoTeamIdColumn !== null
             && kompoAuthSecurityConfig('warn_on_missing_team_contract', true)) {
-            \Cache::remember(
+            Cache::remember(
                 "kompo-auth:warned_team_scope:$modelClass",
                 3600 * 24,
                 function () use ($modelClass, $autoTeamIdColumn) {
@@ -128,12 +129,14 @@ class SecurityMetadataRegistry
                         $modelClass,
                         $autoTeamIdColumn,
                     ));
+
+                    return true;
             });
         }
 
         if (!$usesHasOwnedRecords && $autoUserIdColumn !== null
             && kompoAuthSecurityConfig('warn_on_missing_owned_records_contract', true)) {
-            \Cache::remember(
+            Cache::remember(
                 "kompo-auth:warned_owned_records:$modelClass",
                 3600 * 24,
                 function () use ($modelClass, $autoUserIdColumn) {
@@ -144,6 +147,8 @@ class SecurityMetadataRegistry
                         $modelClass,
                         $autoUserIdColumn,
                     ));
+
+                    return true;
             });
         }
 
@@ -154,9 +159,9 @@ class SecurityMetadataRegistry
         $noOwnerScopePath = !$usesHasOwnedRecords && $autoUserIdColumn === null && !$optsOutOfSecurity;
         if (($noTeamScopePath || $noOwnerScopePath)
             && kompoAuthSecurityConfig('error_on_unscoped_models', false)) {
-            \Cache::remember(
+            Cache::remember(
                 "kompo-auth:warned_unscoped:$modelClass",
-                3600 * 24,,
+                3600 * 24,
                 function () use ($modelClass, $noTeamScopePath, $noOwnerScopePath) {
                     Log::error(sprintf(
                         '[kompo-auth] %s has no scoping path (team: %s, owner: %s). '
@@ -167,6 +172,8 @@ class SecurityMetadataRegistry
                         $noTeamScopePath ? 'missing' : 'ok',
                         $noOwnerScopePath ? 'missing' : 'ok',
                     ));
+
+                    return true;
             });
         }
 

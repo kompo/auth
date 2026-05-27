@@ -8,8 +8,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Kompo\Form;
-use Laravel\Fortify\Fortify;
 use Condoedge\Utils\Kompo\Common\ImgFormLayout;
 
 
@@ -54,7 +52,7 @@ class ResetPasswordForm extends ImgFormLayout
         }
 
         throw ValidationException::withMessages([
-            'email' => [trans($this->status)],
+            'email' => [trans($status)],
         ]);
     }
 

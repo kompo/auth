@@ -2,49 +2,69 @@
 
 namespace Kompo\Auth\Models\Teams;
 
+use Kompo\Auth\Models\Plugins\HasSecurity;
 use Kompo\Auth\Models\Teams\TeamRole;
 
 /**
  * Handles only Eloquent relationships
  */
 trait HasTeamsRelations
-{    
+{
+    private static array $manageNullCurrentTeamRoleAttempted = [];
+
     /* RELATIONS */
     public function currentTeamRole()
     {
+        HasSecurity::enterBypassContext();
+
         // Auto-select first team role if none is set
         if ($this->exists && !$this->current_team_role_id) {
             $this->manageNullCurrentTeamRole();
         }
 
-        $res = $this->belongsTo(TeamRole::class, 'current_team_role_id')
-            ->when(auth()->id() == $this->id, function ($q) {
-                $q->withoutGlobalScope('authUserHasPermissions');
-            });
+        $res = $this->belongsTo(TeamRole::class, 'current_team_role_id');
 
-        // We check here if the current team role is valid (has a team and a role), otherwise we manage it
-        if (!(clone $res)->has('roleRelation')->has('team')->exists()) {
-            $this->manageNullCurrentTeamRole();
-        }
+        $validityCacheKey = ($this->getKey() ?? spl_object_id($this)) . ':' . ($this->current_team_role_id ?? 0);
+        $this->memoize('currenTeamRoleValidity:' . $validityCacheKey, function () use ($res) {
+            $isValid = (clone $res)->has('roleRelation')->has('team')->exists();
+
+            if (!$isValid) {
+                $this->manageNullCurrentTeamRole();
+            }
+        });
+
+        HasSecurity::exitBypassContext();
 
         return $res;
     }
 
     protected function manageNullCurrentTeamRole()
     {
-        if(!$this->switchToFirstTeamRole()) {
-            if (auth()->id() !== $this->id) {
-                // If the user is not the owner of the account, just return null. Because it's not related
-                // to current session
-                return null;
-            } else if (auth()->user()->isImpersonated()) {
-                auth()->user()->leaveImpersonation();
-            } else {
-                auth()->logout();
-            }
-            
-            abort(403, __('auth-you-dont-have-access-to-any-team'));
+        $userKey = $this->getKey() ?? spl_object_id($this);
+        if (isset(self::$manageNullCurrentTeamRoleAttempted[$userKey])) {
+            return $this->nullTeamRoleAction();
         }
+
+        self::$manageNullCurrentTeamRoleAttempted[$userKey] = true;
+
+        if(!$this->switchToFirstTeamRole()) {
+            return $this->nullTeamRoleAction();
+        }
+    }
+
+    protected function nullTeamRoleAction()
+    {
+        if (auth()->id() !== $this->id) {
+            // If the user is not the owner of the account, just return null. Because it's not related
+            // to current session
+            return null;
+        } else if (auth()->user()->isImpersonated()) {
+            auth()->user()->leaveImpersonation();
+        } else {
+            auth()->logout();
+        }
+
+        abort(403, __('auth-you-dont-have-access-to-any-team'));
     }
 
     public function ownedTeams()

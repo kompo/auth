@@ -7,9 +7,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Condoedge\Utils\Models\Traits\MemoizesResults;
 
 class User extends Authenticatable
 {
+    use MemoizesResults;
     use HasFactory, Notifiable;
 
     use \Lab404\Impersonate\Models\Impersonate;

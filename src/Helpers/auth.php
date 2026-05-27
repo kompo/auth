@@ -169,6 +169,7 @@ if (!function_exists('currentTeamRole') && config('kompo-auth.root-security', tr
         if (!auth()->user()) {
             return null;
         }
+
         HasSecurity::enterBypassContext();
         try {
             if (!auth()->user()->currentTeamRole || !auth()->user()->currentTeamRole->roleRelation) {

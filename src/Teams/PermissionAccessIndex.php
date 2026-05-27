@@ -11,14 +11,8 @@ final class PermissionAccessIndex
     private array $allowMembers;
     private array $denyMembers;
 
-    /** @var bool|null cached result of `supported_types` column existence */
     private static ?bool $supportedTypesColumnAvailable = null;
 
-    /**
-     * Per-request cache for `permission_key => supported_types` rows.
-     *
-     * @var array<string, int>
-     */
     private static array $supportedTypesMap = [];
 
     public function __construct(array $allowMembers = [], array $denyMembers = [])
@@ -29,8 +23,6 @@ final class PermissionAccessIndex
 
     public static function fromPermissions(iterable $permissions): self
     {
-        // Materialize once so we can collect distinct keys for a single bulk
-        // lookup of `supported_types` before the expansion loop.
         $rows = [];
         foreach ($permissions as $complexPermission) {
             $key = getPermissionKey($complexPermission);
@@ -73,10 +65,6 @@ final class PermissionAccessIndex
         return new self(array_keys($allowMembers), array_keys($denyMembers));
     }
 
-    /**
-     * @param  list<array{0: string, 1: PermissionTypeEnum}>  $rows
-     * @return array<string, int>  permission_key => supported_types bitmask
-     */
     private static function loadSupportedTypesMap(array $rows): array
     {
         if (!self::supportedTypesColumnAvailable()) {
@@ -108,10 +96,6 @@ final class PermissionAccessIndex
         return array_intersect_key(self::$supportedTypesMap, $requested);
     }
 
-    /**
-     * Flush the per-request supported_types cache. Called from the
-     * request-lifecycle terminator in KompoAuthServiceProvider.
-     */
     public static function flushSupportedTypesMap(): void
     {
         self::$supportedTypesMap = [];

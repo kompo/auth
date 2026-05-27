@@ -119,7 +119,7 @@ class SecurityMetadataRegistry
             && kompoAuthSecurityConfig('warn_on_missing_team_contract', true)) {
             \Cache::remember(
                 "kompo-auth:warned_team_scope:$modelClass",
-                now()->addDay(),
+                3600 * 24,
                 function () use ($modelClass, $autoTeamIdColumn) {
                     Log::warning(sprintf(
                         '[kompo-auth] %s has a `%s` column but does not implement ScopedToTeam — '
@@ -135,7 +135,7 @@ class SecurityMetadataRegistry
             && kompoAuthSecurityConfig('warn_on_missing_owned_records_contract', true)) {
             \Cache::remember(
                 "kompo-auth:warned_owned_records:$modelClass",
-                now()->addDay(),
+                3600 * 24,
                 function () use ($modelClass, $autoUserIdColumn) {
                     Log::warning(sprintf(
                         '[kompo-auth] %s has a `%s` column but does not implement HasOwnedRecords — '
@@ -156,7 +156,7 @@ class SecurityMetadataRegistry
             && kompoAuthSecurityConfig('error_on_unscoped_models', false)) {
             \Cache::remember(
                 "kompo-auth:warned_unscoped:$modelClass",
-                now()->addDay(),
+                3600 * 24,,
                 function () use ($modelClass, $noTeamScopePath, $noOwnerScopePath) {
                     Log::error(sprintf(
                         '[kompo-auth] %s has no scoping path (team: %s, owner: %s). '

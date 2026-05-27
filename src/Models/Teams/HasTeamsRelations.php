@@ -15,28 +15,36 @@ trait HasTeamsRelations
     /* RELATIONS */
     public function currentTeamRole()
     {
+        // Whole method runs under bypass context — the validity EXISTS check,
+        // any `manageNullCurrentTeamRole` recovery, AND the belongsTo's lazy
+        // load that Eloquent will trigger right after this method returns
+        // ($res->getResults() in __get) should all be insensitive to the
+        // user's own permission scopes. Try/finally so an exception inside
+        // memoize doesn't leave the bypass context dangling.
         HasSecurity::enterBypassContext();
 
-        // Auto-select first team role if none is set
-        if ($this->exists && !$this->current_team_role_id) {
-            $this->manageNullCurrentTeamRole();
-        }
-
-        $res = $this->belongsTo(TeamRole::class, 'current_team_role_id')
-            ->withoutGlobalScope('authUserHasPermissions');
-
-        $validityCacheKey = ($this->getKey() ?? spl_object_id($this)) . ':' . ($this->current_team_role_id ?? 0);
-        $this->memoize('currenTeamRoleValidity:' . $validityCacheKey, function () use ($res) {
-            $isValid = (clone $res)->has('roleRelation')->has('team')->exists();
-
-            if (!$isValid) {
+        try {
+            // Auto-select first team role if none is set
+            if ($this->exists && !$this->current_team_role_id) {
                 $this->manageNullCurrentTeamRole();
             }
-        });
 
-        HasSecurity::exitBypassContext();
+            $res = $this->belongsTo(TeamRole::class, 'current_team_role_id')
+                ->withoutGlobalScope('authUserHasPermissions');
 
-        return $res;
+            $validityCacheKey = ($this->getKey() ?? spl_object_id($this)) . ':' . ($this->current_team_role_id ?? 0);
+            $this->memoize('currenTeamRoleValidity:' . $validityCacheKey, function () use ($res) {
+                $isValid = (clone $res)->has('roleRelation')->has('team')->exists();
+
+                if (!$isValid) {
+                    $this->manageNullCurrentTeamRole();
+                }
+            });
+
+            return $res;
+        } finally {
+            HasSecurity::exitBypassContext();
+        }
     }
 
     protected function manageNullCurrentTeamRole()
@@ -103,13 +111,27 @@ trait HasTeamsRelations
 
     public function getFirstTeamRole($teamId = null)
     {
-        return $this->activeTeamRoles()->relatedToTeam($teamId)->first() ?? 
-            TeamRole::getParentHierarchyRole($teamId, $this->id)?->createChildForHierarchy($teamId);
+        // Recovery / context-resolution helper — runs the same security-bypass
+        // wrap as `currentTeamRole` so the `activeTeamRoles()->first()` query
+        // (and any TeamRole creation via `createChildForHierarchy`) don't
+        // pull in scopes that re-enter the current-team resolution.
+        HasSecurity::enterBypassContext();
+        try {
+            return $this->activeTeamRoles()->relatedToTeam($teamId)->first() ??
+                TeamRole::getParentHierarchyRole($teamId, $this->id)?->createChildForHierarchy($teamId);
+        } finally {
+            HasSecurity::exitBypassContext();
+        }
     }
 
     public function getLatestTeamRole($teamId = null)
     {
-        return $this->activeTeamRoles()->relatedToTeam($teamId)->latest()->first();        
+        HasSecurity::enterBypassContext();
+        try {
+            return $this->activeTeamRoles()->relatedToTeam($teamId)->latest()->first();
+        } finally {
+            HasSecurity::exitBypassContext();
+        }
     }
 
     public function isOwnTeamRole($teamRole)

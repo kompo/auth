@@ -169,17 +169,21 @@ if (!function_exists('currentTeamRole') && config('kompo-auth.root-security', tr
         if (!auth()->user()) {
             return null;
         }
+        HasSecurity::enterBypassContext();
+        try {
+            if (!auth()->user()->currentTeamRole || !auth()->user()->currentTeamRole->roleRelation) {
+                if (method_exists(auth()->user(), 'switchToFirstTeamRole')) {
+                    auth()->user()->switchToFirstTeamRole();
+                }
+            }
 
-        if (!auth()->user()->currentTeamRole || !auth()->user()->currentTeamRole->roleRelation) {
-            if(method_exists(auth()->user(), 'switchToFirstTeamRole')) auth()->user()->switchToFirstTeamRole();
+            return app(UserContextCache::class)->currentTeamRole(
+                auth()->id(),
+                fn() => auth()->user()->currentTeamRole
+            );
+        } finally {
+            HasSecurity::exitBypassContext();
         }
-
-        $currentTeamRole = app(UserContextCache::class)->currentTeamRole(
-            auth()->id(),
-            fn() => auth()->user()->currentTeamRole
-        );
-
-        return $currentTeamRole;
     }
 }
 
@@ -192,16 +196,21 @@ if (!function_exists('currentTeam') && config('kompo-auth.root-security', true))
         $user = auth()->user();
         if (!$user) return null;
 
-        $currentTeam = app(UserContextCache::class)->currentTeam(
-            auth()->id(),
-            fn() => currentTeamRole()?->team
-        );
+        HasSecurity::enterBypassContext();
+        try {
+            $currentTeam = app(UserContextCache::class)->currentTeam(
+                auth()->id(),
+                fn() => currentTeamRole()?->team
+            );
 
-        if (!$currentTeam && method_exists($user, 'resetToValidTeamRole')) {
-            $user->resetToValidTeamRole();
+            if (!$currentTeam && method_exists($user, 'resetToValidTeamRole')) {
+                $user->resetToValidTeamRole();
+            }
+
+            return $currentTeam;
+        } finally {
+            HasSecurity::exitBypassContext();
         }
-
-        return $currentTeam;
     }
 }
 

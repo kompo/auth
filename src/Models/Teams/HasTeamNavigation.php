@@ -2,6 +2,7 @@
 
 namespace Kompo\Auth\Models\Teams;
 
+use Kompo\Auth\Models\Plugins\HasSecurity;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Teams\Contracts\TeamRoleAccessResolverInterface;
 
@@ -13,17 +14,30 @@ use Kompo\Auth\Teams\Contracts\TeamRoleAccessResolverInterface;
 trait HasTeamNavigation
 {
     /**
-     * Switch to first available team role for a team
+     * Switch to first available team role for a team.
+     *
+     * Wrapped in security-bypass context: the lookup + the User save inside
+     * `switchToTeamRole` are recovery / context-resolution operations, not
+     * user-driven business logic, and they MUST NOT re-enter the security
+     * cascade (TeamRole scope → currentTeamId → currentTeamRole → loop).
+     * Also short-circuits the `UseSaveTrigger`/Triggerator path on the
+     * resulting User save, which would otherwise iterate TriggerSetup rows
+     * under their own auto-detected team scope.
      */
     public function switchToFirstTeamRole($teamId = null): bool
     {
-        $teamRole = $this->getFirstTeamRole($teamId);
+        HasSecurity::enterBypassContext();
+        try {
+            $teamRole = $this->getFirstTeamRole($teamId);
 
-        if (!$teamRole) {
-            return false;
+            if (!$teamRole) {
+                return false;
+            }
+
+            return $this->switchToTeamRole($teamRole);
+        } finally {
+            HasSecurity::exitBypassContext();
         }
-
-        return $this->switchToTeamRole($teamRole);
     }
 
     /**

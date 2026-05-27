@@ -22,7 +22,8 @@ trait HasTeamsRelations
             $this->manageNullCurrentTeamRole();
         }
 
-        $res = $this->belongsTo(TeamRole::class, 'current_team_role_id');
+        $res = $this->belongsTo(TeamRole::class, 'current_team_role_id')
+            ->withoutGlobalScope('authUserHasPermissions');
 
         $validityCacheKey = ($this->getKey() ?? spl_object_id($this)) . ':' . ($this->current_team_role_id ?? 0);
         $this->memoize('currenTeamRoleValidity:' . $validityCacheKey, function () use ($res) {

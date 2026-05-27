@@ -107,6 +107,16 @@ class TeamSecurityService implements TeamSecurityServiceInterface
     }
 
     /**
+     * No-op at this layer — bulk pre-warming only makes sense paired with
+     * a cache. The CachedTeamSecurityService decorator overrides this to
+     * actually use the result. Kept on the interface so callers can stay
+     * agnostic about which layer they have.
+     */
+    public function prewarmTeamOwners(iterable $models): void
+    {
+    }
+
+    /**
      * Whether write/delete operations should team-check this instance.
      * True for contract-bound models or those with an auto-detected `team_id`
      * column — same pair as the bulk read scope.

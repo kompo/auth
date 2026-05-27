@@ -2,7 +2,9 @@
 
 namespace Kompo\Auth\Teams\Cache;
 
+use Condoedge\Utils\Contracts\Security\BulkResolvableTeamOwners;
 use Kompo\Auth\Teams\Security\Contracts\TeamSecurityServiceInterface;
+use Kompo\Auth\Teams\Security\SecurityBypassService;
 use Kompo\Auth\Teams\Security\TeamSecurityService;
 
 /**
@@ -53,6 +55,65 @@ class CachedTeamSecurityService implements TeamSecurityServiceInterface
         }
 
         return static::$teamOwnersCache[$class][$hash] = $this->inner->getTeamOwnersIdsSafe($model);
+    }
+
+    /**
+     * Bulk-resolve team owners for a collection and seed the per-request
+     * cache so the subsequent per-instance loop in
+     * `BatchPermissionService::groupModelsByTeams` is fully cache-hit.
+     *
+     * Groups models by class. For each class that implements
+     * `BulkResolvableTeamOwners`, asks the class for the whole batch in one
+     * call and stores results indexed by `spl_object_hash` (the same key
+     * `getTeamOwnersIdsSafe` uses). Classes that don't implement the bulk
+     * contract are left alone — they fall back to the per-instance path.
+     */
+    public function prewarmTeamOwners(iterable $models): void
+    {
+        $byClass = [];
+        foreach ($models as $model) {
+            $class = get_class($model);
+            if (!is_subclass_of($class, BulkResolvableTeamOwners::class)) {
+                continue;
+            }
+            $byClass[$class][] = $model;
+        }
+
+        foreach ($byClass as $class => $instances) {
+            // Skip classes whose instances are already fully cached.
+            $missing = [];
+            foreach ($instances as $instance) {
+                $hash = spl_object_hash($instance);
+                if (!array_key_exists($hash, static::$teamOwnersCache[$class] ?? [])) {
+                    $missing[] = $instance;
+                }
+            }
+            if (empty($missing)) {
+                continue;
+            }
+
+            // Match the bypass context the per-instance path uses (see
+            // TeamSecurityService::calculateTeamOwnersIds) — otherwise the
+            // bulk query goes through global scopes that the per-instance
+            // path skips, and the two paths would disagree.
+            SecurityBypassService::enterBypassContext();
+            try {
+                /** @var array<int|string, array<int>> $resolved */
+                $resolved = $class::bulkResolveRelatedTeamIds($missing);
+            } catch (\Throwable $e) {
+                // Bulk path failed — leave the cache alone so the
+                // per-instance fallback in getTeamOwnersIdsSafe still runs.
+                SecurityBypassService::exitBypassContext();
+                continue;
+            }
+            SecurityBypassService::exitBypassContext();
+
+            foreach ($missing as $instance) {
+                $hash = spl_object_hash($instance);
+                $key = $instance->getKey();
+                static::$teamOwnersCache[$class][$hash] = $resolved[$key] ?? [];
+            }
+        }
     }
 
     public function shouldValidateOwnedRecords($model): bool

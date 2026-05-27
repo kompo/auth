@@ -41,4 +41,18 @@ interface TeamSecurityServiceInterface
      * Whether the given model instance participates in team-based write/delete checks.
      */
     public function individualRestrictByTeam($model): bool;
+
+    /**
+     * Optionally pre-resolve `getTeamOwnersIdsSafe` for many models in one go.
+     *
+     * Callers that already have a collection (e.g. BatchPermissionService)
+     * pass it here before the per-instance security loop. Implementations
+     * that don't cache MAY no-op. Implementations that DO cache (the cached
+     * decorator) bulk-resolve via the optional `BulkResolvableTeamOwners`
+     * contract and seed the per-request cache so subsequent
+     * `getTeamOwnersIdsSafe` calls hit memory instead of the DB.
+     *
+     * @param  iterable<\Illuminate\Database\Eloquent\Model> $models
+     */
+    public function prewarmTeamOwners(iterable $models): void;
 }

@@ -339,6 +339,7 @@ class KompoAuthServiceProvider extends ServiceProvider
             \Kompo\Auth\Teams\Cache\CachedTeamSecurityService::flush();
             \Kompo\Auth\Teams\Cache\CachedFieldProtectionService::flush();
             \Kompo\Auth\Teams\Cache\CachedOwnedRecordsResolver::flush();
+            \Kompo\Auth\Teams\PermissionAccessIndex::flushSupportedTypesMap();
             ElementPermissionCache::clear();
 
             ReadSecurityService::clearSecurityConfigCache();

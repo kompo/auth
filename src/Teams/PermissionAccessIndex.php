@@ -14,6 +14,13 @@ final class PermissionAccessIndex
     /** @var bool|null cached result of `supported_types` column existence */
     private static ?bool $supportedTypesColumnAvailable = null;
 
+    /**
+     * Per-request cache for `permission_key => supported_types` rows.
+     *
+     * @var array<string, int>
+     */
+    private static array $supportedTypesMap = [];
+
     public function __construct(array $allowMembers = [], array $denyMembers = [])
     {
         $this->allowMembers = $this->normalizeMembers($allowMembers);
@@ -76,19 +83,38 @@ final class PermissionAccessIndex
             return [];
         }
 
-        $keys = [];
+        $requested = [];
         foreach ($rows as [$key, $_]) {
-            $keys[$key] = true;
+            $requested[$key] = true;
         }
 
-        try {
-            return Permission::whereIn('permission_key', array_keys($keys))
-                ->pluck('supported_types', 'permission_key')
-                ->map(fn($v) => (int) $v)
-                ->all();
-        } catch (\Throwable $e) {
-            return [];
+        $missing = array_diff_key($requested, self::$supportedTypesMap);
+
+        if (!empty($missing)) {
+            try {
+                $fetched = Permission::whereIn('permission_key', array_keys($missing))
+                    ->pluck('supported_types', 'permission_key')
+                    ->map(fn($v) => (int) $v)
+                    ->all();
+
+                self::$supportedTypesMap += $fetched;
+            } catch (\Throwable $e) {
+                foreach ($missing as $key => $_) {
+                    self::$supportedTypesMap[$key] = PermissionTypeEnum::ALL->value;
+                }
+            }
         }
+
+        return array_intersect_key(self::$supportedTypesMap, $requested);
+    }
+
+    /**
+     * Flush the per-request supported_types cache. Called from the
+     * request-lifecycle terminator in KompoAuthServiceProvider.
+     */
+    public static function flushSupportedTypesMap(): void
+    {
+        self::$supportedTypesMap = [];
     }
 
     private static function supportedTypesColumnAvailable(): bool

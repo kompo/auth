@@ -98,6 +98,14 @@ class BatchPermissionService
         // whole collection's owned IDs and mark matches as bypassed.
         $this->bulkResolveOwnedModels($modelsCollection, $firstModel);
 
+        // Bulk team-owner pre-resolution: for classes that implement
+        // BulkResolvableTeamOwners, resolve the whole batch's owning team_ids
+        // in one query and seed the per-request cache. The per-instance
+        // `getTeamOwnersIdsSafe` calls inside `groupModelsByTeams` then hit
+        // memory instead of firing one query per model. No-op for the inner
+        // (uncached) resolver and for classes without the bulk contract.
+        $this->teamService->prewarmTeamOwners($modelsCollection);
+
         // Process each group using the batch team-intersection approach
         foreach ($groups as $group) {
             if (!permissionMustBeAuthorized($group['key'])) continue;

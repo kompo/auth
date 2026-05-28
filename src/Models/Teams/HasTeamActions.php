@@ -2,6 +2,7 @@
 
 namespace Kompo\Auth\Models\Teams;
 
+use Kompo\Auth\Facades\RoleModel;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Models\Teams\RoleHierarchyEnum;
 
@@ -51,7 +52,7 @@ trait HasTeamActions
         $teamRole = new TeamRole();
         $teamRole->team_id = $team->id;
         $teamRole->user_id = $this->id;
-        $teamRole->role = $role;
+        $teamRole->role = RoleModel::getOrCreate($role)->id;
         $teamRole->role_hierarchy = $hierarchy ?: RoleHierarchyEnum::DIRECT;
         $teamRole->_skipAssignmentGuard = true;
         $teamRole->systemSave();

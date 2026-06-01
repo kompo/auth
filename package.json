@@ -5,12 +5,17 @@
     "@semantic-release/git": "^10.0.1",
     "semantic-release": "^24.2.5"
   },
+  
   "name": "auth",
   "version": "1.0.0",
   "description": "Kompo Auth is a comprehensive authorization and authentication package designed to provide a complete role and permission management system for Laravel applications. The package abstracts complex security logic into simple database configurations, requiring minimal code changes to your models and components.",
   "main": "index.js",
   "directories": {
     "doc": "docs"
+  },
+  "scripts": {
+    "translate": "node .github/scripts/generate-translations.js --provider=claude-cli",
+    "translate:dry": "node .github/scripts/generate-translations.js --provider=claude-cli --dry-run"
   },
   "keywords": [],
   "author": "",

@@ -44,11 +44,11 @@ class AssignRoleModal extends Modal
 
     public static function throwIfCannotBeOpenedForTeamAndUser($author, $userId = null, $teamId = null): void
     {
-        if ($userId && !TeamRoleAssignmentGuard::canAssignToUser($author, $userId)) {
+        if ($userId && !TeamRoleAssignmentGuardFacade::canAssignToUser($author, $userId)) {
             abort(403, __('auth-you-cannot-assign-roles-to-yourself'));
         }
 
-        if ($teamId && !TeamRoleAssignmentGuard::canAssignToTeam($author, $teamId)) {
+        if ($teamId && !TeamRoleAssignmentGuardFacade::canAssignToTeam($author, $teamId)) {
             abort(403, __('auth-you-cannot-assign-roles-in-this-team'));
         }
     }
@@ -185,7 +185,7 @@ class AssignRoleModal extends Modal
 
         return User::hasNameLike($search)
             ->when(
-                !TeamRoleAssignmentGuard::actorBypassesRestrictions($actor),
+                !TeamRoleAssignmentGuardFacade::actorBypassesRestrictions($actor),
                 fn($q) => $q->where('id', '!=', $actor?->id)
             )
             ->select('id', 'name')

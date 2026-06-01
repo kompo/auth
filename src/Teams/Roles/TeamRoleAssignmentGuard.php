@@ -3,6 +3,7 @@
 namespace Kompo\Auth\Teams\Roles;
 
 use Kompo\Auth\Facades\RoleModel;
+use Kompo\Auth\Facades\TeamModel;
 use Kompo\Auth\Models\Teams\TeamRole;
 
 /**
@@ -14,10 +15,12 @@ use Kompo\Auth\Models\Teams\TeamRole;
  *   - actorBypassesRestrictions: super-admin / impersonation bypass.
  *   - canAssignRole: filters by Role::scopeAvailableForUserPermissions.
  *   - canAssignToUser: blocks self-assignment unless bypass applies.
+ *   - canAssignToTeam: blocks assignment to teams actor can't access unless bypass applies.
+ *   - isRoleValidForTeam: checks role's only_for_committees flag and allowed team levels.
  */
 class TeamRoleAssignmentGuard
 {
-    public static function actorBypassesRestrictions($actor): bool
+    public function actorBypassesRestrictions($actor): bool
     {
         if (!$actor) {
             return false;
@@ -26,13 +29,13 @@ class TeamRoleAssignmentGuard
         return isSuperAdmin() || isImpersonated() || $actor->hasRole('super-admin');
     }
 
-    public static function canAssignRole($actor, $roleId): bool
+    public function canAssignRole($actor, $roleId): bool
     {
         if (!$actor || !$roleId) {
             return false;
         }
 
-        if (static::actorBypassesRestrictions($actor)) {
+        if ($this->actorBypassesRestrictions($actor)) {
             return true;
         }
 
@@ -42,13 +45,13 @@ class TeamRoleAssignmentGuard
             ->exists();
     }
 
-    public static function canAssignToUser($actor, $targetUserId): bool
+    public function canAssignToUser($actor, $targetUserId): bool
     {
         if (!$actor || !$targetUserId) {
             return false;
         }
 
-        if (static::actorBypassesRestrictions($actor)) {
+        if ($this->actorBypassesRestrictions($actor)) {
             return true;
         }
 
@@ -59,38 +62,47 @@ class TeamRoleAssignmentGuard
         return true;
     }
 
-    public static function canAssignToTeam($actor, $targetTeamId): bool
+    public function canAssignToTeam($actor, $targetTeamId): bool
     {
         if (!$actor || !$targetTeamId) {
             return false;
         }
 
-        if (static::actorBypassesRestrictions($actor)) {
+        if ($this->actorBypassesRestrictions($actor)) {
             return true;
         }
 
         return collect($actor->getAllAccessibleTeamIds())->contains($targetTeamId);
     }
 
-    /**
-     * Throw 403 unless the actor may assign $teamRole's role to $teamRole's user.
-     */
-    public static function assertCanAssign($actor, TeamRole $teamRole): void
+    public function isRoleValidForTeam($roleId, $teamId): bool
     {
-        if (static::actorBypassesRestrictions($actor)) {
-            return;
+        if (!$roleId || !$teamId) {
+            return false;
         }
 
-        if (!static::canAssignRole($actor, $teamRole->role)) {
+        return true;
+    }
+
+    /**
+     * Throw error unless the actor may assign $teamRole's role to $teamRole's user.
+     */
+    public function assertCanAssign($actor, TeamRole $teamRole): void
+    {
+        if (!$this->canAssignRole($actor, $teamRole->role)) {
             abort(403, __('auth-you-cannot-assign-this-role'));
         }
 
-        if (!static::canAssignToUser($actor, $teamRole->user_id)) {
+        if (!$this->canAssignToUser($actor, $teamRole->user_id)) {
             abort(403, __('auth-you-cannot-assign-this-role-to-this-user'));
         }
 
-        if (!static::canAssignToTeam($actor, $teamRole->team_id)) {
+        if (!$this->canAssignToTeam($actor, $teamRole->team_id)) {
             abort(403, __('auth-you-cannot-assign-this-role-in-this-team'));
+        }
+
+        if (!$this->isRoleValidForTeam($teamRole->role, $teamRole->team_id)) {
+            throwValidationError('role', __('auth-this-role-cannot-be-assigned-to-users-in-this-team'));
         }
     }
 }

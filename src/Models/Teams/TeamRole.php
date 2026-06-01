@@ -14,7 +14,7 @@ use Kompo\Auth\Models\Teams\Roles\Role;
 use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 use Kompo\Auth\Teams\Cache\PermissionDefinitionCache;
 use Kompo\Auth\Teams\Contracts\TeamHierarchyInterface;
-use Kompo\Auth\Teams\Roles\TeamRoleAssignmentGuard;
+use Kompo\Auth\Teams\Roles\TeamRoleAssignmentGuardFacade;
 use Kompo\Auth\Teams\TeamHierarchyRoleProcessor;
 
 class TeamRole extends Model implements ScopedToTeam, HasOwnedRecords
@@ -42,7 +42,7 @@ class TeamRole extends Model implements ScopedToTeam, HasOwnedRecords
         static::saving(function ($teamRole) {
             if (!$teamRole->getAttribute('_skipAssignmentGuard')
                 && ($teamRole->isDirty('role') || $teamRole->isDirty('user_id') || $teamRole->isDirty('team_id'))) {
-                TeamRoleAssignmentGuard::assertCanAssign(auth()->user(), $teamRole);
+                TeamRoleAssignmentGuardFacade::assertCanAssign(auth()->user(), $teamRole);
             }
 
             if ($teamRole->isDirty('role')) {

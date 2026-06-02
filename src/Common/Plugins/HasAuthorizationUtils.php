@@ -5,6 +5,7 @@ namespace Kompo\Auth\Common\Plugins;
 use Condoedge\Utils\Kompo\Plugins\Base\ComponentPlugin;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+use Kompo\Core\KompoAction;
 
 /**
  * HasAuthorizationUtils Plugin
@@ -47,8 +48,7 @@ class HasAuthorizationUtils extends ComponentPlugin
     }
 
     /**
-     * Verifies permission for form submissions.
-     * Called during component authorization flow.
+     * Verifies permission for form submission and boot action.
      * 
      * @return bool True if authorized, false otherwise
      */
@@ -59,8 +59,11 @@ class HasAuthorizationUtils extends ComponentPlugin
             return true;
         }
 
-        // Check for WRITE permission
-        return $this->checkPermissions(PermissionTypeEnum::WRITE);
+        if (KompoAction::is('eloquent-save')) {
+            return $this->checkPermissions(PermissionTypeEnum::WRITE);
+        }
+
+        return $this->checkPermissions(PermissionTypeEnum::READ);
     }
 
     /**

@@ -22,6 +22,7 @@ class RolesAndPermissionMatrix extends Query
     const DEFAULT_ROLES_NUM = 4;
 
     protected $permissionKey = 'Role';
+    protected $permissionType = PermissionTypeEnum::READ;
 
     public function created()
     {

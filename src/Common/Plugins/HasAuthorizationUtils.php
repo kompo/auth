@@ -59,6 +59,10 @@ class HasAuthorizationUtils extends ComponentPlugin
             return true;
         }
 
+        if ($this->getForcePermissionType()) {
+            return $this->checkPermissions($this->getForcePermissionType());
+        }
+
         if (KompoAction::is('eloquent-save')) {
             return $this->checkPermissions(PermissionTypeEnum::WRITE);
         }
@@ -131,5 +135,10 @@ class HasAuthorizationUtils extends ComponentPlugin
         }
         
         return class_basename($this->component);
+    }
+
+    protected function getForcePermissionType()
+    {
+        return $this->getComponentProperty('forcePermissionType');
     }
 }

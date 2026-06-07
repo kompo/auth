@@ -28,6 +28,7 @@ trait HasTeamActions
         $team = Team::forceCreate([
             'user_id' => $this->id,
             'team_name' => explode(' ', $this->name, 2)[0] . "'s Team",
+            'is_personal_team' => true,
         ]);
 
         $this->createTeamOwnerRole($team);

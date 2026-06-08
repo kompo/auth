@@ -41,6 +41,11 @@ class RoleForm extends Modal
 
     public function afterSave()
     {
+        // Downgrade existing team_roles that grant a roll-down/neighbour component
+        // this role no longer permits. Runs before roleChanged() so the broad
+        // user-permission cache flush there also covers these bulk updates.
+        $this->model->clampTeamRolesHierarchyToRollFlags();
+
         app(PermissionCacheInvalidator::class)->roleChanged($this->model);
     }
 

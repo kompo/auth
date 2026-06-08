@@ -7,6 +7,7 @@ use Kompo\Auth\Contracts\Security\OptsOutOfSecurity;
 use Kompo\Auth\Facades\UserModel;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+use Kompo\Auth\Models\Teams\RoleHierarchyEnum;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Models\Traits\BelongsToManyPivotlessTrait;
 use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
@@ -57,6 +58,18 @@ class Role extends Model implements OptsOutOfSecurity
     public function teamRoles()
     {
         return $this->hasMany(TeamRole::class, 'role', 'id');
+    }
+
+    /**
+     * Every assignment of this role, regardless of status (active, suspended,
+     * terminated). Drops the `validTeamRole` scope (which hides suspended/
+     * terminated) and the `authUserHasPermissions` security scope so a role
+     * edit can reconcile its full footprint, not just rows the actor can read.
+     */
+    public function teamRolesAllStatuses()
+    {
+        return $this->hasMany(TeamRole::class, 'role', 'id')
+            ->withoutGlobalScopes(['validTeamRole', 'authUserHasPermissions']);
     }
 
     public function permissions()
@@ -151,6 +164,32 @@ class Role extends Model implements OptsOutOfSecurity
     public function deletable()
     {
         return true; // If authorization required we use internal system
+    }
+
+    /**
+     * Strip any hierarchy component this role no longer permits from its existing
+     * team_roles. The role_hierarchy is otherwise only derived at assignment time
+     * (TeamRole::catchRightHiearchyBasedOnRole), so toggling roll-down/neighbours
+     * off would leave stale grants behind.
+     *
+     * Targeted (not a blanket recompute) so per-row values like DISABLED_BELOW and
+     * plain DIRECT are preserved. Idempotent: rows that don't over-grant never match.
+     */
+    public function clampTeamRolesHierarchyToRollFlags(): void
+    {
+        if (!$this->accept_roll_to_child) { // strip BELOW
+            $this->teamRolesAllStatuses()->where('role_hierarchy', RoleHierarchyEnum::DIRECT_AND_BELOW)
+                ->update(['role_hierarchy' => RoleHierarchyEnum::DIRECT]);                       // A -> B
+            $this->teamRolesAllStatuses()->where('role_hierarchy', RoleHierarchyEnum::DIRECT_AND_BELOW_AND_NEIGHBOURS)
+                ->update(['role_hierarchy' => RoleHierarchyEnum::DIRECT_AND_NEIGHBOURS]);         // E -> C
+        }
+
+        if (!$this->accept_roll_to_neighbourg) { // strip NEIGHBOURS
+            $this->teamRolesAllStatuses()->where('role_hierarchy', RoleHierarchyEnum::DIRECT_AND_NEIGHBOURS)
+                ->update(['role_hierarchy' => RoleHierarchyEnum::DIRECT]);                        // C -> B (and E->C from above)
+            $this->teamRolesAllStatuses()->where('role_hierarchy', RoleHierarchyEnum::DIRECT_AND_BELOW_AND_NEIGHBOURS)
+                ->update(['role_hierarchy' => RoleHierarchyEnum::DIRECT_AND_BELOW]);              // E -> A
+        }
     }
 
     public function save(array $options = []): void

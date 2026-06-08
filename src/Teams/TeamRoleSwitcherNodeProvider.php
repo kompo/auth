@@ -60,6 +60,23 @@ class TeamRoleSwitcherNodeProvider
             );
         }
 
+        // Auto-expand rolldown scopes to show children
+        foreach ($pageScopes as $scope) {
+            if ($scope->canRolldown && $nodeBudget > 0 && $scope !== $currentScope) {
+                $this->appendScopedLevel(
+                    payload: $payload,
+                    scope: $scope,
+                    mode: $mode,
+                    parentTeamId: $scope->rootTeamId,
+                    limit: $limit,
+                    cursor: null,
+                    lookaheadDepth: self::LOOKAHEAD_DEPTH,
+                    nodeBudget: $nodeBudget,
+                    currentPathIds: [],
+                );
+            }
+        }
+
         return $payload->toArray();
     }
 
@@ -290,6 +307,9 @@ class TeamRoleSwitcherNodeProvider
             return;
         }
 
+        // When scope has rolldown enabled, automatically include children
+        $shouldIncludeChildren = $scope->canRolldown || $lookaheadDepth > 0;
+        
         $page = $this->visibleChildrenPage($scope, $mode, $parentTeamId, $limit, $cursor, $currentPathIds);
         $nodeIds = [];
 
@@ -316,7 +336,8 @@ class TeamRoleSwitcherNodeProvider
                 $append
             );
 
-        if ($lookaheadDepth <= 0) {
+        // Auto-expand if rolldown is enabled and we have budget
+        if (!$shouldIncludeChildren || $lookaheadDepth <= 0) {
             return;
         }
 
@@ -508,6 +529,7 @@ class TeamRoleSwitcherNodeProvider
                 'isCurrent' => $currentTeamRole
                     && (int) $currentTeamRole->team_id === $teamId
                     && (string) $currentTeamRole->role === $scope->roleId,
+                'canRolldown' => $scope->canRolldown,
             ];
 
             if ($hasAncestorSwitchableRole) {
@@ -516,6 +538,10 @@ class TeamRoleSwitcherNodeProvider
                 $roles[] = $role;
             }
         }
+
+        $childrenCount = $scope->canRolldown 
+            ? $this->teams->childrenForIdsTotal($mode, $teamId, $scope->teamIds())
+            : 0;
 
         return $this->nodes->context(
             scopeKey: $scope->key,
@@ -526,7 +552,7 @@ class TeamRoleSwitcherNodeProvider
             ],
             mode: $mode,
             currentPathIds: $currentPathIds,
-            childrenCount: $this->teams->childrenForIdsTotal($mode, $teamId, $scope->teamIds()),
+            childrenCount: $childrenCount,
             committeeCount: 0,
             currentTeamRole: $currentTeamRole,
         );

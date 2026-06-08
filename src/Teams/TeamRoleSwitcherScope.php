@@ -13,6 +13,7 @@ class TeamRoleSwitcherScope
         public readonly array $visibleTeamIdsIndex,
         public readonly array $switchableTeamIdsIndex,
         public readonly int $rootDepth = 0,
+        public readonly bool $canRolldown = false,
     ) {}
 
     public function containsTeam(int $teamId): bool

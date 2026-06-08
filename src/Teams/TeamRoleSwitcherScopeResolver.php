@@ -100,6 +100,7 @@ class TeamRoleSwitcherScopeResolver
             $ancestorsByTarget,
             $rootDepths,
             $subtreeIndexesByRoot,
+            $roleGroup,
         ) {
             $rootTeam = $accessibleTeams->get($rootTeamId);
 
@@ -130,6 +131,8 @@ class TeamRoleSwitcherScopeResolver
 
             $visibleIndex[$rootTeamId] = true;
 
+            $canRolldown = $roleGroup->contains(fn($teamRole) => $teamRole->getRoleHierarchyAccessBelow());
+
             return new TeamRoleSwitcherScope(
                 key: $this->codec->scopeKey($roleId, $rootTeamId),
                 roleId: $roleId,
@@ -139,6 +142,7 @@ class TeamRoleSwitcherScopeResolver
                 visibleTeamIdsIndex: $visibleIndex,
                 switchableTeamIdsIndex: $switchableIndex,
                 rootDepth: (int) ($rootDepths->get($rootTeamId) ?? 0),
+                canRolldown: $canRolldown,
             );
         })->filter()->values();
     }

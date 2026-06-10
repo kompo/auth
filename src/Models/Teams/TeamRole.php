@@ -6,6 +6,7 @@ use Kompo\Auth\Facades\RoleModel;
 use Condoedge\Utils\Models\Model;
 use Illuminate\Support\Facades\Log;
 use Kompo\Auth\Contracts\Security\HasOwnedRecords;
+use Kompo\Auth\Events\TeamRoleTerminated;
 use Kompo\Auth\Contracts\Security\ScopedToTeam;
 use Kompo\Auth\Models\Concerns\Security\BelongsToOneTeam;
 use Kompo\Auth\Models\Concerns\Security\OwnedByUserIdColumn;
@@ -400,6 +401,8 @@ class TeamRole extends Model implements ScopedToTeam, HasOwnedRecords
     {
         $this->terminated_at = now();
         $this->save();
+
+        event(new TeamRoleTerminated($this));
     }
 
     public function suspend()

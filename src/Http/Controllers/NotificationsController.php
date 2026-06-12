@@ -58,4 +58,20 @@ class NotificationsController extends Controller
         //Delete Notification
     	$notification->delete();
     }
+
+	public function markAllAsSeen()
+	{
+		NotificationModel::where('user_id', auth()->user()->id)->whereNull('seen_at')->update(['seen_at' => now()]);
+	}
+
+	public function markAsSeen($id)
+	{
+		$notification = NotificationModel::findOrFail($id);
+
+		if ($notification->user_id !== auth()->user()->id) {
+			abort(403, __('auth-you-dont-have-access-to-this-notification'));
+		}
+
+		$notification->markSeen();
+	}
 }

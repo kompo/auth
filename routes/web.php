@@ -108,4 +108,8 @@ Route::middleware(['auth'])->group(function(){
 		->name('notifications.remind');
 	Route::delete('notification-delete/{id}', [NotificationsController::class, 'delete'])
 		->name('notifications.delete');
+
+	Route::post('notifications-mark-all-as-seen', [NotificationsController::class, 'markAllAsSeen'])->name('notifications.mark-all-as-seen');
+	Route::post('notifications-mark-as-seen/{id}', [NotificationsController::class, 'markAsSeen'])->name('notifications.mark-as-seen');
+	
 });

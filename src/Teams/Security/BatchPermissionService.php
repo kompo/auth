@@ -68,6 +68,17 @@ class BatchPermissionService
             return [];
         }
 
+        // Mixed-class collections (e.g. a parent model hydrating rows into
+        // subclasses) must be partitioned: groups and owned-records below are
+        // class-level metadata and would otherwise all come from the first model.
+        $byClass = $modelsCollection->groupBy(fn ($m) => get_class($m));
+        if ($byClass->count() > 1) {
+            foreach ($byClass as $classModels) {
+                $this->batchLoadFieldProtectionPermissions($classModels->values());
+            }
+            return $modelsCollection->all();
+        }
+
         // Use SecurityMetadataRegistry for class-level metadata (cached, O(1))
         $meta = SecurityMetadataRegistry::for(get_class($firstModel));
         $groups = $meta['groups'];

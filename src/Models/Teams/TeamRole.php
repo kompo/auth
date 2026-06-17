@@ -37,7 +37,7 @@ class TeamRole extends Model implements ScopedToTeam, HasOwnedRecords
         // Since teamRole it's a functional over visual entity
         // I prefer to not return suspended or terminated team roles by default, and instead handle it in the places where we need to get all team roles (like in the team role management page).
         static::addGlobalScope('validTeamRole', function ($builder) {
-            $builder->whereNull('terminated_at')->whereNull('suspended_at');
+            static::applyValidConditions($builder);
         });
 
         static::saving(function ($teamRole) {
@@ -120,7 +120,20 @@ class TeamRole extends Model implements ScopedToTeam, HasOwnedRecords
 
     public function scopeValid($query)
     {
-        $query->whereNull('terminated_at')->whereNull('suspended_at');
+        static::applyValidConditions($query);
+    }
+
+    /**
+     * Single source of truth for "active" team roles (not terminated, not suspended).
+     * Shared by the `validTeamRole` global scope, scopeValid(), and the set-based
+     * permission queries in PermissionResolver so the definition never drifts.
+     * Pass $alias to qualify the columns when the table is aliased (e.g. 'tr').
+     */
+    public static function applyValidConditions($query, ?string $alias = null): void
+    {
+        $prefix = $alias ? $alias . '.' : '';
+
+        $query->whereNull($prefix . 'terminated_at')->whereNull($prefix . 'suspended_at');
     }
 
     /**

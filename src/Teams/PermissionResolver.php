@@ -8,6 +8,7 @@ use Kompo\Auth\Facades\TeamModel;
 use Kompo\Auth\Facades\UserModel;
 use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+use Kompo\Auth\Models\Teams\RoleHierarchyEnum;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Teams\Cache\AuthCacheLayer;
 use Kompo\Auth\Teams\CacheKeyBuilder;
@@ -541,72 +542,150 @@ class PermissionResolver implements PermissionResolverInterface
         );
     }
 
+    /**
+     * Set-based query of users holding $permissionKey at $type, optionally scoped to $teamIds.
+     *
+     * Resolves entirely in SQL — no per-user check and no materialized id list (the outer
+     * whereIn wraps a subquery), so it scales to large user sets without hitting the SQL
+     * placeholder limit. It mirrors PermissionAccessIndex::allows(); keep this map in sync:
+     *
+     *   allows() = !denies() && hasAllowed()        -> whereTeamRoleGrants() + whereUserNotDenied()
+     *   PermissionTypeEnum::hasPermission(g, req)    -> (permission_type & req) = req
+     *   $type->isSupportedBy(supported_types)        -> (supported_types & req) = req
+     *   getTeamRoleAccessibleTeams() ∩ targets       -> whereTeamRoleInScope()
+     */
     public function getUsersQueryWithPermission(
         string $permissionKey,
         PermissionTypeEnum $type = PermissionTypeEnum::ALL,
         $teamIds = null,
         ?string $usersTableAlias = null
     ): \Illuminate\Database\Query\Builder {
-        $normalizedTeamIds = $teamIds === null ? null : $this->normalizeIds($teamIds);
-        $candidateUserIds = $this->getCandidateUserIdsForPermission($permissionKey, $normalizedTeamIds);
+        $scope = $this->resolvePermissionScope($teamIds);
 
-        // Slower path for complex permissions - filter candidates in PHP to leverage full permission resolution logic
-        // Including the denying logic. For some cases where permission is expected to return a lot of cases, this is not the best
-        $userIds = collect($candidateUserIds)
-            ->filter(function ($userId) use ($permissionKey, $type, $normalizedTeamIds) {
-                return $this->publicApi()->userHasPermission(
-                    (int) $userId,
-                    $permissionKey,
-                    $type,
-                    $normalizedTeamIds
-                );
-            })
-            ->values()
-            ->all();
+        $userIds = DB::table('team_roles as tr')->select('tr.user_id')->distinct();
+        TeamRole::applyValidConditions($userIds, 'tr');
 
-        return $this->buildIdQuery(
-            $usersTableAlias ?: $this->resolveModelTable(UserModel::getClass()),
-            $userIds
-        );
+        $this->whereTeamRoleInScope($userIds, 'tr', $scope);
+        $this->whereTeamRoleGrants($userIds, 'tr', $permissionKey, $type);
+        $this->whereUserNotDenied($userIds, $permissionKey, $scope);
+
+        $alias = $usersTableAlias ?: $this->resolveModelTable(UserModel::getClass());
+
+        return DB::table($alias)->select($alias . '.id')->whereIn($alias . '.id', $userIds);
     }
 
-    private function getCandidateUserIdsForPermission(string $permissionKey, ?array $teamIds = null): array
+    /**
+     * null = global (any team). Otherwise pre-resolve the bounded hierarchy sets once so
+     * whereTeamRoleInScope() can stay pure SQL (these lists are bounded by tree depth and
+     * branching factor, never by the number of users).
+     */
+    private function resolvePermissionScope($teamIds): ?array
     {
-        $query = DB::table('team_roles as tr')
-            ->select('tr.user_id')
-            ->distinct()
-            ->whereNull('tr.terminated_at')
-            ->whereNull('tr.suspended_at');
-
-        $query->where(function ($permissionQuery) use ($permissionKey) {
-            $permissionQuery->whereExists(function ($rolePermissionQuery) use ($permissionKey) {
-                $rolePermissionQuery->select(DB::raw(1))
-                    ->from('permission_role as pr')
-                    ->join('permissions as p', 'pr.permission_id', '=', 'p.id')
-                    ->whereColumn('pr.role', 'tr.role')
-                    ->where('p.permission_key', $permissionKey);
-            })->orWhereExists(function ($teamRolePermissionQuery) use ($permissionKey) {
-                $teamRolePermissionQuery->select(DB::raw(1))
-                    ->from('permission_team_role as ptr')
-                    ->join('permissions as p', 'ptr.permission_id', '=', 'p.id')
-                    ->whereColumn('ptr.team_role_id', 'tr.id')
-                    ->where('p.permission_key', $permissionKey);
-            });
-        });
-
-        if ($teamIds !== null) {
-            $accessibleTeamIds = $this->normalizeIds(
-                $this->publicApi()->getAccessibleTeamIds(collect($teamIds))
-            );
-
-            if (empty($accessibleTeamIds)) {
-                return [];
-            }
-
-            $query->whereIn('tr.team_id', $accessibleTeamIds);
+        if ($teamIds === null) {
+            return null;
         }
 
-        return $this->normalizeIds($query->pluck('tr.user_id')->all());
+        $targets = $this->normalizeIds($teamIds);
+
+        return [
+            'targets'   => $targets,
+            'ancestors' => $this->normalizeIds($this->hierarchyService->getBatchAncestorTeamIds($targets)),
+            'siblings'  => $this->normalizeIds($this->hierarchyService->getBatchSiblingTeamIds($targets)),
+        ];
+    }
+
+    /**
+     * A team role reaches the target teams directly, via "below" access from an ancestor,
+     * or via "neighbours" access from a sibling. No-op when the scope is global.
+     * Equivalent to getTeamRoleAccessibleTeams($teamRole) ∩ targets ≠ ∅.
+     */
+    private function whereTeamRoleInScope($query, string $alias, ?array $scope): void
+    {
+        if ($scope === null) {
+            return;
+        }
+
+        $query->where(function ($q) use ($alias, $scope) {
+            $q->whereIn($alias . '.team_id', $scope['targets'] ?: [0]);
+
+            if ($scope['ancestors']) {
+                $q->orWhere(fn ($sub) => $sub
+                    ->whereIn($alias . '.role_hierarchy', $this->hierarchiesGranting(fn ($c) => $c->accessGrantBelow()))
+                    ->whereIn($alias . '.team_id', $scope['ancestors']));
+            }
+
+            if ($scope['siblings']) {
+                $q->orWhere(fn ($sub) => $sub
+                    ->whereIn($alias . '.role_hierarchy', $this->hierarchiesGranting(fn ($c) => $c->accessGrantNeighbours()))
+                    ->whereIn($alias . '.team_id', $scope['siblings']));
+            }
+        });
+    }
+
+    /** Single source of truth: the enum decides which hierarchies grant below/neighbour access. */
+    private function hierarchiesGranting(callable $grants): array
+    {
+        return collect(RoleHierarchyEnum::cases())->filter($grants)->map->value->all();
+    }
+
+    /**
+     * The team role grants $permissionKey at (or above) $type, through its role or a direct
+     * team-role override. The bitmask mirrors PermissionTypeEnum::hasPermission and, since no
+     * DENY value satisfies it, naturally excludes denials.
+     */
+    private function whereTeamRoleGrants($query, string $alias, string $permissionKey, PermissionTypeEnum $type): void
+    {
+        $query->where(fn ($q) => $q
+            ->whereExists(fn ($s) => $this->pivotGrants($s, 'permission_role', 'pr', $alias . '.role', 'role', $permissionKey, $type))
+            ->orWhereExists(fn ($s) => $this->pivotGrants($s, 'permission_team_role', 'ptr', $alias . '.id', 'team_role_id', $permissionKey, $type)));
+    }
+
+    /**
+     * Exclude the user when any in-scope team role carries an explicit DENY for $permissionKey.
+     * DENY is user-wide within the scope and beats every grant (PermissionAccessIndex::allows()).
+     */
+    private function whereUserNotDenied($query, string $permissionKey, ?array $scope): void
+    {
+        $query->whereNotExists(function ($q) use ($permissionKey, $scope) {
+            $q->selectRaw('1')->from('team_roles as trd')->whereColumn('trd.user_id', 'tr.user_id');
+            TeamRole::applyValidConditions($q, 'trd');
+
+            $this->whereTeamRoleInScope($q, 'trd', $scope);
+
+            $q->where(fn ($d) => $d
+                ->whereExists(fn ($s) => $this->pivotDenies($s, 'permission_role', 'pr', 'trd.role', 'role', $permissionKey))
+                ->orWhereExists(fn ($s) => $this->pivotDenies($s, 'permission_team_role', 'ptr', 'trd.id', 'team_role_id', $permissionKey)));
+        });
+    }
+
+    /** A pivot row granting the key at the requested level (bitmask + supported_types). */
+    private function pivotGrants($query, string $pivot, string $alias, string $teamRoleColumn, string $pivotColumn, string $permissionKey, PermissionTypeEnum $type)
+    {
+        $this->pivotPermission($query, $pivot, $alias, $teamRoleColumn, $pivotColumn, $permissionKey)
+            ->whereRaw('(' . $alias . '.permission_type & ?) = ?', [$type->value, $type->value]);
+
+        if (PermissionAccessIndex::supportedTypesColumnAvailable()) {
+            $query->whereRaw('(p.supported_types & ?) = ?', [$type->value, $type->value]);
+        }
+
+        return $query;
+    }
+
+    /** A pivot row explicitly denying the key. */
+    private function pivotDenies($query, string $pivot, string $alias, string $teamRoleColumn, string $pivotColumn, string $permissionKey)
+    {
+        return $this->pivotPermission($query, $pivot, $alias, $teamRoleColumn, $pivotColumn, $permissionKey)
+            ->where($alias . '.permission_type', PermissionTypeEnum::DENY->value);
+    }
+
+    /** Shared base: a pivot row for this team role pointing at $permissionKey. */
+    private function pivotPermission($query, string $pivot, string $alias, string $teamRoleColumn, string $pivotColumn, string $permissionKey)
+    {
+        return $query->selectRaw('1')
+            ->from($pivot . ' as ' . $alias)
+            ->join('permissions as p', $alias . '.permission_id', '=', 'p.id')
+            ->whereColumn($alias . '.' . $pivotColumn, $teamRoleColumn)
+            ->where('p.permission_key', $permissionKey);
     }
 
     private function buildIdQuery(string $tableAlias, array $ids): \Illuminate\Database\Query\Builder

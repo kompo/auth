@@ -101,7 +101,7 @@ final class PermissionAccessIndex
         self::$supportedTypesMap = [];
     }
 
-    private static function supportedTypesColumnAvailable(): bool
+    public static function supportedTypesColumnAvailable(): bool
     {
         if (self::$supportedTypesColumnAvailable !== null) {
             return self::$supportedTypesColumnAvailable;

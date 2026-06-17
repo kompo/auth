@@ -139,7 +139,7 @@ class WriteSecurityService
         if ($this->isTeamBasedModel($model)) {
             $this->validateTeamBasedWritePermission($model);
         } else {
-            $this->validateGlobalWritePermission();
+            $this->validateGlobalWritePermission($model);
         }
 
         return true;
@@ -164,9 +164,9 @@ class WriteSecurityService
     /**
      * Validate global (non-team) write permission
      */
-    protected function validateGlobalWritePermission(): void
+    protected function validateGlobalWritePermission($model = null): void
     {
-        if ($this->userHasGlobalWritePermission()) {
+        if ($this->userHasGlobalWritePermission($model)) {
             return;
         }
 
@@ -180,7 +180,7 @@ class WriteSecurityService
     {
         $teamIds = $this->getModelTeamIds($model);
 
-        if ($this->userHasWritePermissionForTeams($teamIds)) {
+        if ($this->userHasWritePermissionForTeams($teamIds, $model)) {
             return;
         }
 
@@ -190,24 +190,64 @@ class WriteSecurityService
     /**
      * Check if user has global write permission
      */
-    protected function userHasGlobalWritePermission(): bool
+    protected function userHasGlobalWritePermission($model = null): bool
     {
-        return auth()->user()?->hasPermission(
-            $this->permissionKey,
-            PermissionTypeEnum::WRITE
-        ) ?? false;
+        $user = auth()->user();
+
+        if (!$user) {
+            return false;
+        }
+
+        foreach ($this->writePermissionKeysForModel($model) as $key) {
+            if ($user->hasPermission($key, PermissionTypeEnum::WRITE)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
      * Check if user has write permission for specific teams
      */
-    protected function userHasWritePermissionForTeams($teamIds): bool
+    protected function userHasWritePermissionForTeams($teamIds, $model = null): bool
     {
-        return auth()->user()?->hasPermission(
-            $this->permissionKey,
-            PermissionTypeEnum::WRITE,
-            $teamIds
-        ) ?? false;
+        $user = auth()->user();
+
+        if (!$user) {
+            return false;
+        }
+
+        foreach ($this->writePermissionKeysForModel($model) as $key) {
+            if ($user->hasPermission($key, PermissionTypeEnum::WRITE, $teamIds)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Write keys to check for this model. Defaults to the single class-level
+     * permission key, but a model may expose `writeSecurityPermissionKeys()`
+     * to authorize writes through any of several per-instance keys — e.g. a
+     * polymorphic record can let a per-subtype key stand in for a generic
+     * admin key. Opt-in: models without the method, or that return an empty
+     * list, keep the single-key behavior.
+     *
+     * @return array<int, string>
+     */
+    protected function writePermissionKeysForModel($model = null): array
+    {
+        if ($model && method_exists($model, 'writeSecurityPermissionKeys')) {
+            $keys = array_values(array_filter((array) $model->writeSecurityPermissionKeys()));
+
+            if (!empty($keys)) {
+                return $keys;
+            }
+        }
+
+        return [$this->permissionKey];
     }
 
     /**

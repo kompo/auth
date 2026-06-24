@@ -18,6 +18,8 @@ class Permission extends Model implements OptsOutOfSecurity
         'permission_key',
         'permission_name',
         'permission_description',
+        'permission_description_read',
+        'permission_description_write',
         'permission_section_id',
         'object_type',
         'supported_types',
@@ -28,6 +30,8 @@ class Permission extends Model implements OptsOutOfSecurity
     protected $translatable = [
         'permission_name',
         'permission_description',
+        'permission_description_read',
+        'permission_description_write',
     ];
 
     protected $casts = [
@@ -93,6 +97,16 @@ class Permission extends Model implements OptsOutOfSecurity
         return $this->belongsToMany(RoleModel::getClass(), 'permission_role', 'permission_id', 'role')->withPivot('permission_type');
     }
 
+    public function slides()
+    {
+        return $this->hasMany(PermissionInfoSlide::class)->orderBy('position')->orderBy('id');
+    }
+
+    public function dependencies()
+    {
+        return $this->belongsToMany(static::class, 'permission_dependencies', 'permission_id', 'required_permission_id');
+    }
+
     /* CALCULATED FIELDS */
     public static function findByKey($permissionKey)
     {
@@ -117,6 +131,52 @@ class Permission extends Model implements OptsOutOfSecurity
     public function getPermissionTypeByRoleId($roleId)
     {
         return $this->roles->firstWhere('id', $roleId)?->pivot?->permission_type;
+    }
+
+    /**
+     * Read-side description for the info modal. Prefers the structured
+     * `permission_description_read` column and falls back to parsing the legacy
+     * single `permission_description` for rows not migrated yet.
+     */
+    public function readDescription(): string
+    {
+        $structured = trim((string) $this->permission_description_read);
+
+        return $structured !== '' ? $structured : $this->parsedLegacyDescription()[0];
+    }
+
+    /**
+     * Write-side description for the info modal. Same fallback logic as
+     * `readDescription()`.
+     */
+    public function writeDescription(): string
+    {
+        $structured = trim((string) $this->permission_description_write);
+
+        return $structured !== '' ? $structured : (string) $this->parsedLegacyDescription()[1];
+    }
+
+    /**
+     * Split the legacy single `permission_description` into [read, write],
+     * stripping any trailing Dependencies/Dépendances block (now modeled by the
+     * `dependencies` relation).
+     *
+     * @return array{0: string, 1: ?string}
+     */
+    protected function parsedLegacyDescription(): array
+    {
+        $desc = trim((string) $this->permission_description);
+        $desc = preg_replace('/^\s*Read\s*:?\s*/u', '', $desc);
+
+        if (preg_match('/^(.*?)\s*(?:Dependencies|Dépendances)\s*:\s*.*$/su', $desc, $m)) {
+            $desc = trim($m[1]);
+        }
+
+        if (preg_match('/^(.*?)\s*Write\s*:\s*(.*)$/su', $desc, $m)) {
+            return [trim($m[1]), trim($m[2])];
+        }
+
+        return [trim($desc), null];
     }
 
     /**

@@ -150,14 +150,16 @@ trait HasTeamNavigation
             return $this->switchToTeamRole($firstRole);
         }
 
-        // If no team roles exist, create personal team
-        $personalTeam = $this->createPersonalTeamAndOwnerRole();
-        $ownerRole = $this->teamRoles()
-            ->where('team_id', $personalTeam->id)
-            ->first();
+        if (config('kompo-auth.allow-own-team-registration', true)) {
+            // If no team roles exist, create personal team
+            $personalTeam = $this->createPersonalTeamAndOwnerRole();
+            $ownerRole = $this->teamRoles()
+                ->where('team_id', $personalTeam->id)
+                ->first();
 
-        if ($ownerRole) {
-            return $this->switchToTeamRole($ownerRole);
+            if ($ownerRole) {
+                return $this->switchToTeamRole($ownerRole);
+            }
         }
 
         return false;

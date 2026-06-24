@@ -3,6 +3,8 @@
 use Kompo\Auth\Models\NotifiableMethodsEnum;
 
 return [
+    'allow-own-team-registration' => env('ALLOW_OWN_TEAM_REGISTRATION', true),
+    
     'force-to-reset-password-after-x-days' => env('FORCE_REQUEST_PASSWORD_AFTER_X_DAYS', null), //If null we don't set it and they never need it
 
     'breadcrumbs' => [

@@ -56,14 +56,6 @@ Route::middleware(['disable-automatic-security'])->group(function(){
 			
 			return response()->json(['success' => true]);
 		})->name('notifications.mark-seen');
-
-		Route::get('accept-invitation/{id}', Kompo\Auth\Http\Controllers\TeamInvitationAcceptController::class)->name('team-invitations.accept');
-
-		Route::layout('layouts.guest')->middleware(['guest'])->group(function(){
-
-			Route::get('team-invitations/{invitation}', Kompo\Auth\Teams\TeamInvitationRegisterForm::class)->name('team-invitations.register');
-				
-		});
 	});
 });
 

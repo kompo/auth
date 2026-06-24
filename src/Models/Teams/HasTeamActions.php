@@ -16,6 +16,10 @@ trait HasTeamActions
      */
     private function createTeamOwnerRole($team)
     {
+        if (!config('kompo-auth.allow-own-team-registration', true)) {
+            return null;
+        }
+
         return $this->createTeamRole(
             $team, 
             config('kompo-auth.team-owner-role-key', 'owner'),
@@ -25,6 +29,10 @@ trait HasTeamActions
 
     public function createPersonalTeamAndOwnerRole()
     {
+        if (!config('kompo-auth.allow-own-team-registration', true)) {
+            return null;
+        }
+
         $team = Team::forceCreate([
             'user_id' => $this->id,
             'team_name' => explode(' ', $this->name, 2)[0] . "'s Team",
@@ -61,19 +69,7 @@ trait HasTeamActions
         return $teamRole;
     }
 
-    public function createRolesFromInvitation($invitation)
-    {
-        $team = $invitation->team;
-
-        $roles = explode(TeamRole::ROLES_DELIMITER, $invitation->role);
-        $hierarchies = explode(TeamRole::ROLES_DELIMITER, $invitation->role_hierarchy);
-
-        collect($roles)->each(fn($role, $key) => $this->createTeamRole($team, $role, $hierarchies[$key] ?? null));
-
-        $this->switchToFirstTeamRole($invitation->team_id);
-
-        $invitation->delete();
-    }    /* ROLES - Methods for checking specific roles */
+    /* ROLES - Methods for checking specific roles */
     public function isTeamOwner()
     {
         return $this->ownsTeam($this->currentTeamRole->team);

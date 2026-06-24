@@ -132,7 +132,7 @@ trait HasTeamsTrait
             }
             
             // Create personal team if user has no teams
-            if (!$this->teams()->count()) {
+            if (!$this->teams()->count() && config('kompo-auth.allow-own-team-registration', true)) {
                 $this->createPersonalTeamAndOwnerRole();
                 $fixed[] = 'Created personal team and owner role';
             }

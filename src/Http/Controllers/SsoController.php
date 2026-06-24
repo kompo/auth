@@ -25,6 +25,11 @@ class SsoController extends Controller
         $user = User::where('email', $socialUser->email)->first();
 
         if(!$user) {
+            if (config('kompo-auth.allow-own-team-registration') === false) {
+                return redirect()->route('login')
+                    ->with('status', __('error-sso-registration-disabled'));
+            }
+
             $user = User::create([
                 'email' => $socialUser->email,
                 'name' => $socialUser->name,

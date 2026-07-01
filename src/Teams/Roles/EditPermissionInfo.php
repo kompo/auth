@@ -43,8 +43,8 @@ class EditPermissionInfo extends Modal
 
             _TranslatableEditor('auth-permission')->name('permission_name'),
 
-            _TranslatableEditor('auth-permission-read')->name('permission_description_read'),
-            _TranslatableEditor('auth-permission-write')->name('permission_description_write'),
+            _TranslatableEditor('auth-permission-read-desc-label')->name('permission_description_read'),
+            _TranslatableEditor('auth-permission-write-desc-label')->name('permission_description_write'),
 
             _MultiSelect('auth-permission-dependencies')->name('dependencies')
                 ->options($this->dependencyOptions()),
@@ -55,7 +55,7 @@ class EditPermissionInfo extends Modal
 
             _FlexEnd(
                 _SubmitButton('generic.save')->closeModal()->refresh($this->refreshId),
-            )
+            )->class('mt-4'),
         );
     }
 

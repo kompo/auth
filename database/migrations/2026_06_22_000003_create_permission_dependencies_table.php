@@ -13,10 +13,6 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        if (Schema::hasTable('permission_dependencies')) {
-            return;
-        }
-
         Schema::create('permission_dependencies', function (Blueprint $table) {
             $table->id();
             $table->foreignId('permission_id')->constrained('permissions')->cascadeOnDelete();

@@ -47,7 +47,6 @@ class PermissionInfoModal extends Modal
         $slides = $this->model->slides;
 
         return _Rows(
-            _Html($this->listStyleCss()),
             $slides->isEmpty()
                 ? $this->infoPanel()
                 : _Flex(
@@ -59,28 +58,13 @@ class PermissionInfoModal extends Modal
         );
     }
 
-    /**
-     * Inline list / paragraph styling so saved CKEditor HTML renders correctly
-     * inside the modal even without a CSS rebuild. Scoped to `.perm-info-ck`.
-     */
-    protected function listStyleCss(): string
-    {
-        return '<style>'
-            . '.perm-info-ck ul{list-style:disc;padding-left:1.25rem;margin:.35rem 0;}'
-            . '.perm-info-ck ol{list-style:decimal;padding-left:1.25rem;margin:.35rem 0;}'
-            . '.perm-info-ck li{margin:.15rem 0;}'
-            . '.perm-info-ck p{margin:.35rem 0;}'
-            . '.perm-info-ck a{color:#2563eb;text-decoration:underline;}'
-            . '</style>';
-    }
-
     /* ── RIGHT PANEL ── */
 
     protected function infoPanel()
     {
         return _Rows(
-            $this->sectionCard(__('auth-permission-read'), $this->model->readDescription(), 'text-info', 'bg-info'),
-            $this->sectionCard(__('auth-permission-write'), $this->model->writeDescription(), 'text-warning', 'bg-warning'),
+            $this->sectionCard(__('auth-permission-read'), $this->model->permission_description_read, 'text-info', 'bg-info'),
+            $this->sectionCard(__('auth-permission-write'), $this->model->permission_description_write, 'text-warning', 'bg-warning'),
             $this->dependenciesCard(),
             $this->yourRightsCard(),
         )->class('gap-3 overflow-y-auto mini-scroll pr-1')->style('max-height: 60vh;');
@@ -90,7 +74,7 @@ class PermissionInfoModal extends Modal
     {
         return _Rows(
             _Html($label)->class('text-xs font-bold uppercase tracking-wider mb-1 ' . $labelClass),
-            _Html($text ?: '—')->class('text-sm text-gray-700 ck ck-content perm-info-ck'),
+            _Html($text ?: '—')->class('text-sm text-gray-700 ck ck-content'),
         )->class('p-4 rounded ' . $bgClass . ' bg-opacity-10');
     }
 
@@ -131,36 +115,44 @@ class PermissionInfoModal extends Modal
         )->class('p-4 rounded ' . $bg . ' bg-opacity-10');
     }
 
-    /* ── LEFT CAROUSEL (jQuery-driven, matching the codebase's onClick/run pattern) ── */
+    /* ── LEFT CAROUSEL (the active slide is held in a client-side field; slides swap via jsShowWhen) ── */
 
     protected function mediaCarousel(Collection $slides)
     {
+        $slides = $slides->values();
         $count = $slides->count();
-        $wrapId = 'perm-carousel-' . $this->model->id;
+        $field = 'active_slide';
 
         return _Rows(
-            _Rows(
-                ...$slides->values()->map(fn (PermissionInfoSlide $slide, $i) => _Rows(
-                    $this->slideMedia($slide),
-                    !$this->slideCaption($slide) ? null : _Html($this->slideCaption($slide))
-                        ->class('text-sm text-gray-700 mt-3 ck ck-content perm-info-ck'),
-                )->class('perm-slide')->style($i === 0 ? '' : 'display:none;')),
-            )->class('flex-1'),
+            _JsComponentWhen($field,
+                $slides->mapWithKeys(fn (PermissionInfoSlide $slide, $i) => [$i => $this->slidePanel($slide)])->toArray(),
+            ),
 
-            $count <= 1 ? null : _FlexBetween(
-                _Div(_Html('&#8249;'))->class('cursor-pointer select-none text-3xl px-3 text-gray-400 hover:text-info')
-                    ->onClick(fn ($e) => $e->run($this->navJs($wrapId, 'cur - 1'))),
-                _Html($this->dotsHtml($count))->class('flex items-center gap-2'),
-                _Div(_Html('&#8250;'))->class('cursor-pointer select-none text-3xl px-3 text-gray-400 hover:text-info')
-                    ->onClick(fn ($e) => $e->run($this->navJs($wrapId, 'cur + 1'))),
-            )->class('mt-3'),
+            $count <= 1 ? null : $this->slideDots($field, $count),
+        )->class('flex flex-col');
+    }
 
-            $count <= 1 ? null : _Html('<span class="perm-counter">1</span> / ' . $count)
-                ->class('text-xs text-gray-400 text-center mt-1'),
+    protected function slidePanel(PermissionInfoSlide $slide)
+    {
+        return _Rows(
+            $this->slideMedia($slide),
+            !$this->slideCaption($slide) ? null : _Html($this->slideCaption($slide))
+                ->class('text-sm text-gray-700 mt-3 ck ck-content'),
+        );
+    }
 
-            // Snap the carousel to its first slide on load — see carouselInitJs().
-            $count <= 1 ? null : _Hidden()->onLoad(fn ($e) => $e->run($this->carouselInitJs($wrapId))),
-        )->id($wrapId)->attr(['data-cur' => '0'])->class('flex flex-col');
+    /**
+     * Dot navigation as a ButtonGroup bound to the active-slide field; picking a
+     * dot swaps the visible slide through jsShowWhen — no imperative JS.
+     */
+    protected function slideDots(string $field, int $count)
+    {
+        return _ButtonGroup()->name($field)
+            ->default('0')
+            ->options(collect(range(0, $count - 1))->mapWithKeys(fn ($i) => [(string) $i => ''])->toArray())
+            ->class('flex items-center justify-center gap-2 mt-3')
+            ->optionClass('perm-dot cursor-pointer w-3 h-3 rounded-full !p-0 !min-w-0 !border-0 !shadow-none bg-gray-300')
+            ->selectedClass('!bg-info', '!bg-gray-300');
     }
 
     protected function slideMedia(PermissionInfoSlide $slide)
@@ -203,55 +195,6 @@ class PermissionInfoModal extends Modal
     protected function slideCaption(PermissionInfoSlide $slide): ?string
     {
         return $slide->caption ?: null;
-    }
-
-    /** Dots rendered server-side; the first is active. jQuery toggles the active class on nav. */
-    protected function dotsHtml(int $count): string
-    {
-        $dots = '';
-
-        for ($k = 0; $k < $count; $k++) {
-            $active = $k === 0 ? 'bg-info' : 'bg-gray-300';
-            $dots .= '<span class="perm-dot cursor-pointer w-2 h-2 rounded-full inline-block ' . $active . '" data-idx="' . $k . '"></span>';
-        }
-
-        return $dots;
-    }
-
-    /**
-     * jQuery navigation closure: compute the target index from `data-cur`, then
-     * toggle slide visibility, the active dot and the counter. `$targetExpr` is a
-     * JS expression in terms of `cur` and `n` (e.g. `cur - 1`, `cur + 1`, or a
-     * literal index for a dot).
-     */
-    protected function navJs(string $wrapId, string $targetExpr): string
-    {
-        return '() => {
-            const $w = $("#' . $wrapId . '");
-            const $s = $w.find(".perm-slide");
-            const n = $s.length;
-            if (!n) return;
-            let cur = parseInt($w.attr("data-cur") || "0");
-            cur = ((' . $targetExpr . ') % n + n) % n;
-            $w.attr("data-cur", cur);
-            $s.hide().eq(cur).show();
-            const $d = $w.find(".perm-dot");
-            $d.removeClass("bg-info").addClass("bg-gray-300");
-            $d.eq(cur).removeClass("bg-gray-300").addClass("bg-info");
-            $w.find(".perm-counter").text(cur + 1);
-        }';
-    }
-
-    /**
-     * Initial carousel state, replayed once on load. The server-side
-     * `display:none` on the non-first slides does not survive Kompo morphing the
-     * loaded modal content in, so every slide stacks vertically until the first
-     * arrow click. Snapping to index 0 on the next tick forces "show only the
-     * first slide".
-     */
-    protected function carouselInitJs(string $wrapId): string
-    {
-        return '() => { setTimeout(' . $this->navJs($wrapId, '0') . ', 0); }';
     }
 
     /**

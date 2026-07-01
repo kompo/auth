@@ -2,6 +2,8 @@
 
 namespace Kompo\Auth\Models\Teams;
 
+use Kompo\Models\Traits\EnumKompo;
+
 /**
  * Media kind for a single carousel slide on a permission's info modal.
  *
@@ -10,6 +12,8 @@ namespace Kompo\Auth\Models\Teams;
  */
 enum PermissionInfoMediaTypeEnum: int
 {
+    use EnumKompo;
+
     case IMAGE = 1;
     case SCRIBE = 2;
 
@@ -21,20 +25,11 @@ enum PermissionInfoMediaTypeEnum: int
         };
     }
 
-    /** Whether this media kind is fed by an uploaded file rather than an external id. */
-    public function usesUpload(): bool
+    public function formInput()
     {
-        return match ($this) {
-            self::IMAGE => true,
-            self::SCRIBE => false,
+        return match( $this) {
+            self::IMAGE => _Image('auth-permission-image')->name('image'),
+            self::SCRIBE => _Input('auth-permission-scribe-id')->name('scribe_id'),
         };
-    }
-
-    /** @return array<int, string> value => label, for selects. */
-    public static function optionsWithLabels(): array
-    {
-        return collect(self::cases())
-            ->mapWithKeys(fn (self $case) => [$case->value => $case->label()])
-            ->all();
     }
 }

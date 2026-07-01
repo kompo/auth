@@ -38,17 +38,20 @@ class PermissionInfoSlideForm extends Modal
 
     public function body()
     {
-        $type = (int) (request('media_type')
-            ?: $this->model->media_type?->value
-            ?: PermissionInfoMediaTypeEnum::IMAGE->value);
+        $type = $this->model->media_type?->value ?: PermissionInfoMediaTypeEnum::IMAGE->value;
 
         return _Rows(
-            _Select('auth-permission-media-type')->name('media_type')
-                ->options(PermissionInfoMediaTypeEnum::optionsWithLabels())
+            _ButtonGroup('auth-permission-media-type')->name('media_type')
                 ->default($type)
-                ->onChange(fn ($e) => $e->selfGet('getMediaFields')->inPanel('slide-media-fields')),
+                ->options(PermissionInfoMediaTypeEnum::optionsWithLabels())
+                ->optionClass('cursor-pointer text-center px-4 py-3 font-medium')
+                ->selectedClass('bg-warning text-greenmain selected', ''),
 
-            _Panel($this->mediaFields($type))->id('slide-media-fields'),
+            _JsComponentWhen('media_type',
+                collect(PermissionInfoMediaTypeEnum::cases())
+                    ->mapWithKeys(fn ($case) => [$case->value => $case->formInput()])
+                    ->toArray(),
+            ),
 
             _TranslatableEditor('auth-permission-slide-caption')->name('caption'),
 
@@ -58,19 +61,6 @@ class PermissionInfoSlideForm extends Modal
         );
     }
 
-    public function getMediaFields()
-    {
-        return $this->mediaFields((int) request('media_type'));
-    }
-
-    protected function mediaFields(int $type)
-    {
-        if ($type === PermissionInfoMediaTypeEnum::SCRIBE->value) {
-            return _Input('auth-permission-scribe-id')->name('scribe_id');
-        }
-
-        return _Image('auth-permission-image')->name('image');
-    }
 
     public function rules()
     {

@@ -12,10 +12,6 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        if (Schema::hasTable('permission_info_slides')) {
-            return;
-        }
-
         Schema::create('permission_info_slides', function (Blueprint $table) {
             addMetaData($table);
 

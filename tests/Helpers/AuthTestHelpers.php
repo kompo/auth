@@ -40,7 +40,7 @@ class AuthTestHelpers
             ['permission_key' => $key],
             array_merge([
                 'permission_name' => "Permission: {$key}",
-                'permission_description' => "Description for {$key}",
+                'permission_description_read' => "Description for {$key}",
                 'permission_section_id' => $section->id,
             ], $attributes)
         );

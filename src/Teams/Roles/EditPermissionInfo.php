@@ -11,6 +11,8 @@ class EditPermissionInfo extends Modal
 {
     public $model = Permission::class;
 
+    public $class = 'overflow-y-auto mini-scroll max-w-2xl';
+
     public $_Title = 'auth-edit-permission-info';
 
     public $hasSubmitButton = false;
@@ -39,16 +41,30 @@ class EditPermissionInfo extends Modal
                 _Html($this->model->permission_key)->class('text-gray-700'),
             )->p4()->class('mb-2'),
 
+            _TranslatableEditor('auth-permission')->name('permission_name'),
+
+            _TranslatableEditor('auth-permission-read-desc-label')->name('permission_description_read'),
+            _TranslatableEditor('auth-permission-write-desc-label')->name('permission_description_write'),
+
+            _MultiSelect('auth-permission-dependencies')->name('dependencies')
+                ->options($this->dependencyOptions()),
+
             _Rows(
-                _Translatable('auth-permission')->name('permission_name'),
-
-                _Translatable('auth-permission-description')->name('permission_description'),
-            ),
-
+                new PermissionInfoSlidesTable(['permission_id' => $this->model->id]),
+            )->class('mt-4'),
 
             _FlexEnd(
                 _SubmitButton('generic.save')->closeModal()->refresh($this->refreshId),
-            )
+            )->class('mt-4'),
         );
+    }
+
+    protected function dependencyOptions(): array
+    {
+        return Permission::where('id', '!=', $this->model->id)
+            ->orderBy('permission_key')
+            ->get()
+            ->mapWithKeys(fn (Permission $p) => [$p->id => ($p->permission_name ?: $p->permission_key)])
+            ->all();
     }
 }

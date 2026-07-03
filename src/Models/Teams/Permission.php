@@ -17,7 +17,8 @@ class Permission extends Model implements OptsOutOfSecurity
     protected $fillable = [
         'permission_key',
         'permission_name',
-        'permission_description',
+        'permission_description_read',
+        'permission_description_write',
         'permission_section_id',
         'object_type',
         'supported_types',
@@ -27,7 +28,8 @@ class Permission extends Model implements OptsOutOfSecurity
 
     protected $translatable = [
         'permission_name',
-        'permission_description',
+        'permission_description_read',
+        'permission_description_write',
     ];
 
     protected $casts = [
@@ -91,6 +93,16 @@ class Permission extends Model implements OptsOutOfSecurity
     public function roles()
     {
         return $this->belongsToMany(RoleModel::getClass(), 'permission_role', 'permission_id', 'role')->withPivot('permission_type');
+    }
+
+    public function slides()
+    {
+        return $this->hasMany(PermissionInfoSlide::class)->orderBy('position')->orderBy('id');
+    }
+
+    public function dependencies()
+    {
+        return $this->belongsToMany(static::class, 'permission_dependencies', 'permission_id', 'required_permission_id');
     }
 
     /* CALCULATED FIELDS */

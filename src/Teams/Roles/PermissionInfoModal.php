@@ -10,13 +10,9 @@ use Kompo\Auth\Models\Teams\PermissionInfoSlide;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 
 /**
- * Read-only info modal for a single permission key.
- *
- * Layout (the "media-left" variant): a media carousel on the left (uploaded
- * images/gifs or scribehow guides, one per slide, each with a caption) and a
- * vertically scrollable panel on the right with Read / Write / Dependencies
- * sections plus a contextual "your rights" banner. When the permission has no
- * slides, the right panel takes the full width.
+ * Read-only info modal for a single permission: a media carousel on the left
+ * (image/gif or scribehow guide per slide) and a panel on the right with the
+ * Read / Write / Dependencies sections plus a contextual "your rights" banner.
  */
 class PermissionInfoModal extends Modal
 {
@@ -54,17 +50,18 @@ class PermissionInfoModal extends Modal
                     $this->infoPanel()->class('w-full md:w-1/2'),
                 )->class('gap-6 !items-stretch flex-col md:flex-row'),
 
-            !isAppSuperAdmin() ? null : $this->editLink(),
+            !isAppSuperAdmin() ? null : _FlexEnd(
+                _Link('crm.edit')->icon('edit')->class('mt-4 text-sm text-gray-500')
+                    ->selfGet('getEditPermissionInfoForm')->inModal(),
+            ),
         );
     }
-
-    /* ── RIGHT PANEL ── */
 
     protected function infoPanel()
     {
         return _Rows(
-            $this->sectionCard(__('auth-permission-read'), $this->model->permission_description_read, 'text-info', 'bg-info'),
-            $this->sectionCard(__('auth-permission-write'), $this->model->permission_description_write, 'text-warning', 'bg-warning'),
+            $this->sectionCard('auth-permission-read', $this->model->permission_description_read, 'text-info', 'bg-info'),
+            $this->sectionCard('auth-permission-write', $this->model->permission_description_write, 'text-warning', 'bg-warning'),
             $this->dependenciesCard(),
             $this->yourRightsCard(),
         )->class('gap-3 overflow-y-auto mini-scroll pr-1')->style('max-height: 60vh;');
@@ -87,7 +84,7 @@ class PermissionInfoModal extends Modal
         }
 
         return _Rows(
-            _Html(__('auth-permission-dependencies'))->class('text-xs font-bold uppercase tracking-wider mb-2 text-gray-600'),
+            _Html('auth-permission-dependencies')->class('text-xs font-bold uppercase tracking-wider mb-2 text-gray-600'),
             _Flex(
                 $deps->map(fn ($dep) => _Html($dep->permission_name ?: $dep->permission_key)
                     ->class('text-xs px-2 py-1 rounded bg-gray-500 bg-opacity-10 text-gray-700 border border-gray-300')),
@@ -110,118 +107,112 @@ class PermissionInfoModal extends Modal
         };
 
         return _Rows(
-            _Html(__('auth-permission-your-rights'))->class('text-xs font-bold uppercase tracking-wider mb-1 text-gray-600'),
+            _Html('auth-permission-your-rights')->class('text-xs font-bold uppercase tracking-wider mb-1 text-gray-600'),
             _Html($label)->class('text-sm font-semibold ' . $text),
         )->class('p-4 rounded ' . $bg . ' bg-opacity-10');
     }
 
-    /* ── LEFT CAROUSEL (the active slide is held in a client-side field; slides swap via jsShowWhen) ── */
-
     protected function mediaCarousel(Collection $slides)
     {
         $slides = $slides->values();
-        $count = $slides->count();
+
+        if ($slides->count() === 1) {
+            return $this->slidePanel($slides->first());
+        }
+
         $field = 'active_slide';
+        $count = $slides->count();
+        $dotsId = 'permission-carousel-dots-' . $this->model->id;
 
         return _Rows(
             _JsComponentWhen($field,
-                $slides->mapWithKeys(fn (PermissionInfoSlide $slide, $i) => [$i => $this->slidePanel($slide)])->toArray(),
+                $slides->mapWithKeys(fn (PermissionInfoSlide $slide, $i) => ['s' . ($i + 1) => $this->slidePanel($slide)])->toArray(),
+                $this->slidePanel($slides->first()),
             ),
 
-            $count <= 1 ? null : $this->slideDots($field, $count),
+            $this->slideControls($field, $count, $dotsId),
+
+            $this->carouselNavScript(),
         )->class('flex flex-col');
+    }
+
+    protected function slideControls(string $field, int $count, string $dotsId)
+    {
+        return _Flex(
+            $this->navArrow('arrow-left-2', $dotsId, -1),
+            $this->slideDots($field, $count, $dotsId),
+            $this->navArrow('arrow-right-2', $dotsId, 1),
+        )->class('mt-3 items-center justify-center gap-2');
+    }
+
+    protected function navArrow(string $icon, string $dotsId, int $direction)
+    {
+        return _Link()->icon(_Sax($icon, 20))
+            ->class('sisc-carousel-nav cursor-pointer select-none text-gray-400')
+            ->run("() => window.siscCarouselMove('{$dotsId}', {$direction})");
     }
 
     protected function slidePanel(PermissionInfoSlide $slide)
     {
         return _Rows(
             $this->slideMedia($slide),
-            !$this->slideCaption($slide) ? null : _Html($this->slideCaption($slide))
-                ->class('text-sm text-gray-700 mt-3 ck ck-content'),
+            !$slide->caption ? null : _Html($slide->caption)->class('text-sm text-gray-700 mt-3 ck ck-content'),
         );
     }
 
-    /**
-     * Dot navigation as a ButtonGroup bound to the active-slide field; picking a
-     * dot swaps the visible slide through jsShowWhen — no imperative JS.
-     */
-    protected function slideDots(string $field, int $count)
+    protected function slideDots(string $field, int $count, string $dotsId)
     {
-        return _ButtonGroup()->name($field)
-            ->default('0')
-            ->options(collect(range(0, $count - 1))->mapWithKeys(fn ($i) => [(string) $i => ''])->toArray())
-            ->class('flex items-center justify-center gap-2 mt-3')
-            ->optionClass('perm-dot cursor-pointer w-3 h-3 rounded-full !p-0 !min-w-0 !border-0 !shadow-none bg-gray-300')
-            ->selectedClass('!bg-info', '!bg-gray-300');
+        return _ButtonGroup()->name($field, false)->default('s1')
+            ->id($dotsId)
+            ->noInputWrapper()
+            ->options(collect(range(1, $count))->mapWithKeys(fn ($i) => [
+                's' . $i => _Html('●')->class('sisc-carousel-dot block leading-none text-xs'),
+            ])->toArray())
+            ->class('sisc-carousel-dots !mb-1')
+            ->containerClass('inline-flex items-center justify-center gap-2')
+            ->optionClass('cursor-pointer text-center')
+            ->selectedClass('text-info', 'text-gray-300');
+    }
+
+    protected function carouselNavScript()
+    {
+        // Prev/next arrows just re-click the matching dot, so the slide swap and
+        // the selected state reuse the exact ButtonGroup path. Registered once,
+        // globally, via a hidden carrier's onLoad (no inline handler).
+        return _Hidden()->onLoad(fn ($e) => $e->run('() => {
+            window.siscCarouselMove = window.siscCarouselMove || function (containerId, dir) {
+                var cont = document.getElementById(containerId);
+                if (!cont) return;
+                var opts = cont.querySelectorAll(".vlOption");
+                if (!opts.length) return;
+                var current = 0;
+                for (var i = 0; i < opts.length; i++) {
+                    if (opts[i].classList.contains("vlSelected")) { current = i; break; }
+                }
+                var next = (current + dir + opts.length) % opts.length;
+                opts[next].click();
+            };
+        }'));
     }
 
     protected function slideMedia(PermissionInfoSlide $slide)
     {
         if ($slide->media_type === PermissionInfoMediaTypeEnum::SCRIBE && $slide->scribe_id) {
-            return _Html($this->scribeIframeHtml((string) $slide->scribeEmbedUrl()))->class('w-full');
+            return _Iframe()->src($slide->scribeEmbedUrl())
+                ->class('w-full rounded-lg')->style('height: 420px;');
         }
 
         $url = $slide->mediaUrl();
 
         if (!$url) {
             return _Div(
-                _Html(__('auth-permission-no-media'))->class('text-gray-400 text-sm'),
+                _Html('auth-permission-no-media')->class('text-gray-400 text-sm'),
             )->class('w-full h-48 rounded-lg bg-gray-100 flex items-center justify-center');
         }
 
-        return _Div(
-            _Img($url)->class('w-full rounded-lg object-contain')->style('max-height: 420px; cursor: zoom-in;'),
-        )->style('cursor: zoom-in;')->onClick(fn ($e) => $e->run($this->lightboxJs($url)));
-    }
-
-    /** Click-to-zoom: a full-screen overlay with the image; click or Escape closes it. */
-    protected function lightboxJs(string $url): string
-    {
-        return '() => {
-            const o = document.createElement("div");
-            o.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:2rem;";
-            const img = document.createElement("img");
-            img.src = ' . json_encode($url) . ';
-            img.style.cssText = "max-width:92vw;max-height:92vh;border-radius:.5rem;box-shadow:0 10px 40px rgba(0,0,0,.5);";
-            o.appendChild(img);
-            const close = () => { o.remove(); document.removeEventListener("keydown", onKey); };
-            const onKey = (ev) => { if (ev.key === "Escape") close(); };
-            o.addEventListener("click", close);
-            document.addEventListener("keydown", onKey);
-            document.body.appendChild(o);
-        }';
-    }
-
-    protected function slideCaption(PermissionInfoSlide $slide): ?string
-    {
-        return $slide->caption ?: null;
-    }
-
-    /**
-     * Minimal scribehow embed (iframe + spinner that fades on load). Replicated
-     * locally on purpose so kompo/auth does not depend on the cms package.
-     */
-    protected function scribeIframeHtml(string $embedUrl): string
-    {
-        $domId = uniqid('perm-scribe-');
-        $spinner = _Spinner()->__toHtml();
-        $src = htmlspecialchars($embedUrl, ENT_QUOTES);
-
-        return '<div>'
-            . '<div id="loading-' . $domId . '" style="display:flex;justify-content:center;padding:40px 0;">' . $spinner . '</div>'
-            . '<iframe id="iframe-' . $domId . '" src="' . $src . '" width="100%" frameborder="0" height="420" style="border-radius:0.5rem;"></iframe>'
-            . '</div>'
-            . '<script>(function(){var s=document.getElementById("loading-' . $domId . '"),f=document.getElementById("iframe-' . $domId . '");if(!f||!s)return;f.addEventListener("load",function(){s.style.display="none";});})();</script>';
-    }
-
-    /* ── ADMIN ── */
-
-    protected function editLink()
-    {
-        return _FlexEnd(
-            _Link('crm.edit')->icon('edit')->class('mt-4 text-sm text-gray-500')
-                ->selfGet('getEditPermissionInfoForm')->inModal(),
-        );
+        return _Rows(
+            _Img($url)->class('w-full rounded-lg object-contain')->style('max-height: 420px;'),
+        )->href($url)->inNewTab()->class('block cursor-zoom-in');
     }
 
     public function getEditPermissionInfoForm()

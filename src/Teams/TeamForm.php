@@ -37,7 +37,7 @@ class TeamForm extends Modal
             _Rows($this->firstFormPart()),
             _CardLevel5($this->contactFormPart()),
             _Rows($this->lastFormPart()),
-            _SubmitButton('team-save')->refresh(['teams-registry-page'])->closeModal()->class('mt-4'),
+            $this->submitButton(),
         );
     }
 
@@ -65,6 +65,11 @@ class TeamForm extends Modal
             _Input('team-facebook-url')->name('facebook_url')->class('mb-2'),
             _Input('team-instagram')->name('instagram')->class('mb-2'),
         ];
+    }
+
+    protected function submitButton()
+    {
+        return _SubmitButton('team-save')->browse(['teams-registry-page'])->closeModal()->class('mt-4');
     }
 
     protected function addressInput()

@@ -242,14 +242,14 @@ class PermissionModelTest extends TestCase
         $perm1 = Permission::create([
             'permission_key' => 'Perm1',
             'permission_name' => 'Permission 1',
-            'permission_description' => 'Description 1',
+            'permission_description_read' => 'Description 1',
             'permission_section_id' => $section->id,
         ]);
 
         $perm2 = Permission::create([
             'permission_key' => 'Perm2',
             'permission_name' => 'Permission 2',
-            'permission_description' => 'Description 2',
+            'permission_description_read' => 'Description 2',
             'permission_section_id' => $section->id,
         ]);
 
@@ -285,14 +285,14 @@ class PermissionModelTest extends TestCase
         $perm1 = Permission::create([
             'permission_key' => 'Uniform1',
             'permission_name' => 'Permission 1',
-            'permission_description' => 'Uniform description 1',
+            'permission_description_read' => 'Uniform description 1',
             'permission_section_id' => $section->id,
         ]);
 
         $perm2 = Permission::create([
             'permission_key' => 'Uniform2',
             'permission_name' => 'Permission 2',
-            'permission_description' => 'Uniform description 2',
+            'permission_description_read' => 'Uniform description 2',
             'permission_section_id' => $section->id,
         ]);
 
@@ -324,14 +324,14 @@ class PermissionModelTest extends TestCase
         $perm1 = Permission::create([
             'permission_key' => 'Complete1',
             'permission_name' => 'Permission 1',
-            'permission_description' => 'Complete description 1',
+            'permission_description_read' => 'Complete description 1',
             'permission_section_id' => $section->id,
         ]);
 
         $perm2 = Permission::create([
             'permission_key' => 'Complete2',
             'permission_name' => 'Permission 2',
-            'permission_description' => 'Complete description 2',
+            'permission_description_read' => 'Complete description 2',
             'permission_section_id' => $section->id,
         ]);
 
@@ -375,7 +375,7 @@ class PermissionModelTest extends TestCase
         Permission::create([
             'permission_key' => 'SectionPerm1',
             'permission_name' => 'Permission 1',
-            'permission_description' => 'Section permission 1',
+            'permission_description_read' => 'Section permission 1',
             'permission_section_id' => $section->id,
         ]);
 
@@ -402,7 +402,7 @@ class PermissionModelTest extends TestCase
         $permission = Permission::create([
             'permission_key' => 'UnassignedPermission',
             'permission_name' => 'Unassigned',
-            'permission_description' => 'Unassigned permission',
+            'permission_description_read' => 'Unassigned permission',
             'permission_section_id' => $section->id,
         ]);
 

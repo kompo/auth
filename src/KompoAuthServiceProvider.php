@@ -60,6 +60,7 @@ use Kompo\Auth\Teams\Cache\CachedTeamSecurityService;
 use Kompo\Auth\Teams\Security\BatchPermissionService;
 use Kompo\Auth\Teams\Security\Contracts\FieldProtectionServiceInterface;
 use Kompo\Auth\Teams\Security\Contracts\OwnedRecordsResolverInterface;
+use Kompo\Auth\Teams\Security\Contracts\TeamSecurityServiceInterface;
 use Kompo\Auth\Teams\Security\FieldProtectionService;
 use Kompo\Auth\Teams\Security\OwnedRecordsResolver;
 use Kompo\Auth\Teams\Security\SecurityServiceFactory;

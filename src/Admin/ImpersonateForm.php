@@ -26,7 +26,8 @@ class ImpersonateForm extends Form
 
 	public function searchUsers($search)
 	{
-		return UserModel::where('id', '<>', authId())->hasNameLike($search)
+		return UserModel::where('id', '<>', authId())
+			->impersonateSearchFilter($search)
 			->whereHas('activeTeamRoles', fn($q) => $q->asSystemOperation())
 			->with('currentTeamRole.team')->orderBy('name')->take(100)->get()
 			->mapWithKeys(fn($user) => [

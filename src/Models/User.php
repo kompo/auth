@@ -78,6 +78,12 @@ class User extends Authenticatable
         $query->where('name', 'LIKE', wildcardSpace($search));
     }
 
+    public function scopeImpersonateSearchFilter($query, $search)
+    {
+        // Add any additional filtering logic for impersonation search here
+        return $query->hasNameLike($search);
+    }
+
     /* CALCULATED FIELDS */
     public function getFirstName()
     {

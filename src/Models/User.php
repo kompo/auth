@@ -81,7 +81,10 @@ class User extends Authenticatable
     public function scopeImpersonateSearchFilter($query, $search)
     {
         // Add any additional filtering logic for impersonation search here
-        return $query->hasNameLike($search);
+        return $query->where(function ($q) use ($search) {
+            $q->where('name', 'LIKE', wildcardSpace($search))
+              ->orWhere('email', 'LIKE', wildcardSpace($search));
+        });
     }
 
     /* CALCULATED FIELDS */

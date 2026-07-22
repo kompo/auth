@@ -23,10 +23,12 @@ class PermissionInfoModal extends Modal
     protected $hasSubmitButton = false;
 
     protected $refreshId;
+    protected $isReadOnly = false;
 
     public function created()
     {
         $this->refreshId = $this->prop('refresh_id');
+        $this->isReadOnly = $this->prop('is_read_only');
     }
 
     public function title()
@@ -50,7 +52,7 @@ class PermissionInfoModal extends Modal
                     $this->infoPanel()->class('w-full md:w-1/2'),
                 )->class('gap-6 !items-stretch flex-col md:flex-row'),
 
-            !isAppSuperAdmin() ? null : _FlexEnd(
+            !isAppSuperAdmin() || $this->isReadOnly ? null : _FlexEnd(
                 _Link('crm.edit')->icon('edit')->class('mt-4 text-sm text-gray-500')
                     ->selfGet('getEditPermissionInfoForm')->inModal(),
             ),

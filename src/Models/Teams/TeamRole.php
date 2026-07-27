@@ -416,6 +416,10 @@ class TeamRole extends Model implements ScopedToTeam, HasOwnedRecords
         $this->save();
 
         event(new TeamRoleTerminated($this));
+
+        // These are just temp roles created for allowing hierarchy access, so we should delete them when the parent is terminated.
+        static::where('parent_team_role_id', $this->id)
+            ->delete();
     }
 
     public function suspend()

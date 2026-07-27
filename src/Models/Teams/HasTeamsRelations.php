@@ -2,6 +2,7 @@
 
 namespace Kompo\Auth\Models\Teams;
 
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Kompo\Auth\Models\Plugins\HasSecurity;
 use Kompo\Auth\Models\Teams\TeamRole;
 
@@ -10,6 +11,9 @@ use Kompo\Auth\Models\Teams\TeamRole;
  */
 trait HasTeamsRelations
 {
+    /** Passed to the login screen so it can explain why the user was logged out. */
+    public const NO_ACTIVE_ROLE_REASON = 'no-active-role';
+
     private static array $manageNullCurrentTeamRoleAttempted = [];
 
     /* RELATIONS */
@@ -61,13 +65,32 @@ trait HasTeamsRelations
             // If the user is not the owner of the account, just return null. Because it's not related
             // to current session
             return null;
-        } else if (auth()->user()->isImpersonated()) {
-            auth()->user()->leaveImpersonation();
-        } else {
-            auth()->logout();
         }
 
-        abort(403, __('auth-you-dont-have-access-to-any-team'));
+        // Impersonation: drop back to the real admin, who keeps their own roles.
+        if (auth()->user()->isImpersonated()) {
+            auth()->user()->leaveImpersonation();
+
+            abort(403, __('auth-you-dont-have-access-to-any-team'));
+        }
+
+        auth()->logout();
+
+        throw new HttpResponseException($this->noTeamRoleResponse());
+    }
+
+    /**
+     * Where a user with no usable team role lands. Overridable so an app can point
+     * at its own entry points (registration, support) from the login screen.
+     */
+    protected function noTeamRoleResponse()
+    {
+        $url = route('login', ['reason' => self::NO_ACTIVE_ROLE_REASON]);
+
+        // A Kompo XHR would follow a 302 and swallow the login page as its payload.
+        return request()->expectsJson()
+            ? response()->kompoRedirect($url)
+            : redirect()->to($url);
     }
 
     public function ownedTeams()

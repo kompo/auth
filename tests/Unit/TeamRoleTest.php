@@ -437,6 +437,87 @@ class TeamRoleTest extends TestCase
     }
 
     /**
+     * INVARIANT: terminate() cascades terminated_at to materialized descendants
+     *
+     * Without the cascade the descendant stays active, bypasses the validTeamRole
+     * scope and makes the role reappear in the switcher after it was terminated.
+     *
+     * @test
+     */
+    public function test_terminate_cascades_to_descendants()
+    {
+        // Arrange: root (DIRECT_AND_BELOW) with a materialized child
+        $teams = AuthTestHelpers::createTeamHierarchy(2);
+        $user = UserFactory::new()->create();
+        $role = AuthTestHelpers::createRole('Cascade Role', ['TestResource' => PermissionTypeEnum::READ]);
+
+        $root = AuthTestHelpers::assignRoleToUser($user, $role, $teams['root'], RoleHierarchyEnum::DIRECT_AND_BELOW);
+        $child = $root->createChildForHierarchy($teams['childA']->id);
+
+        // Act
+        $root->terminate();
+
+        // Assert: descendant terminated too (fetch without the validTeamRole scope)
+        $freshChild = TeamRole::withoutGlobalScope('validTeamRole')->find($child->id);
+        $this->assertNotNull($freshChild->terminated_at, 'descendant terminated_at should be set');
+    }
+
+    /**
+     * INVARIANT: suspend() cascades to descendants and removeSuspention() re-opens them
+     *
+     * @test
+     */
+    public function test_suspend_and_reactivation_cascade_to_descendants()
+    {
+        // Arrange
+        $teams = AuthTestHelpers::createTeamHierarchy(2);
+        $user = UserFactory::new()->create();
+        $role = AuthTestHelpers::createRole('Cascade Role', ['TestResource' => PermissionTypeEnum::READ]);
+
+        $root = AuthTestHelpers::assignRoleToUser($user, $role, $teams['root'], RoleHierarchyEnum::DIRECT_AND_BELOW);
+        $child = $root->createChildForHierarchy($teams['childA']->id);
+
+        // Act: suspend the root
+        $root->suspend();
+
+        // Assert: descendant suspended
+        $suspendedChild = TeamRole::withoutGlobalScope('validTeamRole')->find($child->id);
+        $this->assertNotNull($suspendedChild->suspended_at, 'descendant suspended_at should be set');
+
+        // Act: re-activate the root
+        $root->removeSuspention();
+
+        // Assert: descendant re-opened
+        $reopenedChild = TeamRole::withoutGlobalScope('validTeamRole')->find($child->id);
+        $this->assertNull($reopenedChild->suspended_at, 'descendant suspended_at should be cleared on re-activation');
+    }
+
+    /**
+     * INVARIANT: deleting a root removes its materialized descendants (no orphans)
+     *
+     * @test
+     */
+    public function test_delete_removes_descendants()
+    {
+        // Arrange
+        $teams = AuthTestHelpers::createTeamHierarchy(2);
+        $user = UserFactory::new()->create();
+        $role = AuthTestHelpers::createRole('Cascade Role', ['TestResource' => PermissionTypeEnum::READ]);
+
+        $root = AuthTestHelpers::assignRoleToUser($user, $role, $teams['root'], RoleHierarchyEnum::DIRECT_AND_BELOW);
+        $child = $root->createChildForHierarchy($teams['childA']->id);
+
+        // Act
+        $root->delete();
+
+        // Assert: descendant gone, not orphaned via onDelete('set null')
+        $this->assertNull(
+            TeamRole::withoutGlobalScope('validTeamRole')->find($child->id),
+            'descendant should be deleted with its root, not orphaned'
+        );
+    }
+
+    /**
      * INVARIANT: createChildForHierarchy() aborts without access
      * 
      * @test

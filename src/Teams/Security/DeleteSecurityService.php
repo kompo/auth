@@ -4,6 +4,7 @@ namespace Kompo\Auth\Teams\Security;
 
 use Kompo\Auth\Teams\Security\Contracts\TeamSecurityServiceInterface;
 use Kompo\Auth\Teams\Security\Traits\SecurityConfigTrait;
+use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 
 /**
  * Handles delete security operations
@@ -49,7 +50,7 @@ class DeleteSecurityService
      */
     protected function handleDeletingEvent($model): void
     {
-        if ($this->bypassService->isSecurityBypassRequired($model, $this->teamService)) {
+        if ($this->bypassService->shouldBypassEnforcement($model, $this->teamService, PermissionTypeEnum::WRITE)) {
             $this->bypassService->markModelAsBypassed($model);
             return;
         }

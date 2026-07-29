@@ -12,6 +12,7 @@ use Kompo\Auth\Teams\Security\TeamScopeIntent;
 use Condoedge\Utils\Models\Plugins\ModelPlugin;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 
 /**
  * HasSecurity Plugin — automated security enforcement at the model level.
@@ -237,11 +238,11 @@ class HasSecurity extends ModelPlugin
     /**
      * Check if security bypass is required - delegate to SecurityBypassService
      */
-    public function isSecurityBypassRequired($model)
+    public function isSecurityBypassRequired($model, ?PermissionTypeEnum $type = null)
     {
         $this->initializeServices();
 
-        return $this->bypassService->isSecurityBypassRequired($model, $this->teamService);
+        return $this->bypassService->isSecurityBypassRequired($model, $this->teamService, $type);
     }
 
     /**

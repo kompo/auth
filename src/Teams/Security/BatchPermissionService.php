@@ -330,7 +330,7 @@ class BatchPermissionService
         }
 
         $ownedIds = array_flip(
-            app(OwnedRecordsResolverInterface::class)->forUser(auth()->id(), $modelClass)
+            app(OwnedRecordsResolverInterface::class)->forUser(auth()->id(), $modelClass, PermissionTypeEnum::READ)
         );
 
         if (empty($ownedIds)) {

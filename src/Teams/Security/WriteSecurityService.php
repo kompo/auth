@@ -116,7 +116,7 @@ class WriteSecurityService
      */
     protected function shouldBypassSecurityForModel($model): bool
     {
-        return $this->bypassService->isSecurityBypassRequired($model, $this->teamService);
+        return $this->bypassService->shouldBypassEnforcement($model, $this->teamService, PermissionTypeEnum::WRITE);
     }
 
     /**
@@ -230,7 +230,8 @@ class WriteSecurityService
             'user_id' => auth()->id(),
             'permission_key' => $this->permissionKey,
             'team_ids' => $teamIds,
-            'current_route' => request()->route()->getName(),
+            // No route on console/queue writes — logging must never mask the denial.
+            'current_route' => request()->route()?->getName(),
             'debug_backtrace' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 30),
         ]);
 

@@ -189,7 +189,8 @@ class ReadSecurityService
         $userId = auth()->id();
         if (!$userId) return [];
 
-        return app(OwnedRecordsResolverInterface::class)->forUser($userId, $this->modelClass);
+        return app(OwnedRecordsResolverInterface::class)
+            ->forUser($userId, $this->modelClass, PermissionTypeEnum::READ);
     }
 
     protected function ownedIdColumn($model): string

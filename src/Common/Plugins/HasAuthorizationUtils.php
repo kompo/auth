@@ -98,7 +98,7 @@ class HasAuthorizationUtils extends ComponentPlugin
         }
 
         try {
-            if ($this->component->model?->isSecurityBypassRequired()) {
+            if ($this->component->model?->isSecurityBypassRequired($type)) {
                 return true;
             }
         } catch (\Exception $e) {

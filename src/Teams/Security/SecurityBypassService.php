@@ -3,6 +3,7 @@
 namespace Kompo\Auth\Teams\Security;
 
 use Condoedge\Utils\Contracts\Security\HasOwnedRecords;
+use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Teams\Security\Contracts\OwnedRecordsResolverInterface;
 use Kompo\Auth\Teams\Security\Contracts\TeamSecurityServiceInterface;
 use Illuminate\Support\Facades\Log;
@@ -135,11 +136,39 @@ class SecurityBypassService
     }
 
     /**
+     * Should ENFORCEMENT step aside for this model — the question the save and
+     * delete gates ask.
+     *
+     * This is the only place that honours the bypass *context*. `executeInBypassContext()`
+     * means "this block is the system", and the read scope has always treated it that
+     * way (ReadSecurityService::shouldBypassSecurityForQuery); writes did not, which is
+     * why every write inside one had to be spelled `systemSave()` as well.
+     *
+     * Deliberately NOT folded into `isSecurityBypassRequired()`: that one answers
+     * authorization *questions* (Person::canAccessContactCard and friends call it), and a
+     * block that suspends enforcement must not start answering "yes" to "may this user
+     * do that?".
+     */
+    public function shouldBypassEnforcement($model, TeamSecurityServiceInterface $teamService, ?PermissionTypeEnum $type = null): bool
+    {
+        if (static::isInBypassContext()) {
+            return true;
+        }
+
+        return $this->isSecurityBypassRequired($model, $teamService, $type);
+    }
+
+    /**
      * Full bypass check. The owned-record check (hasBypassByScope) routes
      * through OwnedRecordsResolverInterface, which manages its own bypass
      * context internally — no enter/exit wrapper needed here anymore.
+     *
+     * $type is the verb being authorized. Models on `HasScopedOwnedRecords` can
+     * own a record for one verb and not another, so the read path must ask for
+     * READ and the write/delete paths for WRITE. Passing null keeps the legacy
+     * "one set for everything" answer.
      */
-    public function isSecurityBypassRequired($model, TeamSecurityServiceInterface $teamService): bool
+    public function isSecurityBypassRequired($model, TeamSecurityServiceInterface $teamService, ?PermissionTypeEnum $type = null): bool
     {
         if ($this->isGloballyBypassed()) {
             return true;
@@ -157,7 +186,7 @@ class SecurityBypassService
             return true;
         }
 
-        return $this->hasBypassByScope($model, $teamService);
+        return $this->hasBypassByScope($model, $teamService, $type);
     }
 
     /**
@@ -224,7 +253,7 @@ class SecurityBypassService
      * Bypass via owned-records resolver. O(1) check against the cached id set
      * produced by the model's `HasOwnedRecords` contract.
      */
-    protected function hasBypassByScope($model, TeamSecurityServiceInterface $teamService): bool
+    protected function hasBypassByScope($model, TeamSecurityServiceInterface $teamService, ?PermissionTypeEnum $type = null): bool
     {
         if ($teamService->shouldValidateOwnedRecords($model)) {
             return false;
@@ -240,7 +269,7 @@ class SecurityBypassService
         }
 
         return app(OwnedRecordsResolverInterface::class)
-            ->isOwnedBy($userId, get_class($model), $model->getKey());
+            ->isOwnedBy($userId, get_class($model), $model->getKey(), $type);
     }
 
     /**

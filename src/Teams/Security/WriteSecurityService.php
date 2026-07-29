@@ -116,7 +116,7 @@ class WriteSecurityService
      */
     protected function shouldBypassSecurityForModel($model): bool
     {
-        return $this->bypassService->shouldBypassEnforcement($model, $this->teamService, PermissionTypeEnum::WRITE);
+        return $this->bypassService->isSecurityBypassRequired($model, $this->teamService, PermissionTypeEnum::WRITE);
     }
 
     /**

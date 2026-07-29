@@ -50,7 +50,7 @@ class DeleteSecurityService
      */
     protected function handleDeletingEvent($model): void
     {
-        if ($this->bypassService->shouldBypassEnforcement($model, $this->teamService, PermissionTypeEnum::WRITE)) {
+        if ($this->bypassService->isSecurityBypassRequired($model, $this->teamService, PermissionTypeEnum::WRITE)) {
             $this->bypassService->markModelAsBypassed($model);
             return;
         }

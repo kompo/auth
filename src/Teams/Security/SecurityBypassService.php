@@ -136,29 +136,6 @@ class SecurityBypassService
     }
 
     /**
-     * Should ENFORCEMENT step aside for this model — the question the save and
-     * delete gates ask.
-     *
-     * This is the only place that honours the bypass *context*. `executeInBypassContext()`
-     * means "this block is the system", and the read scope has always treated it that
-     * way (ReadSecurityService::shouldBypassSecurityForQuery); writes did not, which is
-     * why every write inside one had to be spelled `systemSave()` as well.
-     *
-     * Deliberately NOT folded into `isSecurityBypassRequired()`: that one answers
-     * authorization *questions* (Person::canAccessContactCard and friends call it), and a
-     * block that suspends enforcement must not start answering "yes" to "may this user
-     * do that?".
-     */
-    public function shouldBypassEnforcement($model, TeamSecurityServiceInterface $teamService, ?PermissionTypeEnum $type = null): bool
-    {
-        if (static::isInBypassContext()) {
-            return true;
-        }
-
-        return $this->isSecurityBypassRequired($model, $teamService, $type);
-    }
-
-    /**
      * Full bypass check. The owned-record check (hasBypassByScope) routes
      * through OwnedRecordsResolverInterface, which manages its own bypass
      * context internally — no enter/exit wrapper needed here anymore.

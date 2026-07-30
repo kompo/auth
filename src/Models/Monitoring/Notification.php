@@ -113,15 +113,15 @@ class Notification extends Model implements NoTeamScope, HasOwnedRecords
         $buttons = is_array($buttons) ? array_filter($buttons) : ($buttons ? [$buttons] : []);
 
         $buttonsBlock = empty($buttons) ? null : _Flex(
-            ...collect($buttons)->map(fn ($b) => $b->class('flex-1'))->all(),
-        )->class('gap-2 flex-wrap flex-1');
+            ...collect($buttons)->map(fn ($b) => $b->class('flex-1')->when(count($buttons) === 1, fn ($b) => $b->class('xl:flex-[unset]')))->all(),
+        )->class('gap-2 flex-wrap flex-1')->when(count($buttons) === 1, fn ($b) => $b->class('xl:!justify-end'));
 
         return _Rows(
             _Html($title)->class('mb-3'),
             _FlexBetween(
                 $buttonsBlock,
                 !$hasReminderButton ? null : $this->reminderDropdown()?->class('flex-1'),
-            )->class('gap-4 flex-wrap')
+            )->class('gap-4 flex-wrap xl:!justify-end')
         );
     }
 

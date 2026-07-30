@@ -2,6 +2,7 @@
 
 namespace Kompo\Auth\Teams\Roles;
 
+use App\Models\Teams\Roles\Role;
 use Condoedge\Utils\Facades\UserModel;
 use Condoedge\Utils\Kompo\Common\Modal;
 use Kompo\Auth\Facades\RoleModel;
@@ -79,11 +80,14 @@ class AssignRoleModal extends Modal
                 ->when(
                     $this->defaultUserId,
                     fn($el) => $el->disabled()->value($this->defaultUserId)
+                        ->class('pointer-events-none opacity-70')
                         ->options([$this->defaultUserId => UserModel::findOrFail($this->defaultUserId)->name])
                 )
                 ->overModal('select-user'),
 
-            _Panel()->id('roles-select-panel'),
+            _Panel(
+                !$this->defaultTeamId ? null : $this->getSelectRolesByTeam($this->defaultTeamId)
+            )->id('roles-select-panel'),
 
             _Panel()->id('role-warning'),
 
@@ -163,7 +167,8 @@ class AssignRoleModal extends Modal
 
     protected function getRolesByTeam($teamId)
     {
-        return RoleModel::availableForUserPermissions(auth()->user())
+        return RoleModel::availableForAssignementToUserForTeam(auth()->user(), $teamId)
+            ->orderByTranslation('name')
             ->get();
     }
 

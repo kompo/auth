@@ -16,7 +16,7 @@ class LoginForm extends ImgFormLayout
     {
         $this->email = $this->prop('email');
 
-        $this->redirectTo = $this->prop('redirect_to') ?: 'dashboard';
+        $this->redirectTo = $this->prop('redirect_to') ? safeRedirectPath($this->prop('redirect_to')) : 'dashboard';
     }
 
 	public function rightColumnBody()

@@ -108,7 +108,7 @@ trait HasTeamsTrait
         DB::transaction(function() use (&$fixed) {
             // Remove orphaned team roles
             $orphanedCount = $this->teamRoles()
-                ->whereDoesntHave('team')
+                ->whereDoesntHave('team', fn ($q) => $q->withoutGlobalScopes(['validTeam']))
                 ->delete();
                 
             if ($orphanedCount > 0) {

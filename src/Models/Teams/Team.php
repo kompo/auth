@@ -26,10 +26,20 @@ class Team extends Model implements ScopedToTeam, HasOwnedRecords
     {
         parent::booted();
 
+        static::addGlobalScope('validTeam', function ($builder) {
+            static::applyValidConditions($builder);
+        });
+
         static::saved(function ($team) {
             clearAuthStaticCache();
 
             $team->clearCache();
+        });
+
+        static::saved(function ($team) {
+            if ($team->wasChanged('inactive_at') && $team->inactive_at && !carbon($team->inactive_at)->isFuture()) {
+                $team->cascadeDisable();
+            }
         });
 
         static::deleted(function ($team) {
@@ -44,7 +54,12 @@ class Team extends Model implements ScopedToTeam, HasOwnedRecords
         $invalidator = app(PermissionCacheInvalidator::class);
         $invalidator->teamChanged([$this->id]);
         
-        if ($wasDeleted || $this->wasChanged('parent_team_id') || $this->isDirty('parent_team_id')) {
+        // inactive_at belongs here too: closing a team removes it (and its subtree position)
+        // from every hierarchy answer, exactly as deleting it used to. Without this the
+        // descendant/ancestor caches keep serving a closed team until they expire.
+        if ($wasDeleted
+            || $this->wasChanged('parent_team_id') || $this->isDirty('parent_team_id')
+            || $this->wasChanged('inactive_at') || $this->isDirty('inactive_at')) {
             $invalidator->teamHierarchyChanged(
                 array_filter([$this->id, $this->parent_team_id, $this->getOriginal('parent_team_id')])
             );
@@ -119,7 +134,9 @@ class Team extends Model implements ScopedToTeam, HasOwnedRecords
             return $team;
         }
 
-        return static::withoutGlobalScope('authUserHasPermissions')->find($rootId);
+        // validTeam too: a closed ancestor must still resolve, or breadcrumbs break for
+        // every open team beneath it.
+        return static::withoutGlobalScopes(['authUserHasPermissions', 'validTeam'])->find($rootId);
     }
 
     /** Cached CTE. Immediate-parent-first (excludes self) to match the prior contract. */
@@ -134,7 +151,7 @@ class Team extends Model implements ScopedToTeam, HasOwnedRecords
             return collect();
         }
 
-        $teams = static::withoutGlobalScope('authUserHasPermissions')
+        $teams = static::withoutGlobalScopes(['authUserHasPermissions', 'validTeam'])
             ->whereIn('id', $parentIds)
             ->get()
             ->keyBy('id');
@@ -229,7 +246,38 @@ class Team extends Model implements ScopedToTeam, HasOwnedRecords
 
     public function isActive()
     {
-        return !$this->inactive_at || $this->inactive_at > now() && !$this->deleted_at;
+        if ($this->trashed()) {
+            return false;
+        }
+
+        return !$this->inactive_at || carbon($this->inactive_at)->isFuture();
+    }
+
+    /* ACTIONS */
+
+    public function disable($at = null)
+    {
+        $at = $at ?: now();
+
+        if (!$this->inactive_at || carbon($this->inactive_at)->gt($at)) {
+            $this->inactive_at = $at;
+        }
+
+        $this->save();
+
+        return $this;
+    }
+
+    /**
+     * What closing a team ends. Apps override this to terminate whatever hangs off a team;
+     * SISC terminates team_roles and person_teams.
+     *
+     * Called only from the saved hook, and it must never save the team — that is what makes
+     * re-entrancy structurally impossible rather than something a flag has to prevent.
+     */
+    protected function cascadeDisable(): void
+    {
+        //
     }
 
     public function getNotificationsEmailAddress()
@@ -252,11 +300,47 @@ class Team extends Model implements ScopedToTeam, HasOwnedRecords
         return $query->where('team_name', 'LIKE', wildcardSpace($search));
     }
 
+    /**
+     * Single source of truth for "currently open" teams. Shared by the `validTeam` global
+     * scope, scopeValid(), scopeActive() and — via validSqlFragment() — the hand-written
+     * hierarchy CTEs, so the definition never drifts.
+     *
+     * Deliberately does NOT filter deleted_at: SoftDeletes owns that, and folding it in here
+     * would silently defeat withTrashed().
+     *
+     * Unlike TeamRole::applyValidConditions the alias-less default is table-QUALIFIED,
+     * because this runs inside multi-table joins and inside `(...) as teams` derived tables.
+     * Pass '' explicitly for CTE bodies where the table is the only source.
+     */
+    public static function applyValidConditions($query, ?string $alias = null): void
+    {
+        $prefix = $alias === null ? 'teams.' : ($alias === '' ? '' : $alias . '.');
+
+        $query->where(fn ($q) => $q->whereNull($prefix . 'inactive_at')
+            ->orWhere($prefix . 'inactive_at', '>', now()));
+    }
+
+    /** Raw-SQL twin of applyValidConditions(), for literal SQL where no builder exists. */
+    public static function validSqlFragment(string $alias = 't'): string
+    {
+        $prefix = $alias === '' ? '' : $alias . '.';
+
+        return "({$prefix}inactive_at IS NULL OR {$prefix}inactive_at > NOW())";
+    }
+
+    public function scopeValid($query)
+    {
+        static::applyValidConditions($query);
+    }
+
+    /**
+     * Retained by name — SISC resolves it as a string via `new ScopeRule('active')`, so
+     * renaming it breaks the searchbar filter at runtime rather than at compile time.
+     * Now redundant with the global scope, but harmless and still meaningful after an opt-out.
+     */
     public function scopeActive($query)
     {
-        $query->where(function ($q) {
-            $q->whereNull('teams.inactive_at')->orWhere('teams.inactive_at', '>', now());
-        })->whereNull('teams.deleted_at');
+        static::applyValidConditions($query);
     }
 
     public function scopeValidForTasks($query)

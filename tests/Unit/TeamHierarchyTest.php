@@ -375,8 +375,91 @@ class TeamHierarchyTest extends TestCase
     }
 
     /**
+     * INVARIANT: hasAccessToTeam($teamId, $roleId) resolves every role rolled down
+     * from an ancestor, whatever order the team roles come back in.
+     *
+     * The switcher tree hides an inherited role chip on descendant nodes because it
+     * is already shown on the ancestor. That de-duplication is a display concern and
+     * must not reach the authorization answer, otherwise switching to a descendant
+     * team aborts 403 for every role but the first one.
+     *
+     * @test
+     */
+    public function test_has_access_to_team_resolves_every_role_inherited_from_ancestor()
+    {
+        // Arrange: two DIRECT_AND_BELOW roles on Root, viewer assigned first
+        $teams = AuthTestHelpers::createTeamHierarchy(3);
+        $user = UserFactory::new()->withoutTeamRole()->create();
+
+        $viewerRole = AuthTestHelpers::createRole('Inherited Viewer', [
+            'TestSecuredModel' => PermissionTypeEnum::READ,
+        ]);
+
+        $adminRole = AuthTestHelpers::createRole('Inherited Admin', [
+            'TestSecuredModel' => PermissionTypeEnum::ALL,
+        ]);
+
+        AuthTestHelpers::assignRoleToUser($user, $viewerRole, $teams['root'], RoleHierarchyEnum::DIRECT_AND_BELOW);
+        AuthTestHelpers::assignRoleToUser($user, $adminRole, $teams['root'], RoleHierarchyEnum::DIRECT_AND_BELOW);
+
+        // Act & Assert: both roles usable on every descendant, not only the first one
+        foreach (['childA', 'grandchildA1'] as $teamKey) {
+            $this->assertTrue(
+                $user->hasAccessToTeam($teams[$teamKey]->id, $viewerRole->id),
+                "Should have access to {$teamKey} with the first inherited role"
+            );
+
+            $this->assertTrue(
+                $user->hasAccessToTeam($teams[$teamKey]->id, $adminRole->id),
+                "Should have access to {$teamKey} with an inherited role that is not listed first"
+            );
+        }
+
+        // And a role the user never received is still refused
+        $strangerRole = AuthTestHelpers::createRole('Stranger Role', [
+            'TestSecuredModel' => PermissionTypeEnum::READ,
+        ]);
+
+        $this->assertFalse(
+            $user->hasAccessToTeam($teams['childA']->id, $strangerRole->id),
+            'Should not have access with a role the user does not hold'
+        );
+    }
+
+    /**
+     * INVARIANT: a role held directly on a team stays usable even when the same role
+     * is also held on one of its ancestors.
+     *
+     * @test
+     */
+    public function test_has_access_to_team_keeps_direct_role_shadowed_by_ancestor()
+    {
+        // Arrange: an unrelated role first, then the same role both above and directly
+        $teams = AuthTestHelpers::createTeamHierarchy(2);
+        $user = UserFactory::new()->withoutTeamRole()->create();
+
+        $viewerRole = AuthTestHelpers::createRole('Shadowing Viewer', [
+            'TestSecuredModel' => PermissionTypeEnum::READ,
+        ]);
+
+        $adminRole = AuthTestHelpers::createRole('Shadowed Admin', [
+            'TestSecuredModel' => PermissionTypeEnum::ALL,
+        ]);
+
+        AuthTestHelpers::assignRoleToUser($user, $viewerRole, $teams['root'], RoleHierarchyEnum::DIRECT_AND_BELOW);
+        AuthTestHelpers::assignRoleToUser($user, $adminRole, $teams['root'], RoleHierarchyEnum::DIRECT_AND_BELOW);
+        AuthTestHelpers::assignRoleToUser($user, $adminRole, $teams['childA'], RoleHierarchyEnum::DIRECT);
+
+        // Act & Assert
+        $this->assertTrue(
+            $user->hasAccessToTeam($teams['childA']->id, $adminRole->id),
+            'Direct grant must not be shadowed by the same role held on an ancestor'
+        );
+    }
+
+    /**
      * INVARIANT: getAllTeamsWithAccess returns correct hierarchical teams
-     * 
+     *
      * @test
      */
     public function test_get_all_teams_with_access_includes_hierarchical_teams()

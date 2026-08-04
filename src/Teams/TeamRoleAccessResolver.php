@@ -48,25 +48,14 @@ class TeamRoleAccessResolver implements TeamRoleAccessResolverInterface
             return false;
         }
 
-        $access = $this->resolveForCandidates(
-            collect([$team]),
-            $user,
-            $profile,
-            includeCurrentRole: false
-        )[$teamId] ?? null;
+        $candidateParentId = $team->parent_team_id ? (int) $team->parent_team_id : null;
+        $candidateAncestors = $this->hierarchy->getBatchAncestorTeamIdsByTarget([$teamId])
+            ->get($teamId, collect())
+            ->flip();
 
-        if (!$access) {
-            return false;
-        }
-
-        $roles = collect($access['roles'] ?? [])->pluck('id');
-        $switchRole = $access['switchRole']['id'] ?? null;
-
-        if (!$roleId) {
-            return $roles->isNotEmpty() || $switchRole !== null;
-        }
-
-        return $roles->contains($roleId) || $switchRole === $roleId;
+        return $this->data->activeTeamRoles($user, $profile)
+            ->contains(fn($teamRole) => (!$roleId || $teamRole->role === $roleId)
+                && $this->teamRoleGrantsCandidate($teamRole, $teamId, $candidateParentId, $candidateAncestors));
     }
 
     public function resolveForCandidates(

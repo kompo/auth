@@ -142,14 +142,18 @@ class Permission extends Model implements OptsOutOfSecurity
      */
     public function getUsersWithPermission(
         $teamsIds = null,
-        PermissionTypeEnum $type = PermissionTypeEnum::ALL
+        PermissionTypeEnum $type = PermissionTypeEnum::ALL,
+        // These is for now more used for getting users to notificate, candidates so for now the best would be default as true
+        // The thing is that the default behaviour across the app it's usually in the another way around, so to keep consistency and be clear i will keep false
+        bool $directRolesOnly = false 
     ): \Illuminate\Support\Collection {
         $query = app(\Kompo\Auth\Teams\Contracts\PermissionResolverInterface::class)
             ->getUsersQueryWithPermission(
                 $this->permission_key,
                 $type,
                 $teamsIds,
-                UserModel::getTable()
+                UserModel::getTable(),
+                $directRolesOnly
             );
 
         return UserModel::query()

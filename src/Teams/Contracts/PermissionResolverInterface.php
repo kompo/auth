@@ -59,7 +59,8 @@ interface PermissionResolverInterface
         string $permissionKey,
         PermissionTypeEnum $type = PermissionTypeEnum::ALL,
         $teamIds = null,
-        ?string $usersTableAlias = null
+        ?string $usersTableAlias = null,
+        bool $directRolesOnly = false
     ): Builder;
 
     public function getPerformanceMetrics(): array;

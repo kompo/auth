@@ -558,14 +558,15 @@ class PermissionResolver implements PermissionResolverInterface
         string $permissionKey,
         PermissionTypeEnum $type = PermissionTypeEnum::ALL,
         $teamIds = null,
-        ?string $usersTableAlias = null
+        ?string $usersTableAlias = null,
+        bool $directRolesOnly = false
     ): \Illuminate\Database\Query\Builder {
         $scope = $this->resolvePermissionScope($teamIds);
 
         $userIds = DB::table('team_roles as tr')->select('tr.user_id')->distinct();
         TeamRole::applyValidConditions($userIds, 'tr');
 
-        $this->whereTeamRoleInScope($userIds, 'tr', $scope);
+        $this->whereTeamRoleInScope($userIds, 'tr', $scope, $directRolesOnly);
         $this->whereTeamRoleGrants($userIds, 'tr', $permissionKey, $type);
         $this->whereUserNotDenied($userIds, $permissionKey, $scope);
 
@@ -599,22 +600,22 @@ class PermissionResolver implements PermissionResolverInterface
      * or via "neighbours" access from a sibling. No-op when the scope is global.
      * Equivalent to getTeamRoleAccessibleTeams($teamRole) ∩ targets ≠ ∅.
      */
-    private function whereTeamRoleInScope($query, string $alias, ?array $scope): void
+    private function whereTeamRoleInScope($query, string $alias, ?array $scope, bool $directRolesOnly = false): void
     {
         if ($scope === null) {
             return;
         }
 
-        $query->where(function ($q) use ($alias, $scope) {
+        $query->where(function ($q) use ($alias, $scope, $directRolesOnly) {
             $q->whereIn($alias . '.team_id', $scope['targets'] ?: [0]);
 
-            if ($scope['ancestors']) {
+            if ($scope['ancestors'] && !$directRolesOnly) {
                 $q->orWhere(fn ($sub) => $sub
                     ->whereIn($alias . '.role_hierarchy', $this->hierarchiesGranting(fn ($c) => $c->accessGrantBelow()))
                     ->whereIn($alias . '.team_id', $scope['ancestors']));
             }
 
-            if ($scope['siblings']) {
+            if ($scope['siblings'] && !$directRolesOnly) {
                 $q->orWhere(fn ($sub) => $sub
                     ->whereIn($alias . '.role_hierarchy', $this->hierarchiesGranting(fn ($c) => $c->accessGrantNeighbours()))
                     ->whereIn($alias . '.team_id', $scope['siblings']));
@@ -644,13 +645,13 @@ class PermissionResolver implements PermissionResolverInterface
      * Exclude the user when any in-scope team role carries an explicit DENY for $permissionKey.
      * DENY is user-wide within the scope and beats every grant (PermissionAccessIndex::allows()).
      */
-    private function whereUserNotDenied($query, string $permissionKey, ?array $scope): void
+    private function whereUserNotDenied($query, string $permissionKey, ?array $scope, bool $directRolesOnly = false): void
     {
-        $query->whereNotExists(function ($q) use ($permissionKey, $scope) {
+        $query->whereNotExists(function ($q) use ($permissionKey, $scope, $query, $directRolesOnly) {
             $q->selectRaw('1')->from('team_roles as trd')->whereColumn('trd.user_id', 'tr.user_id');
             TeamRole::applyValidConditions($q, 'trd');
 
-            $this->whereTeamRoleInScope($q, 'trd', $scope);
+            $this->whereTeamRoleInScope($q, 'trd', $scope, $directRolesOnly);
 
             $q->where(fn ($d) => $d
                 ->whereExists(fn ($s) => $this->pivotDenies($s, 'permission_role', 'pr', 'trd.role', 'role', $permissionKey))

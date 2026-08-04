@@ -568,7 +568,7 @@ class PermissionResolver implements PermissionResolverInterface
 
         $this->whereTeamRoleInScope($userIds, 'tr', $scope, $directRolesOnly);
         $this->whereTeamRoleGrants($userIds, 'tr', $permissionKey, $type);
-        $this->whereUserNotDenied($userIds, $permissionKey, $scope);
+        $this->whereUserNotDenied($userIds, $permissionKey, $scope, $directRolesOnly);
 
         $alias = $usersTableAlias ?: $this->resolveModelTable(UserModel::getClass());
 
@@ -647,7 +647,7 @@ class PermissionResolver implements PermissionResolverInterface
      */
     private function whereUserNotDenied($query, string $permissionKey, ?array $scope, bool $directRolesOnly = false): void
     {
-        $query->whereNotExists(function ($q) use ($permissionKey, $scope, $query, $directRolesOnly) {
+        $query->whereNotExists(function ($q) use ($permissionKey, $scope, $directRolesOnly) {
             $q->selectRaw('1')->from('team_roles as trd')->whereColumn('trd.user_id', 'tr.user_id');
             TeamRole::applyValidConditions($q, 'trd');
 

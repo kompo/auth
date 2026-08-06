@@ -56,6 +56,8 @@ class AssignRoleModal extends Modal
 
     public function beforeSave()
     {
+        static::throwIfCannotBeOpenedForTeamAndUser(auth()->user(), request('user_id'), request('team_id'));
+
         $role = RoleModel::findOrFail(request('role'));
         $this->model->role = $role->id;
 

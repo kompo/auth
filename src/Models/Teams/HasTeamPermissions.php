@@ -118,6 +118,48 @@ trait HasTeamPermissions
         return $this->getTeamRoleAccessResolver()->accessibleTeamIds($this, null, $search);
     }
 
+    /**
+     * Team ids usable in a hierarchy selector: the ones the user really has access
+     * to, plus the ancestors that have to be walked through to reach them.
+     *
+     * Accessible ids never contain the ancestors of the user's role teams, so a
+     * user rooted on a unit can't pick the district/group leading to it. Those
+     * ancestors are navigation only, see getContextOnlyTeamIds().
+     */
+    public function getNavigableTeamIds(): array
+    {
+        return array_values(array_unique([
+            ...$this->getAllAccessibleTeamIds(),
+            ...$this->getContextOnlyTeamIds(),
+        ]));
+    }
+
+    /**
+     * Team ids displayed only to walk down the hierarchy: the user has access to
+     * something below them, but not to the team itself.
+     */
+    public function getContextOnlyTeamIds(): array
+    {
+        $accessible = array_flip($this->getAllAccessibleTeamIds());
+
+        return array_values(array_filter(
+            $this->getRoleBranchTeamIds(),
+            fn($teamId) => !isset($accessible[$teamId])
+        ));
+    }
+
+    /**
+     * The user's role teams and every ancestor of those teams.
+     */
+    private function getRoleBranchTeamIds(): array
+    {
+        return $this->getTeamRoleAccessResolver()
+            ->activeRoleBranchIndex($this, null)
+            ->keys()
+            ->map(fn($teamId) => (int) $teamId)
+            ->all();
+    }
+
     public function hasRole(string $role)
     {
         return $this->getActiveTeamRolesOptimized($role)->count() > 0;

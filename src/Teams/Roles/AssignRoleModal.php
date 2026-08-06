@@ -29,7 +29,7 @@ class AssignRoleModal extends Modal
         $this->defaultTeamId = $this->prop('team_id');
         $this->defaultUserId = $this->prop('user_id');
 
-        static::throwIfCannotBeOpenedForTeamAndUser(auth()->user(), $this->defaultTeamId, $this->defaultUserId);
+        static::throwIfCannotBeOpenedForTeamAndUser(auth()->user(), $this->defaultUserId, $this->defaultTeamId);
     }
 
     public static function canBeOpenedForTeamAndUser($author, $userId = null, $teamId = null): bool

@@ -69,18 +69,15 @@ class RolesAndPermissionMatrix extends Query
         }
 
         $rolesIds = request('roles') ?: $this->defaultRolesIds->all();
-
-        // Capture only the section id; the body closure reads CURRENT roles
-        // at execute time (when user expands the section), not the matrix-
-        // render-time snapshot. Otherwise removed roles linger as phantom
-        // columns the next time a collapsed section is expanded.
+        $search = request('permission_name');
         $sectionId = $permissionSection->id;
 
         return _LazyCollapsible(
             $this->sectionHeader($permissionSection, $rolesIds),
             fn() => new PermissionSectionRolesTable([
+                'search' => $search,
                 'permission_section_id' => $sectionId,
-                'roles_ids' => implode(',', collect(request('roles') ?: session('latest-roles') ?: [])->all()),
+                'roles_ids' => implode(',', $rolesIds),
             ]),
             'rows',
             'subgroup-toggle' . $permissionSection->id,

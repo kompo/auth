@@ -57,15 +57,9 @@ class PermissionSectionRolesTable extends Query
 
     public function createdDisplay()
     {
-        // The slide-toggle target is the OUTER wrapper in
-        // RolesAndPermissionMatrix::render($section); this inner items wrapper
-        // must NOT also carry .subgroup-block<id> or jQuery's slideToggle
-        // would run on both elements and the animation goes inconsistent.
         $this->itemsWrapperClass = 'PermissionSectionRoleWrapper mini-scroll py-[0.2rem]';
     }
 
-    // Section header lives on the matrix (RolesAndPermissionMatrix::sectionHeader)
-    // so it stays visible while the permission rows can lazy-load below it.
     public function top()
     {
         return null;
@@ -74,7 +68,7 @@ class PermissionSectionRolesTable extends Query
     public function query()
     {
         return $this->permissionSection->getPermissions()
-            ->when(request('permission_name'), fn($q) => $q->filter(fn($p) => str_contains(strtolower($p->permission_name), strtolower(request('permission_name')))));
+            ->when($this->prop('search'), fn($q) => $q->filter(fn($p) => str_contains(strtolower($p->permission_name), strtolower($this->prop('search')))));
     }
 
     public function render($permission)

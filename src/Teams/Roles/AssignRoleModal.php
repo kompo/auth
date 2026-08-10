@@ -75,6 +75,10 @@ class AssignRoleModal extends Modal
     public function body()
     {
         return _Rows(
+            _Rows(
+                $this->extraInputs(),
+            ),
+
             $this->teamSelector(),
 
             _Select('permissions-user')->name('user_id')->required()
@@ -200,6 +204,13 @@ class AssignRoleModal extends Modal
             ->get()
             ->pluck('name', 'id');
     }
+
+    // Override if we need more inputs into project (created to be overrided in crm because of PersonTeam)
+    public function extraInputs()
+    {
+        return [];
+    }
+
 
     public function rules()
     {

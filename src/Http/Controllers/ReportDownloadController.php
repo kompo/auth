@@ -9,6 +9,6 @@ class ReportDownloadController extends Controller
 {
     public function __invoke($filename)
     {
-    	return Storage::download($filename, preg_replace('/[^A-Za-z0-9\-]/', '', currentTeam()->name).' - '.$filename);
+    	return Storage::download($filename, preg_replace('/[^A-Za-z0-9\-]/', '', currentTeam()?->team_name).' - '.$filename);
     }
 }

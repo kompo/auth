@@ -62,7 +62,7 @@ class PermissionResolver implements PermissionResolverInterface
     public function userHasPermission(
         int $userId,
         string $permissionKey,
-        PermissionTypeEnum $type = PermissionTypeEnum::ALL,
+        PermissionTypeEnum $type = PermissionTypeEnum::READ,
         $teamIds = null
     ): bool {
         if ($this->shouldBypassSecurity($userId)) {
@@ -88,7 +88,7 @@ class PermissionResolver implements PermissionResolverInterface
     public function getTeamsWithPermissionForUser(
         int $userId,
         string $permissionKey, 
-        PermissionTypeEnum $type = PermissionTypeEnum::ALL
+        PermissionTypeEnum $type = PermissionTypeEnum::READ
     ) {
         return $this->getTeamSpecificPermissions($userId, $permissionKey, $type);
     }
@@ -529,7 +529,7 @@ class PermissionResolver implements PermissionResolverInterface
     public function getTeamsQueryWithPermissionForUser(
         int $userId,
         string $permissionKey,
-        PermissionTypeEnum $type = PermissionTypeEnum::ALL,
+        PermissionTypeEnum $type = PermissionTypeEnum::READ,
         ?string $teamTableAlias = null
     ): \Illuminate\Database\Query\Builder {
         $teamIds = $this->normalizeIds(
@@ -556,7 +556,7 @@ class PermissionResolver implements PermissionResolverInterface
      */
     public function getUsersQueryWithPermission(
         string $permissionKey,
-        PermissionTypeEnum $type = PermissionTypeEnum::ALL,
+        PermissionTypeEnum $type = PermissionTypeEnum::READ,
         $teamIds = null,
         ?string $usersTableAlias = null,
         bool $directRolesOnly = false

@@ -27,7 +27,7 @@ class CachedPermissionResolver implements PermissionResolverInterface
     public function userHasPermission(
         int $userId,
         string $permissionKey,
-        PermissionTypeEnum $type = PermissionTypeEnum::ALL,
+        PermissionTypeEnum $type = PermissionTypeEnum::READ,
         $teamIds = null
     ): bool {
         $version = $this->versions->get($userId);
@@ -64,7 +64,7 @@ class CachedPermissionResolver implements PermissionResolverInterface
     public function getTeamsWithPermissionForUser(
         int $userId,
         string $permissionKey,
-        PermissionTypeEnum $type = PermissionTypeEnum::ALL
+        PermissionTypeEnum $type = PermissionTypeEnum::READ
     ) {
         $version = $this->versions->get($userId);
         $key = CacheKeyBuilder::userTeamsWithPermission($userId, $permissionKey, $type->value, $version);
@@ -198,7 +198,7 @@ class CachedPermissionResolver implements PermissionResolverInterface
     public function getTeamsQueryWithPermissionForUser(
         int $userId,
         string $permissionKey,
-        PermissionTypeEnum $type = PermissionTypeEnum::ALL,
+        PermissionTypeEnum $type = PermissionTypeEnum::READ,
         ?string $teamTableAlias = null
     ): Builder {
         return $this->inner->getTeamsQueryWithPermissionForUser($userId, $permissionKey, $type, $teamTableAlias);
@@ -206,7 +206,7 @@ class CachedPermissionResolver implements PermissionResolverInterface
 
     public function getUsersQueryWithPermission(
         string $permissionKey,
-        PermissionTypeEnum $type = PermissionTypeEnum::ALL,
+        PermissionTypeEnum $type = PermissionTypeEnum::READ,
         $teamIds = null,
         ?string $usersTableAlias = null,
         bool $directRolesOnly = false

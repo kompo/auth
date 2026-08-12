@@ -142,7 +142,7 @@ class Permission extends Model implements OptsOutOfSecurity
      */
     public function getUsersWithPermission(
         $teamsIds = null,
-        PermissionTypeEnum $type = PermissionTypeEnum::ALL,
+        PermissionTypeEnum $type = PermissionTypeEnum::READ,
         // These is for now more used for getting users to notificate, candidates so for now the best would be default as true
         // The thing is that the default behaviour across the app it's usually in the another way around, so to keep consistency and be clear i will keep false
         bool $directRolesOnly = false 

@@ -60,7 +60,7 @@ trait HasTeamPermissions
      */
     public function hasPermission(
         string $permissionKey,
-        PermissionTypeEnum $type = PermissionTypeEnum::ALL,
+        PermissionTypeEnum $type = PermissionTypeEnum::READ,
         $teamIds = null
     ): bool {
         return $this->getPermissionResolver()->userHasPermission(
@@ -84,7 +84,7 @@ trait HasTeamPermissions
      */
     public function getTeamsIdsWithPermission(
         string $permissionKey,
-        PermissionTypeEnum $type = PermissionTypeEnum::ALL
+        PermissionTypeEnum $type = PermissionTypeEnum::READ
     ): Collection {
         return collect($this->getPermissionResolver()->getTeamsWithPermissionForUser(
             $this->id,
@@ -99,7 +99,7 @@ trait HasTeamPermissions
      */
     public function getTeamsQueryWithPermission(
         string $permissionKey,
-        PermissionTypeEnum $type = PermissionTypeEnum::ALL,
+        PermissionTypeEnum $type = PermissionTypeEnum::READ,
         ?string $teamTableAlias = null
     ): \Illuminate\Database\Query\Builder {
         return $this->getPermissionResolver()->getTeamsQueryWithPermissionForUser(

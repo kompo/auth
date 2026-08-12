@@ -80,7 +80,7 @@ class RoleForm extends Modal
 
             _Rows($this->extraFields()),
 
-            _Select('permissions-profile')->name('profile')->options(
+            _Select('permissions-profile')->name('profile')->required()->default(1)->options(
                 $this->profileOptions(),
             )->overModal('profile'),
 

@@ -57,12 +57,43 @@ class TeamRole extends Model implements ScopedToTeam, HasOwnedRecords
         });
 
         static::saved(function ($teamRole) {
+            $teamRole->cascadeLifecycleToDescendants();
             $teamRole->clearCache();
         });
 
         static::deleted(function ($teamRole) {
+            // Materialized descendants only exist because of this root; drop them with it.
+            // (The parent_team_role_id FK is onDelete('set null'), which would otherwise
+            //  leave them behind as orphaned, still-active roles.)
+            static::withoutGlobalScope('validTeamRole')
+                ->where('parent_team_role_id', $teamRole->id)
+                ->delete();
+
             $teamRole->clearCache();
         });
+    }
+
+    /**
+     * Propagate a lifecycle change (terminate / suspend / re-activate) to the
+     * materialized descendant roles (rows with parent_team_role_id = this->id).
+     *
+     * Without this, terminating or suspending a cascading root leaves its descendants
+     * active: they bypass the `validTeamRole` global scope, keep granting access to the
+     * subtree, and make the role reappear in the team role switcher.
+     */
+    protected function cascadeLifecycleToDescendants(): void
+    {
+        foreach (['terminated_at', 'suspended_at'] as $column) {
+            if (! $this->wasChanged($column)) {
+                continue;
+            }
+
+            // withoutGlobalScope so re-activation (removeSuspention) also reaches
+            // children that are currently suspended/terminated.
+            static::withoutGlobalScope('validTeamRole')
+                ->where('parent_team_role_id', $this->id)
+                ->update([$column => $this->$column]);
+        }
     }
 
     protected function clearCache()

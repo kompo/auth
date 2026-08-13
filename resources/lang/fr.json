@@ -115,6 +115,7 @@
 	"auth.switcher-error": "Impossible de charger les équipes",
 	"auth.switcher-go": "Changer",
 	"auth.switcher-loading": "Chargement des équipes...",
+	"auth.switcher-other-level": "Autre",
 	"auth.switcher-show-more": "Afficher plus",
 	"auth.switcher-switch-role": "Changer de rôle",
 	"auth.switcher-teams": "Équipes",

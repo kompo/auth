@@ -115,6 +115,7 @@
 	"auth.switcher-error": "Unable to load teams",
 	"auth.switcher-go": "Go",
 	"auth.switcher-loading": "Loading teams...",
+	"auth.switcher-other-level": "Other",
 	"auth.switcher-show-more": "Show more",
 	"auth.switcher-switch-role": "Change role",
 	"auth.switcher-teams": "Teams",

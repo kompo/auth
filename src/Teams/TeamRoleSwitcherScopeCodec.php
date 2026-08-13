@@ -5,6 +5,7 @@ namespace Kompo\Auth\Teams;
 class TeamRoleSwitcherScopeCodec
 {
     private const ROLE_PREFIX = 'role-';
+    private const LEVEL_PREFIX = 'level-';
     private const NODE_PREFIX = 'scope-';
     private const NODE_SEPARATOR = ':team-';
 
@@ -59,6 +60,29 @@ class TeamRoleSwitcherScopeCodec
 
         return [
             'roleId' => $roleId,
+            'nodeId' => $nodeId,
+        ];
+    }
+
+    public function levelNodeId(int|string $level): string
+    {
+        return self::LEVEL_PREFIX . $this->encodeValue((string) $level);
+    }
+
+    public function parseLevelNodeId(?string $nodeId): ?array
+    {
+        if (!$nodeId || !str_starts_with($nodeId, self::LEVEL_PREFIX)) {
+            return null;
+        }
+
+        $level = $this->decodeValue(substr($nodeId, strlen(self::LEVEL_PREFIX)));
+
+        if ($level === null || $level === '') {
+            return null;
+        }
+
+        return [
+            'level' => is_numeric($level) ? (int) $level : $level,
             'nodeId' => $nodeId,
         ];
     }

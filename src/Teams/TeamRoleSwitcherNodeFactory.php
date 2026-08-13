@@ -72,9 +72,25 @@ class TeamRoleSwitcherNodeFactory
         ];
     }
 
+    public function levelPayload(int|string $level, ?string $label, ?string $class, int $count): array
+    {
+        return [
+            'id' => $this->codec->levelNodeId($level),
+            'parentId' => null,
+            'hasChildren' => $count > 0,
+            'isCurrent' => false,
+            'render' => $this->composeLevelRender($label, $class, $count),
+        ];
+    }
+
     public function nodeId(string $scopeKey, int $teamId): string
     {
         return $this->codec->nodeId($scopeKey, $teamId);
+    }
+
+    public function levelNodeId(int|string $level): string
+    {
+        return $this->codec->levelNodeId($level);
     }
 
     private function composeRender(HierarchyNodeContext $ctx, string $switchUrl)
@@ -108,6 +124,21 @@ class TeamRoleSwitcherNodeFactory
             ->style('display: flex; align-items: center; width: 100%; gap: 0.45rem;');
     }
 
+    private function composeLevelRender(?string $label, ?string $class, int $count)
+    {
+        $name = _Html(e($label ?: __('auth.switcher-other-level')))
+            ->class('lazy-hierarchy-node__name')
+            ->style('flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8125rem; font-weight: 700;');
+
+        $countPill = _Pill((string) $count)
+            ->class('lazy-hierarchy-node__level-pill text-white')
+            ->class($class ?: '');
+
+        return _Flex($name, $countPill)
+            ->class('lazy-hierarchy-node__content-row')
+            ->style('display: flex; align-items: center; width: 100%; gap: 0.45rem;');
+    }
+
     private function levelPill(HierarchyNodeContext $ctx)
     {
         if (!$ctx->levelLabel) {
@@ -121,6 +152,7 @@ class TeamRoleSwitcherNodeFactory
 
     private function roleLinks(HierarchyNodeContext $ctx, string $switchUrl): array
     {
+        return [];
         $elements = [];
 
         foreach ($ctx->roles as $role) {

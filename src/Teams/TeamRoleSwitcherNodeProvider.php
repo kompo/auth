@@ -22,7 +22,10 @@ class TeamRoleSwitcherNodeProvider
         private TeamHierarchyInterface $hierarchy,
         private TeamRoleSwitcherScopeCodec $codec,
         private string $switchUrl,
-    ) {}
+        private ?TeamRoleSwitcherLevelGrouper $levels = null,
+    ) {
+        $this->levels ??= app(TeamRoleSwitcherLevelGrouper::class);
+    }
 
     public function bootstrap($user, int|string|null $profile, string $mode, int $limit, int $lookaheadBudget): array
     {
@@ -32,6 +35,12 @@ class TeamRoleSwitcherNodeProvider
         $payload = $this->emptyPayload($mode);
         $resolvedScopes = $this->scopes->resolve($user, $profile, $mode);
         $currentTeamRole = function_exists('currentTeamRole') ? currentTeamRole() : null;
+
+        if ($this->groupsByLevel($mode)) {
+            $this->appendLevelGroups($payload, $resolvedScopes, $mode, $limit, $currentTeamRole);
+
+            return $payload->toArray();
+        }
 
         $pageScopes = $resolvedScopes->take($limit)->values();
         $this->appendRootScopesPage(
@@ -108,6 +117,22 @@ class TeamRoleSwitcherNodeProvider
                 total: $resolvedScopes->count(),
                 offset: $offset,
                 append: $offset > 0,
+                currentTeamRole: $currentTeamRole,
+            );
+
+            return $payload->toArray();
+        }
+
+        $parsedLevel = $this->groupsByLevel($mode) ? $this->codec->parseLevelNodeId($parentNodeId) : null;
+
+        if ($parsedLevel) {
+            $this->appendLevelScopesPage(
+                payload: $payload,
+                scopes: $resolvedScopes,
+                level: (int) $parsedLevel['level'],
+                mode: $mode,
+                limit: $limit,
+                cursor: $cursor,
                 currentTeamRole: $currentTeamRole,
             );
 
@@ -256,6 +281,136 @@ class TeamRoleSwitcherNodeProvider
         $payload->setPaging(self::ROOT_KEY, null, $contexts->count(), $limit);
 
         return $payload->toArray();
+    }
+
+    /**
+     * Committees mode only: the root list is one node per team level, not one per committee.
+     */
+    private function appendLevelGroups(
+        LazyHierarchyPayload $payload,
+        Collection $scopes,
+        string $mode,
+        int $limit,
+        $currentTeamRole,
+    ): void {
+        $buckets = $this->levels->bucket($scopes);
+        $openLevel = $this->levelToOpen($scopes, $buckets, $currentTeamRole);
+        $nodeIds = [];
+
+        foreach ($buckets as $bucket) {
+            $node = $this->nodes->levelPayload(
+                $bucket['level'],
+                $bucket['label'],
+                $bucket['class'],
+                $bucket['scopes']->count(),
+            );
+
+            $payload->addNode($node);
+            $nodeIds[] = $node['id'];
+
+            if ($bucket['level'] !== $openLevel) {
+                continue;
+            }
+
+            $payload->expand($node['id']);
+            $this->appendLevelScopesPage(
+                payload: $payload,
+                scopes: $scopes,
+                level: $bucket['level'],
+                mode: $mode,
+                limit: $limit,
+                cursor: null,
+                currentTeamRole: $currentTeamRole,
+            );
+        }
+
+        // Three or four buckets: the root list never pages.
+        $payload
+            ->setChildren(self::ROOT_KEY, $nodeIds)
+            ->setPaging(self::ROOT_KEY, null, count($nodeIds), $limit);
+    }
+
+    /**
+     * The committees of one level, paged by slicing the in-memory bucket.
+     */
+    private function appendLevelScopesPage(
+        LazyHierarchyPayload $payload,
+        Collection $scopes,
+        int $level,
+        string $mode,
+        int $limit,
+        ?int $cursor,
+        $currentTeamRole,
+    ): void {
+        $levelScopes = $this->levelScopesFor($scopes, $level, $currentTeamRole);
+        $offset = max(0, (int) ($cursor ?? 0));
+        $page = $levelScopes->slice($offset, $limit)->values();
+        $append = $offset > 0;
+        $nodeIds = [];
+
+        foreach ($page as $scope) {
+            $ctx = $this->decorateTeam(
+                scope: $scope,
+                team: $scope->rootTeam,
+                mode: $mode,
+                currentPathIds: $this->currentPathIdsForScope($scope, $currentTeamRole),
+                currentTeamRole: $currentTeamRole,
+            );
+            $node = $this->nodes->toPayload($ctx, $this->switchUrl);
+            $payload->addNode($node);
+            $nodeIds[] = $node['id'];
+        }
+
+        $total = $levelScopes->count();
+        $nextCursor = $offset + $page->count();
+
+        $payload
+            ->setChildren($this->nodes->levelNodeId($level), $nodeIds, $append)
+            ->setPaging(
+                $this->nodes->levelNodeId($level),
+                $nextCursor < $total ? $nextCursor : null,
+                $total,
+                $limit,
+                $append
+            );
+    }
+
+    /**
+     * The current committee sorts first in its own bucket, on every page, so the order stays
+     * stable as the user pages through it.
+     */
+    private function levelScopesFor(Collection $scopes, int $level, $currentTeamRole): Collection
+    {
+        $levelScopes = $this->levels->scopesForLevel($scopes, $level);
+        $currentScope = $this->currentScope($scopes, $currentTeamRole);
+
+        if (!$currentScope || $this->levels->levelOf($currentScope) !== $level) {
+            return $levelScopes;
+        }
+
+        return collect([$currentScope])
+            ->concat($levelScopes->reject(fn(TeamRoleSwitcherScope $scope) => $scope->key === $currentScope->key))
+            ->values();
+    }
+
+    /**
+     * The bucket holding the current committee, or the only bucket there is. Opening a
+     * national bucket by default would just restore the flat list this grouping removes.
+     */
+    private function levelToOpen(Collection $scopes, Collection $buckets, $currentTeamRole): ?int
+    {
+        $currentScope = $this->currentScope($scopes, $currentTeamRole);
+
+        if ($currentScope) {
+            return $this->levels->levelOf($currentScope);
+        }
+
+        return $buckets->count() === 1 ? $buckets->first()['level'] : null;
+    }
+
+    private function groupsByLevel(string $mode): bool
+    {
+        return $mode === TeamAccessHierarchyBuilder::MODE_COMMITTEES;
     }
 
     private function appendRootScopesPage(

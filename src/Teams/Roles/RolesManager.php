@@ -14,6 +14,9 @@ class RolesManager extends Form
     public $class = 'pb-16';
     public $containerClass = 'container-fluid';
 
+    protected $permissionKey = 'Role';
+    protected $forcePermissionType = PermissionTypeEnum::WRITE;
+
     public function render()
     {
         return _Flex(

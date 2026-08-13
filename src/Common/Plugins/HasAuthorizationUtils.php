@@ -41,8 +41,8 @@ class HasAuthorizationUtils extends ComponentPlugin
             return;
         }
     
-        // Abort if user lacks READ permission
-        if(!$this->checkPermissions(PermissionTypeEnum::READ)) {
+        // Abort if user lacks READ/forced type permission
+        if(!$this->checkPermissions($this->getForcePermissionType() ?: PermissionTypeEnum::READ)) {
             abort(403, 'Unauthorized action.');
         }
     }
@@ -92,7 +92,7 @@ class HasAuthorizationUtils extends ComponentPlugin
         $this->checkIfUserHasPermission =
             kompoAuthSecurityConfig('read.enabled', true) ||
             $this->getComponentProperty('checkIfUserHasPermission');
-            
+
         if (!$this->checkIfUserHasPermission || !permissionMustBeAuthorized(static::getPermissionKey())) {
             return true;
         }
@@ -105,13 +105,13 @@ class HasAuthorizationUtils extends ComponentPlugin
             // Handle any exceptions that occur during permission checking
         }
 
-        $userHasPermission = !auth()->user()?->hasPermission(
+        $userHasPermission = auth()->user()?->hasPermission(
             static::getPermissionKey(), 
             $type, 
             $this->getComponentProperty('specificPermissionTeamId')
         );
 
-        if($userHasPermission) {
+        if(!$userHasPermission) {
             return false;
         }
 

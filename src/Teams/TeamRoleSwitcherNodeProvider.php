@@ -105,6 +105,12 @@ class TeamRoleSwitcherNodeProvider
         $resolvedScopes = $this->scopes->resolve($user, $profile, $mode);
         $currentTeamRole = function_exists('currentTeamRole') ? currentTeamRole() : null;
 
+        if ($parentNodeId === null && $this->groupsByLevel($mode)) {
+            $this->appendLevelGroups($payload, $resolvedScopes, $mode, $limit, $currentTeamRole);
+
+            return $payload->toArray();
+        }
+
         if ($parentNodeId === null) {
             $offset = max(0, (int) ($cursor ?? 0));
             $pageScopes = $resolvedScopes->slice($offset, $limit)->values();
@@ -694,8 +700,10 @@ class TeamRoleSwitcherNodeProvider
             }
         }
 
-        $childrenCount = $scope->canRolldown 
-            ? $this->teams->childrenForIdsTotal($mode, $teamId, $scope->teamIds())
+        // A scope holding a single team has nothing to count: the team can't be its own child.
+        $scopeTeamIds = $scope->teamIds();
+        $childrenCount = $scope->canRolldown && count($scopeTeamIds) > 1
+            ? $this->teams->childrenForIdsTotal($mode, $teamId, $scopeTeamIds)
             : 0;
 
         return $this->nodes->context(

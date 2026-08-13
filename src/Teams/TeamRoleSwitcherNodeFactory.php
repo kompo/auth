@@ -152,7 +152,6 @@ class TeamRoleSwitcherNodeFactory
 
     private function roleLinks(HierarchyNodeContext $ctx, string $switchUrl): array
     {
-        return [];
         $elements = [];
 
         foreach ($ctx->roles as $role) {

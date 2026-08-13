@@ -131,7 +131,7 @@ trait HasTeamsRelations
         HasSecurity::enterBypassContext();
         try {
             // First trying to use the current role but in the another team
-            $teamRoleWithCurrentRole = $this->currentTeamRole ? $this->activeTeamRoles()->where('role', $this->currentTeamRole->role)->first() : null;
+            $teamRoleWithCurrentRole = $this->currentTeamRole ? $this->activeTeamRoles()->relatedToTeam($teamId)->where('role', $this->currentTeamRole->role)->first() : null;
 
             return $teamRoleWithCurrentRole ?? $this->activeTeamRoles()->relatedToTeam($teamId)->first() ??
                 TeamRole::getParentHierarchyRole($teamId, $this->id)?->createChildForHierarchy($teamId);

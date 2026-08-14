@@ -16,6 +16,25 @@ trait HasTeamsRelations
 
     private static array $manageNullCurrentTeamRoleAttempted = [];
 
+    private static int $passiveTeamRoleReadDepth = 0;
+
+    /**
+     * Read team state without the missing-role fallback. Resolving a team role is not
+     * a pure read: with none usable it switches teams, or logs the user out and ends
+     * the request. An observer — analytics, logging, a debug dump — must never cause
+     * that as a side effect of looking.
+     */
+    public static function readingTeamRolePassively(callable $callback)
+    {
+        self::$passiveTeamRoleReadDepth++;
+
+        try {
+            return $callback();
+        } finally {
+            self::$passiveTeamRoleReadDepth--;
+        }
+    }
+
     /* RELATIONS */
     public function currentTeamRole()
     {
@@ -47,6 +66,12 @@ trait HasTeamsRelations
 
     protected function manageNullCurrentTeamRole()
     {
+        // Deliberately before the attempted-marker: a passive read must leave the state
+        // untouched, so a real read later in the same request still gets its fallback.
+        if (self::$passiveTeamRoleReadDepth > 0) {
+            return null;
+        }
+
         $userKey = $this->getKey() ?? spl_object_id($this);
         if (isset(self::$manageNullCurrentTeamRoleAttempted[$userKey])) {
             return null;
@@ -85,10 +110,22 @@ trait HasTeamsRelations
      */
     protected function noTeamRoleResponse()
     {
-        $url = route('login', ['reason' => self::NO_ACTIVE_ROLE_REASON]);
+        return static::redirectAfterLosingTeamRole(
+            route('login', ['reason' => self::NO_ACTIVE_ROLE_REASON])
+        );
+    }
 
-        // A Kompo XHR would follow a 302 and swallow the login page as its payload.
-        return request()->expectsJson()
+    /**
+     * A Kompo action expects a kompo response — a 302 would be followed by the XHR and
+     * the login page swallowed as its payload. Everything else, including Kompo's own
+     * turbo navigation, expects HTML: TurboClick does a bare axios.get and feeds the
+     * body to DOMParser, so a JSON payload lands on the page as "[object Object]".
+     * expectsJson() cannot tell those two apart — both are XHRs — but only an action
+     * carries Kompo's headers.
+     */
+    protected static function redirectAfterLosingTeamRole(string $url)
+    {
+        return request()->header(\Kompo\Core\KompoAction::$key)
             ? response()->kompoRedirect($url)
             : redirect()->to($url);
     }
@@ -130,14 +167,33 @@ trait HasTeamsRelations
     {
         HasSecurity::enterBypassContext();
         try {
-            // First trying to use the current role but in the another team
-            $teamRoleWithCurrentRole = $this->currentTeamRole ? $this->activeTeamRoles()->relatedToTeam($teamId)->where('role', $this->currentTeamRole->role)->first() : null;
+            $currentRole = $this->currentTeamRoleKey();
+
+            $teamRoleWithCurrentRole = $currentRole
+                ? $this->activeTeamRoles()->relatedToTeam($teamId)->where('role', $currentRole)->first()
+                : null;
 
             return $teamRoleWithCurrentRole ?? $this->activeTeamRoles()->relatedToTeam($teamId)->first() ??
                 TeamRole::getParentHierarchyRole($teamId, $this->id)?->createChildForHierarchy($teamId);
         } finally {
             HasSecurity::exitBypassContext();
         }
+    }
+
+    /**
+     * A way to get currentTeamRole but without entering in a loop because of manageNullTeamRole
+     */
+    protected function currentTeamRoleKey()
+    {
+        if (!$this->current_team_role_id) {
+            return null;
+        }
+
+        if ($this->relationLoaded('currentTeamRole')) {
+            return $this->getRelation('currentTeamRole')?->role;
+        }
+
+        return $this->teamRoles()->whereKey($this->current_team_role_id)->value('role');
     }
 
     public function getLatestTeamRole($teamId = null)

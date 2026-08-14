@@ -178,13 +178,29 @@ class AuthCacheLayer
      */
     private function cacheRememberWithTags(array $tags, string $key, int $ttl, callable $callback)
     {
+        $callbackFailure = null;
+
+        $guarded = function () use ($callback, &$callbackFailure) {
+            try {
+                return $callback();
+            } catch (\Throwable $e) {
+                $callbackFailure = $e;
+
+                throw $e;
+            }
+        };
+
         try {
             if (Cache::supportsTags()) {
-                return Cache::tags($tags)->remember($key, $ttl, $callback);
+                return Cache::tags($tags)->remember($key, $ttl, $guarded);
             }
 
-            return Cache::remember($key, $ttl, $callback);
+            return Cache::remember($key, $ttl, $guarded);
         } catch (\Throwable $e) {
+            if ($callbackFailure) {
+                throw $callbackFailure;
+            }
+
             \Log::warning('Auth cache remember failed, executing callback directly', [
                 'key' => $key,
                 'error' => $e->getMessage(),

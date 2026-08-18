@@ -133,7 +133,8 @@ class TeamRole extends Model implements ScopedToTeam, HasOwnedRecords
     {
         $prefix = $alias ? $alias . '.' : '';
 
-        $query->whereNull($prefix . 'terminated_at')->whereNull($prefix . 'suspended_at');
+        $query->whereNull($prefix . 'terminated_at')->whereNull($prefix . 'suspended_at')
+            ->whereNull($prefix . 'deleted_at');
     }
 
     /**

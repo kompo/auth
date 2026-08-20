@@ -129,7 +129,7 @@ class TeamRole extends Model implements ScopedToTeam, HasOwnedRecords
      * permission queries in PermissionResolver so the definition never drifts.
      * Pass $alias to qualify the columns when the table is aliased (e.g. 'tr').
      */
-    public static function applyValidConditions($query, ?string $alias = null): void
+    public static function applyValidConditions($query, ?string $alias = 'team_roles'): void
     {
         $prefix = $alias ? $alias . '.' : '';
 

@@ -97,7 +97,7 @@ class TeamRoleSwitcherNodeFactory
     {
         $name = _Html(e($ctx->teamName))
             ->class('lazy-hierarchy-node__name')
-            ->style('flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8125rem; font-weight: 600;');
+            ->style('flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 0.8125rem; font-weight: 600; max-width: 200px;');
 
         $metaChildren = array_filter([
             $this->levelPill($ctx),
@@ -172,8 +172,8 @@ class TeamRoleSwitcherNodeFactory
         return _Link($role['label'] ?? '')
             ->plain()
             ->class('text-sm px-2 py-1 bg-level3/35')
-            ->class('min-w-max max-w-none')
-            ->style('min-width: max-content; max-width: none;')
+            // ->class('min-w-max max-w-none')
+            ->style('max-width: 150px;')
             ->class($class)
             ->post($switchUrl, null, ['team_id' => $ctx->teamId, 'role_id' => $role['id'] ?? null])
             ->run("() => location.reload()");

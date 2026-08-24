@@ -225,7 +225,8 @@ class Team extends Model implements ScopedToTeam, HasOwnedRecords
     public function getTeamSwitcherLink($label = null)
     {
         $label = $label ?: $this->team_name;
-        $isClickeable = config('kompo-auth.breadcrumbs.clickeable-action');
+        $isClickeable = config('kompo-auth.breadcrumbs.clickeable-action')
+            && auth()->user()->hasAccessToTeam($this->id);
 
         return _Link($label)->class(currentTeam()->id == $this->id ? 'font-bold' : '')
             ->when($isClickeable, function ($el) {

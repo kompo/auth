@@ -9,6 +9,6 @@ if (!function_exists('avatarFromText')) {
      */
     function avatarFromText($text)
     {
-        return 'https://ui-avatars.com/api/?name=' . urlencode($text) . '&color=7F9CF5&background=EBF4FF';
+        return route('utils.avatar-initials', ['initials' => initialsFromText($text)]);
     }
 }

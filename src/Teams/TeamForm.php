@@ -48,7 +48,7 @@ class TeamForm extends Modal
             // _Input('team-code')->name('importcode')->required()->class('mb-2'),
             _Input('team-name')->name('team_name')->required(),
             !isSuperAdmin() ? null : _CardLevel5(
-                _DateTime('team-date-from')->name('active_at', isSuperAdmin() ? false : true)
+                _DateTime('team-date-from')->name('active_at')
                     ->default(now())->class('mb-2')->required()
                     ->attr(isSuperAdmin() ? [] : ['disabled' => 'disabled']),
                 _DateTime('team-date-to')->name('inactive_at')->class('mb-2'),

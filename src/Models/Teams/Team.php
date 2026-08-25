@@ -321,6 +321,11 @@ class Team extends Model implements ScopedToTeam, HasOwnedRecords
             ->orWhere($prefix . 'inactive_at', '>', now()));
     }
 
+    public static function withClosedAndDeleted()
+    {
+        return static::withTrashed()->withoutGlobalScope('validTeam');
+    }
+
     /** Raw-SQL twin of applyValidConditions(), for literal SQL where no builder exists. */
     public static function validSqlFragment(string $alias = 't'): string
     {

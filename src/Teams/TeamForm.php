@@ -47,7 +47,7 @@ class TeamForm extends Modal
             _Image()->name('file')->class('mb-2'),
             // _Input('team-code')->name('importcode')->required()->class('mb-2'),
             _Input('team-name')->name('team_name')->required(),
-            _CardLevel5(
+            !isSuperAdmin() ? null : _CardLevel5(
                 _DateTime('team-date-from')->name('active_at', isSuperAdmin() ? false : true)
                     ->default(now())->class('mb-2')->required()
                     ->attr(isSuperAdmin() ? [] : ['disabled' => 'disabled']),

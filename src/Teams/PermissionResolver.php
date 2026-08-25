@@ -682,11 +682,26 @@ class PermissionResolver implements PermissionResolverInterface
     /** Shared base: a pivot row for this team role pointing at $permissionKey. */
     private function pivotPermission($query, string $pivot, string $alias, string $teamRoleColumn, string $pivotColumn, string $permissionKey)
     {
-        return $query->selectRaw('1')
+        $query->selectRaw('1')
             ->from($pivot . ' as ' . $alias)
             ->join('permissions as p', $alias . '.permission_id', '=', 'p.id')
             ->whereColumn($alias . '.' . $pivotColumn, $teamRoleColumn)
-            ->where('p.permission_key', $permissionKey);
+            ->where('p.permission_key', $permissionKey)
+            // A soft-deleted grant row, or a soft-deleted permission, must stop applying.
+            // Without these the pivot kept granting after an admin removed it in the UI.
+            ->whereNull($alias . '.deleted_at')
+            ->whereNull('p.deleted_at');
+
+        // Only the role arm can point at a deleted role; permission_team_role keys on
+        // team_role_id, whose validity is already covered by TeamRole::applyValidConditions.
+        if ($pivotColumn === 'role') {
+            $roleAlias = 'r_' . $alias;
+
+            $query->join('roles as ' . $roleAlias, $alias . '.role', '=', $roleAlias . '.id')
+                ->whereNull($roleAlias . '.deleted_at');
+        }
+
+        return $query;
     }
 
     private function buildIdQuery(string $tableAlias, array $ids): \Illuminate\Database\Query\Builder

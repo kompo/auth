@@ -21,6 +21,7 @@ class NotificationsList extends Query
     public function query()
     {
         return NotificationModel::whereNotNull('type')->with(['about', 'team'])
+            ->has('team') // If team is null it could be a notification created before a team was disabled so instead of using safe null guard we ensure we just display with team
             // ->where('team_id', currentTeam()->id) // Now showing all of them without restricting to current team!
             ->where('user_id', auth()->user()->id)
             ->where(function($q){

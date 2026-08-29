@@ -11,17 +11,6 @@ function _CheckboxMultipleStates($name, $values = [], $colors = [], $default = n
         ->default($default);
 }
 
-function _CheckboxSectionMultipleStates($name, $values = [], $colors = [], $default = null, $ableToChangeIt = true)
-{
-    return \Kompo\Auth\Elements\MultiStateCheckbox::form(null)
-        ->name($name, false)
-        ->mode('section')
-        ->values($values)
-        ->colors($colors)
-        ->readonly(!$ableToChangeIt)
-        ->default($default);
-}
-
 if (!function_exists('_ProfileImg')) {
     function _ProfileImg($user, $sizeClass = 'h-8 w-8')
     {

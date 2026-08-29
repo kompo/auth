@@ -10,9 +10,6 @@ use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 
 class RoleForm extends Modal
 {
-    use RoleElementsUtils;
-    use RoleRequestsUtils;
-
     protected $_Title = 'permissions-add-role';
     protected $noHeaderButtons = true;
 
@@ -41,34 +38,11 @@ class RoleForm extends Modal
 
     public function afterSave()
     {
-        // Downgrade existing team_roles that grant a roll-down/neighbour component
-        // this role no longer permits. Runs before roleChanged() so the broad
-        // user-permission cache flush there also covers these bulk updates.
+        // Team roles must be clamped before roleChanged() so its cache flush covers them too.
         $this->model->clampTeamRolesHierarchyToRollFlags();
 
         app(PermissionCacheInvalidator::class)->roleChanged($this->model);
-    }
-
-    public function response()
-    {
-        $latestRoles = collect(session()->get('latest-roles') ?: []);
-
-        // Ensure saved role is in the selection.
-        $allRoles = $latestRoles->push($this->model->id)->unique()->values()->all();
-        request()->merge(['roles' => $allRoles]);
-
-        // Force the saved role into the diff so RoleWrap renders its templates
-        // (header, section aggregates, cells) for BOTH create and update.
-        // Without this, updates produce an empty diff and the matrix's column
-        // header keeps the old name. JS handlers then route appropriately:
-        //   - update → updateExistingRoleHeaders replaces the column header.
-        //   - create → precreateRoleVisuals + injectRoleContent fill placeholders.
-        session()->put(
-            'latest-roles',
-            $latestRoles->reject(fn($id) => $id === $this->model->id)->values()->all()
-        );
-
-        return $this->getRoleUpdate();
+        RolesMatrixView::addRole($this->model->id);
     }
 
     public function body()
@@ -93,36 +67,8 @@ class RoleForm extends Modal
                 ->name('just_one_per_team', false)
                 ->default($this->model->max_assignments_per_team),
 
-            _Flex(
-                $this->model->id ? _DeleteButton('permissions-delete')->outlined()->byKey($this->model)->class('w-full') : null,
-                _SubmitButton('permissions-save')->class('w-full')
-                    // 1) Submit response (RoleWrap templates) lands in #hidden-roles, modal closes.
-                    ->onSuccess(fn($e) => $e->inPanel('hidden-roles')->closeModal())
-                    // 2) Refresh the multiselect; ONLY when its tags reflect the new role
-                    //    do we run precreate + inject, otherwise precreate reads stale tags
-                    //    and never adds a column placeholder for the new role.
-                    ->onSuccess(fn($e) => $e
-                        ->selfGet('roleMultiSelect')
-                        ->inPanel('multi-select-roles')
-                        ->run('() => {
-                            precreateRoleVisuals();   // add placeholders for new roles
-                            injectRoleContent();      // updates existing headers + fills placeholders (polled, waits for templates)
-                        }')
-                    ),
-            )->class('gap-4')
-
-            // _Input('Role Permissions')->name('role_permissions')->required(),
+            _SubmitButton('permissions-save')->class('w-full')->closeModal()->refresh(RolesAndPermissionMatrix::ID),
         );
-    }
-
-    public function getRoleHeader()
-    {
-        return $this->roleHeader($this->model);
-    }
-
-    public function roleMultiSelect()
-    {
-        return $this->multiSelect(session('latest-roles') ?: []);
     }
 
     protected function profileOptions()

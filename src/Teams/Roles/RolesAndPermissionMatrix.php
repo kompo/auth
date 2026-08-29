@@ -2,90 +2,217 @@
 
 namespace Kompo\Auth\Teams\Roles;
 
-use Condoedge\Utils\Kompo\Common\Query;
+use Condoedge\Utils\Kompo\Common\Form;
+use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionSection;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+use Kompo\Auth\Models\Teams\Roles\Role;
+use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 
-class RolesAndPermissionMatrix extends Query
+/**
+ * Roles × permissions grid: render() is only the shell, getGrid() builds the grid from the live toolbar values.
+ * A cell click answers with its section header so the aggregate pill stays server-true.
+ */
+class RolesAndPermissionMatrix extends Form
 {
     use RoleRequestsUtils;
     use RoleElementsUtils;
 
-    public $id = 'roles-manager-matrix';
-    public $paginationType = 'Scroll';
-    public $perPage = 10000;
+    const ID = 'roles-manager-matrix';
 
-    public $class = 'overflow-x-auto max-w-full mini-scroll overflow-y-hidden pt-5';
-    public $itemsWrapperClass = 'w-max overflow-y-auto mini-scroll';
-    public $itemsWrapperStyle = 'max-height:50vh; min-height:80px;';
-    protected $defaultRolesIds;
-    const DEFAULT_ROLES_NUM = 4;
-
+    public $id = self::ID;
+    public $class = 'roles-matrix';
+    protected $preventSubmit = true;
     protected $permissionKey = 'Role';
-    protected $permissionType = PermissionTypeEnum::READ;
+
+    protected $canWrite;
+    protected $roles;
+    protected $sections;
+    protected $typeMap;
 
     public function created()
     {
-        $this->defaultRolesIds = collect(session()->get('latest-roles') ?: getRolesOrderedByRelevance()->take(static::DEFAULT_ROLES_NUM)->pluck('id'));
-
-        session()->put('latest-roles', $this->defaultRolesIds->all());
+        $this->canWrite = auth()->user()->hasPermission('Role', PermissionTypeEnum::WRITE);
     }
 
-    public function top()
+    public function render()
     {
         return _Rows(
-            auth()->user()->hasPermission('Role', PermissionTypeEnum::WRITE) ? null :
-                $this->warningElNoWritePermissions(),
-
-            _Panel()->id('hidden-roles')->class('opacity-0'),
-            _Panel(
-                $this->multiSelect($this->defaultRolesIds),
-            )->id('multi-select-roles'),
-            _Flex(
-                _Input()->placeholder('auth.search')->name('permission_name', false)->class('w-full !mb-0')
-                    ->browse()->onSuccess(fn($e) => $e->run('() => { setTimeout(() => searchLoadingOff("permission_loading"), 50) }'))
-                    ->onInput(fn($e) => $e->run('() => { searchLoadingOn("permission_loading") }')),
-                _Spinner()->id('permission_loading')->class('absolute right-4 hidden'),
-            )->class('mb-2 relative'),
-            _Rows(_Flex(
-                collect([null])->merge(getRoles()->whereIn('id', $this->defaultRolesIds))->map(function ($role, $i) {
-                    return static::roleHeader($role, $i);
-                }),
-            )->class('roles-manager-rows w-max bg-white mt-4'))->id('roles-header'),
-        );
+            $this->canWrite ? null : $this->noWriteBanner(),
+            $this->toolbar(RolesMatrixView::roles(), RolesMatrixView::search()),
+            // Field::doesNotFill() only writes a server-side key; Vue reads the 'doesNotFill' config.
+            _Hidden('grid_loader')->config(['doesNotFill' => true])
+                ->onLoad(fn($e) => $e->selfGet('getGrid', ['restore' => 1])->withAllFormValues()->inPanel('roles-grid')),
+            _Div(
+                _Panel(_lazyPlaceholder('rows'))->id('roles-grid')->class('roles-grid mini-scroll'),
+            )->id('roles-grid-wrap')->class('relative'),
+        )->style(PermissionTypeEnum::cssLabelVars());
     }
 
-    public function query()
+    public function getGrid()
     {
-        if (!$this->_kompo('currentPage')) $this->currentPage(1);
+        $expanded = $this->expandedIds();
 
-        return PermissionSection::whereHas('permissions', fn($q) => $q->when(request('permission_name'), fn($q) => $q->where('permission_name', 'like', wildcardSpace(request('permission_name')))))->orderBy('name');
+        RolesMatrixView::remember([
+            'roles' => $this->roles()->pluck('id')->all(),
+            'search' => $this->search(),
+            'expanded' => $expanded,
+        ]);
+
+        return $this->display($this->grid($expanded));
     }
 
-    public function render($permissionSection)
+    public function toggleSection()
     {
-        if (is_array(request('roles')) && !count(request('roles'))) {
-            return null;
+        $section = $this->section(request('section_id'));
+        $expand = (bool) request('expand');
+
+        $expanded = collect($this->expandedIds())
+            ->reject(fn($id) => $id == $section->id)
+            ->when($expand, fn($ids) => $ids->push($section->id))
+            ->values()->all();
+
+        RolesMatrixView::remember(['expanded' => $expanded]);
+
+        return $this->display($this->sectionContent($section, $expand));
+    }
+
+    public function changeRolePermission()
+    {
+        abort_unless($this->canWrite, 403);
+
+        $role = Role::findOrFail(request('role'));
+        $permission = Permission::findOrFail(request('permission'));
+
+        $this->applyPermissionType($role, $permission, PermissionTypeEnum::tryFrom((int) request($role->id . '-' . $permission->id)));
+        app(PermissionCacheInvalidator::class)->rolePermissionsChanged([$role->id]);
+
+        return $this->display($this->sectionHeader($this->section($permission->permission_section_id), true));
+    }
+
+    public function changeRolePermissionSection()
+    {
+        abort_unless($this->canWrite, 403);
+
+        $role = Role::findOrFail(request('role'));
+        $section = $this->section(request('permissionSection'));
+        $requested = PermissionTypeEnum::tryFrom((int) request('type'));
+
+        $this->visiblePermissions($section)->each(fn($permission) => $this->applyPermissionType($role, $permission, $requested));
+        app(PermissionCacheInvalidator::class)->rolePermissionsChanged([$role->id]);
+
+        return $this->display($this->sectionContent($section, in_array($section->id, $this->expandedIds())));
+    }
+
+    protected function roles()
+    {
+        return $this->roles ??= getRoles()->whereIn('id', array_filter((array) request('roles')))->values();
+    }
+
+    protected function search(): string
+    {
+        return trim((string) request('permission_name'));
+    }
+
+    protected function expandedIds(): array
+    {
+        if (request('restore')) {
+            return RolesMatrixView::expanded();
         }
 
-        $rolesIds = request('roles') ?: $this->defaultRolesIds->all();
-        $search = request('permission_name');
-        $sectionId = $permissionSection->id;
+        $open = match (true) {
+            (bool) request('collapse_all') => [],
+            (bool) request('expand_all') => $this->visibleSections()->pluck('id')->all(),
+            default => array_map('intval', array_keys((array) request('expanded'))),
+        };
 
-        return _LazyCollapsible(
-            $this->sectionHeader($permissionSection, $rolesIds),
-            fn() => new PermissionSectionRolesTable([
-                'search' => $search,
-                'permission_section_id' => $sectionId,
-                'roles_ids' => implode(',', $rolesIds),
-            ]),
-            'rows',
-            'subgroup-toggle' . $permissionSection->id,
-        );
+        $hidden = $this->sections()->pluck('id')->diff($this->visibleSections()->pluck('id'))->all();
+
+        return array_values(array_unique([...$open, ...array_intersect(RolesMatrixView::expanded(), $hidden)]));
     }
 
-    protected function warningElNoWritePermissions()
+    protected function sections()
     {
-        return _WarningBanner('auth.you-dont-have-permissions-to-change-the-assignations', 'auth.you-dont-have-permissions-to-change-the-assignations-sub')->class('mb-4');
+        return $this->sections ??= PermissionSection::get()
+            ->each(fn($section) => $section->setRelation('permissions', $section->getPermissions()))
+            ->filter(fn($section) => $section->permissions->isNotEmpty())
+            ->sortBy(fn($section) => mb_strtolower((string) $section->name))
+            ->values();
+    }
+
+    protected function visibleSections()
+    {
+        return $this->sections()->filter(fn($section) => $this->visiblePermissions($section)->isNotEmpty())->values();
+    }
+
+    protected function visiblePermissions($section)
+    {
+        return $section->permissions->filter(fn($permission) => $permission->matchesName($this->search()))->values();
+    }
+
+    protected function section($id)
+    {
+        return $this->sections()->firstWhere('id', $id) ?? abort(404);
+    }
+
+    protected function typeMap()
+    {
+        return $this->typeMap ??= \DB::table('permission_role')
+            ->whereIn('role', $this->roles()->pluck('id'))
+            ->get(['permission_id', 'role', 'permission_type'])
+            ->groupBy('permission_id')
+            ->map(fn($rows) => $rows->pluck('permission_type', 'role'));
+    }
+
+    protected function typeOf($role, $permission): ?int
+    {
+        $type = $this->typeMap()[$permission->id][$role->id] ?? null;
+
+        return $type === null ? null : (int) $type;
+    }
+
+    protected function aggregate($role, $section): SectionAggregate
+    {
+        return new SectionAggregate($this->visiblePermissions($section)->map(fn($permission) => $this->typeOf($role, $permission)));
+    }
+
+    protected function roleStats($role): array
+    {
+        $types = $this->typeMap()
+            ->map(fn($byRole) => $byRole[$role->id] ?? null)
+            ->filter(fn($type) => $type !== null)
+            ->map(fn($type) => (int) $type);
+
+        $deny = $types->filter(fn($type) => $type === PermissionTypeEnum::DENY->value)->count();
+
+        return ['access' => $types->count() - $deny, 'deny' => $deny];
+    }
+
+    protected function applyPermissionType($role, Permission $permission, ?PermissionTypeEnum $requested): void
+    {
+        $capped = $requested ? $this->capToSupportedTypes($requested, $permission) : null;
+
+        if (!$capped) {
+            $role->permissions()->detach([$permission->id]);
+
+            return;
+        }
+
+        $role->createOrUpdatePermission($permission->id, $capped, false);
+    }
+
+    protected function capToSupportedTypes(PermissionTypeEnum $requested, Permission $permission): ?PermissionTypeEnum
+    {
+        if ($permission->supportsType($requested)) {
+            return $requested;
+        }
+
+        return collect([PermissionTypeEnum::ALL, PermissionTypeEnum::WRITE, PermissionTypeEnum::READ])
+            ->first(fn($candidate) => $candidate->value < $requested->value && $permission->supportsType($candidate));
+    }
+
+    protected function display($element)
+    {
+        return $this->prepareOwnElementsForDisplay([$element])[0];
     }
 }

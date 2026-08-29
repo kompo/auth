@@ -22,16 +22,6 @@ enum PermissionTypeEnum: int
         };
     }
 
-    public function explanation()
-    {
-        return match($this) {
-            self::READ => 'permissions-permission-read-explanation',
-            self::WRITE => 'permissions-permission-write-explanation',
-            self::ALL => 'permissions-permission-all-explanation',
-            self::DENY => 'permissions-permission-deny-explanation',
-        };
-    }
-
     public function visibleInSelects()
     {
         return match ($this) {
@@ -58,6 +48,35 @@ enum PermissionTypeEnum: int
             self::ALL => 'bg-green-500',
             self::DENY => 'bg-red-500',
         };
+    }
+
+    public function cellClass(): string
+    {
+        return 'perm-chip perm-' . $this->code();
+    }
+
+    public static function fromCode(string $code): ?self
+    {
+        return collect(self::cases())->first(fn($case) => $case->code() === $code);
+    }
+
+    public static function cellClassesForPermission(\Kompo\Auth\Models\Teams\Permission $permission): array
+    {
+        return collect(self::forPermission($permission))->map(fn($value) => self::from($value)->cellClass())->all();
+    }
+
+    /**
+     * CSS custom properties carrying the translated state labels, read by the .perm-chip styles.
+     */
+    public static function cssLabelVars(): string
+    {
+        $labels = collect(self::cases())->mapWithKeys(fn($case) => [$case->code() => __($case->label())])
+            ->put('none', __('permissions-permission-none'))
+            ->put('deny', __('permissions-state-denied'));
+
+        return $labels
+            ->map(fn($label, $code) => '--perm-label-' . $code . ':"' . addcslashes($label, '"\\') . '"')
+            ->implode(';');
     }
 
     public static function values()

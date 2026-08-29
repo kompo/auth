@@ -2,151 +2,278 @@
 
 namespace Kompo\Auth\Teams\Roles;
 
-use Kompo\Auth\Facades\RoleModel;
-use Kompo\Auth\Models\Teams\Roles\Role;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
-use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 
 trait RoleElementsUtils
 {
-    public function multiSelect($defaultRolesIds = null)
+    protected function noWriteBanner()
     {
-        return _MultiSelect()->name('roles', false)->placeholder('auth-roles')->options(
-            getRoles()->mapWithKeys(fn($r) => [$r->id => _Html($r->name)->attr(['data-role-id' => $r->id, 'data-lowercase-name' => strtolower($r->name)])])->toArray()
-        )->default($defaultRolesIds ?? [])
-            // Debounce so rapid multi-select changes merge into a single
-            // getRoleUpdate AJAX. Without this, sequential responses overwrite
-            // each other in #hidden-roles and earlier templates get lost,
-            // leaving spinners stuck "loading forever".
-            ->debounce(350)
-            ->onChange(
-                fn($e) => $e->run('precreateRoleVisuals')
-                    && $e->selfPost('getRoleUpdate')->inPanel('hidden-roles')->run('injectRoleContent')
-            );
+        return _WarningBanner(
+            'auth.you-dont-have-permissions-to-change-the-assignations',
+            'auth.you-dont-have-permissions-to-change-the-assignations-sub',
+        )->class('mb-4');
     }
 
-    public function roleHeader($role, $i = 1)
+    protected function toolbar(array $selectedRoles, string $search)
     {
-        return _Panel(
+        return _Flex(
+            _MultiSelect()->name('roles', false)->placeholder('auth-roles')
+                ->options(getRoles()->pluck('name', 'id')->all())->default($selectedRoles)
+                ->class('flex-1 min-w-[260px] !mb-0')
+                ->onChange(fn($e) => $this->gridRequest($e)->after(300)),
+            _Input()->name('permission_name', false)->placeholder('permissions-search-placeholder')
+                ->icon(_SaxSvg('search-normal', 16))->value($search)
+                ->class('w-[280px] !mb-0')->inputClass('!rounded-full')
+                ->debounce(350)->onInput(fn($e) => $this->gridRequest($e)),
+        )->class('roles-toolbar !items-end gap-4 mb-3');
+    }
+
+    protected function gridRequest($e, array $params = [])
+    {
+        // An empty PHP array reaches Vue as a JS array, which URLSearchParams serializes to nothing.
+        return $e->selfGet('getGrid', $params ?: null)->withAllFormValues()->withLoadingIn('roles-grid-wrap')->inPanel('roles-grid');
+    }
+
+    protected function grid(array $expanded)
+    {
+        $hasRoles = $this->roles()->isNotEmpty();
+        $sections = $hasRoles ? $this->visibleSections() : collect();
+
+        return _Div(
+            $this->rolesHeader(),
+            $this->gridHint($hasRoles, $sections->isNotEmpty()),
+            ...$sections->map(fn($section) => _Panel($this->sectionContent($section, in_array($section->id, $expanded)))->id($this->sectionPanelId($section)))->all(),
+        )->class('roles-grid-inner')->style('--rm-n:' . max(1, $this->roles()->count() - 1));
+    }
+
+    protected function gridHint(bool $hasRoles, bool $hasSections)
+    {
+        if (!$hasRoles) {
+            return $this->emptyState(__('permissions-no-role-selected'), __('permissions-no-role-selected-sub'));
+        }
+
+        return $hasSections ? null : $this->emptyState(__('permissions-no-results', ['term' => e($this->search())]));
+    }
+
+    protected function rolesHeader()
+    {
+        $counts = ['permissions' => $this->sections()->sum(fn($section) => $section->permissions->count()), 'sections' => $this->sections()->count()];
+
+        return _Div(
+            _Div(
+                _Html('auth-permission')->class('roles-corner-eyebrow'),
+                _Html(__('permissions-matrix-corner', $counts))->class('roles-corner-meta'),
+                _Flex(
+                    _Link('permissions-expand-all')->onClick(fn($e) => $this->gridRequest($e, ['expand_all' => 1])),
+                    _Link('permissions-collapse-all')->onClick(fn($e) => $this->gridRequest($e, ['collapse_all' => 1])),
+                )->class('roles-corner-actions'),
+            )->class('roles-cell roles-first roles-corner'),
+            ...$this->roles()->map(fn($role) => $this->roleHeader($role))->all(),
+        )->id('roles-header')->class('roles-row roles-rail');
+    }
+
+    protected function roleHeader($role)
+    {
+        return _Div(
             _Flex(
-                _Html($role?->name ?? '&nbsp;')
-                    ->class('flex-1 text-center'),
-                !$role ? null : _TripleDotsDropdown(
-                    _Link('permissions-edit')->class('py-1 px-2')->selfGet('getRoleForm', ['id' => $role?->id])->inModal(),
-                    !$role->canSeeDeletedButton() ? null : (
-                        !$role->hasPendingActionsToDelete() ? _DeleteLink('permissions-delete')->class('py-1 px-2 text-red-500')->selfPost('deleteRole', ['id' => $role?->id])->refresh() :
-                            _Link('permissions-delete')->class('py-1 px-2 text-red-500')
-                                ->selfPost('getPendingActionsToDeleteRoleModal', ['id' => $role?->id])->inModal()
-                    ),
-                )->class('flex-shrink-0')->checkAuthWrite('Role'),
-            )->class('h-full items-center gap-1 px-2 w-full'),
-        )
-        ->class('w-32 flex-shrink-0 relative bg-white h-full overflow-hidden')
-        ->when($i == 0, fn($e) => $e->class('border-r border-gray-300'))
-        ->id('role-header-' . $role?->id)
-        ->attr(['data-role-id' => $role?->id]);
+                _Html(e($role->name))->class('roles-role-name')->attr(['title' => $role->name]),
+                !$role->from_system ? null : _Html('permissions-system-role')->class('roles-role-system'),
+            )->class('gap-2 !items-start'),
+            _Html(__('permissions-role-meta', $this->roleStats($role)))->class('roles-role-meta'),
+            $this->roleMenu($role),
+        )->id('role-header-' . $role->id)->class('roles-cell roles-role-header');
     }
 
-    public function getPendingActionsToDeleteRoleModal($roleId)
+    protected function roleMenu($role)
     {
-        return new PendingActionsToDeleteRoleModal($roleId);
+        return _TripleDotsDropdown(
+            _Link('permissions-edit')->icon(_SaxSvg('edit-2', 16))->class('roles-menu-item')
+                ->selfGet('getRoleForm', ['id' => $role->id])->inModal(),
+            !$role->canSeeDeletedButton() ? null : ($role->hasPendingActionsToDelete()
+                ? _Link('permissions-delete')->icon(_SaxSvg('trash', 16))->class('roles-menu-item is-danger')
+                    ->selfPost('getPendingActionsToDeleteRoleModal', ['id' => $role->id])->inModal()
+                : _DeleteLink('permissions-delete')->icon(_SaxSvg('trash', 16))->class('roles-menu-item is-danger')
+                    ->selfPost('deleteRole', ['id' => $role->id])),
+        )->class('roles-role-menu')->checkAuthWrite('Role');
+    }
+
+    protected function sectionPanelId($section): string
+    {
+        return 'section-' . $section->id;
+    }
+
+    protected function sectionHeadPanelId($section): string
+    {
+        return 'section-head-' . $section->id;
+    }
+
+    protected function sectionBodyPanelId($section): string
+    {
+        return 'section-body-' . $section->id;
+    }
+
+    protected function sectionContent($section, bool $expanded)
+    {
+        $panelId = $this->sectionPanelId($section);
+
+        return _Rows(
+            _Panel($this->sectionHeader($section, $expanded))->id($this->sectionHeadPanelId($section)),
+            _Link()->class('roles-section-fetch hidden')
+                ->onClick(fn($e) => $e->selfGet('toggleSection', ['section_id' => $section->id, 'expand' => 1])
+                    ->withAllFormValues()->withLoadingIn($panelId)->inPanel($panelId)),
+            !$expanded ? null : _Panel($this->sectionBody($section))->id($this->sectionBodyPanelId($section))->class('roles-section-body'),
+        )->class('roles-section');
+    }
+
+    protected function sectionBody($section)
+    {
+        return _Rows(
+            _Hidden()->name('expanded[' . $section->id . ']', false)->value(1),
+            ...$this->visiblePermissions($section)->map(fn($permission) => $this->permissionRow($permission, $section))->all(),
+        );
+    }
+
+    protected function sectionHeader($section, bool $expanded)
+    {
+        return _Div(
+            _Div(
+                _Link(e($section->name) . $this->sectionCount($section))->icon(_SaxSvg('arrow-down-1', 16))
+                    ->class('roles-section-toggle')
+                    ->onClick(fn($e) => $e->run($this->sectionToggleJs()) && $e->toggleId($this->sectionBodyPanelId($section), false)),
+                !isAppSuperAdmin() ? null : _Link()->icon('pencil')->class('roles-section-edit')
+                    ->selfGet('getEditSectionInfoForm', ['section_id' => $section->id])->inModal(),
+            )->class('roles-cell roles-first'),
+            ...$this->roles()->map(fn($role) => $this->aggregateCell($role, $section))->all(),
+        )->class('roles-row roles-section-header')->attr(['data-expanded' => (int) $expanded]);
     }
 
     /**
-     * The collapsible section header — section name + edit pencil + per-role
-     * aggregate widget. Lives on its own (outside PermissionSectionRolesTable)
-     * so the permission rows can be lazy-loaded below it.
-     *
-     * Clicking the header: toggles the rows panel below + fetches the rows
-     * via selfGet on first expand (subsequent toggles just slide-toggle the
-     * cached DOM via toggleSubGroup; idempotent re-fetch on re-expand is
-     * cheap and keeps state fresh).
+     * First expand fetches the rows; afterwards the loaded body is only shown/hidden (see toggleId).
      */
-    public function sectionHeader($permissionSection, $rolesIds)
+    protected function sectionToggleJs(): string
     {
-        $roles = getRoles()->whereIn('id', $rolesIds)->values();
-        $roles->each(fn($role) => $role->setRelation('permissionsTypes',
-            $role->memoize('permissionsTypes', fn() => $role->permissionsTypes()->get())
-        ));
-
-        return _Flex(
-            _FlexCenter(
-                _Html()->icon('icon-up')->id('subgroup-toggle' . $permissionSection->id),
-                _Html($permissionSection->name)->class('text-gray-600'),
-                !isAppSuperAdmin() ? null : _Link()->icon('pencil')->class('right-2 top-2 absolute')
-                    ->selfGet('getEditSectionInfoForm', ['section_id' => $permissionSection->id])->inModal(),
-            )->class('gap-1 bg-level4 border-r border-level1/30 relative'),
-            ...$roles->map(fn($role) => _Rows(
-                $this->sectionCheckbox($role, $permissionSection,
-                    explode('|', $role->permissionsTypes->where('permission_section_id', $permissionSection->id)->first()?->permission_type ?: '0')
-                ),
-            )->class('w-32 flex-shrink-0 items-center')->attr(['data-role-id' => $role->id])),
-        )
-        ->attr(['data-permission-section-id' => $permissionSection->id])
-        ->class('bg-level4 roles-manager-rows w-max')
-        ->class('button-toggle' . $permissionSection->id)
-        ->class('hover:bg-level4 cursor-pointer');
-        // Click handler (slide-toggle + lazy-load) is added by _LazyCollapsible
-        // wrapping this header in RolesAndPermissionMatrix::render().
+        return <<<'JS'
+            ({ el }) => {
+                const section = el.element.closest('.roles-section');
+                const body = section.querySelector('.roles-section-body');
+                if (!body) return section.querySelector('.roles-section-fetch').click();
+                section.querySelector('.roles-section-header').dataset.expanded = body.style.display === 'none' ? '0' : '1';
+            }
+        JS;
     }
 
-    public function sectionRoleEl($role, $permission, $permissionSectionId, $permissionsIds, $default = null)
+    protected function sectionCount($section): string
     {
-        $userHasWritePermission = auth()->user()->hasPermission('Role', PermissionTypeEnum::WRITE);
+        $shown = $this->visiblePermissions($section)->count();
+        $total = $section->permissions->count();
+        $filtered = $shown < $total;
 
-        return _Rows(_CheckboxMultipleStates(
-            $role->id . '-' . $permission->id,
-            PermissionTypeEnum::forPermission($permission),
-            PermissionTypeEnum::colorsForPermission($permission),
-            $default ?? $role->getPermissionTypeByPermissionId($permission->id),
-            $userHasWritePermission
-        )->class('!mb-0')
-            ->group($role->id . '-' . $permissionSectionId)
-            ->permissionId($permission->id)
-            ->when($userHasWritePermission,
-                fn($el) => $el->onChange(
-                    fn($e) => $e->selfPost('changeRolePermission', ['role' => $role->id, 'permission' => $permission->id])
-                )
-            )
-        )->class('w-32 flex-shrink-0 items-center')->attr(['data-role-id' => $role->id]);
+        return '<span class="roles-section-count' . ($filtered ? ' is-filtered' : '') . '">' . ($filtered ? "$shown / $total" : $total) . '</span>';
     }
 
-    public function sectionCheckbox($role, $permissionSection, $types = [])
+    protected function aggregateCell($role, $section)
     {
-        $role = is_string($role) ? Role::findOrFail($role) : $role;
-        $checkboxName = 'permissionSection' . $role->id . '-' . $permissionSection->id;
-        $userHasWritePermission = auth()->user()->hasPermission('Role', PermissionTypeEnum::WRITE);
+        $aggregate = $this->aggregate($role, $section);
 
-        return _Rows(_CheckboxSectionMultipleStates(
-            $checkboxName,
-            PermissionTypeEnum::forSection($permissionSection),
-            PermissionTypeEnum::colorsForSection($permissionSection),
-            count($types) ? $types : $permissionSection->allPermissionsTypes($role)->toArray(),
-            $userHasWritePermission
-        )->class('!mb-0')
-        ->group($role->id . '-' . $permissionSection->id)
-        ->when($userHasWritePermission,
-            fn($el) => $el->onChange(
-                fn($e) => $e
-                    ->selfPost('changeRolePermissionSection', [
-                        'role' => $role->id,
-                        'permissionSection' => $permissionSection->id,
-                        'permission_name' => request('permission_name'),
-                    ])->run('reduceApplyingChangesAlert')
-                    && $e->run('() => { setApplyingChangesAlert(); }')
-            ))
-        )->attr(['data-role-id' => $role->id]);
+        $pill = !$this->canWrite
+            ? _Html($aggregate->html())->class('opacity-60')
+            : _Dropdown()->icon($aggregate->html())->noCaret()->openOnClick()
+                ->togglerClass('roles-agg-toggle')->class('roles-agg-menu')
+                ->submenu(...$this->applyMenu($role, $section, $aggregate));
+
+        return _Div($pill)->class('roles-cell');
     }
 
-    public function deleteRole()
+    protected function applyMenu($role, $section, SectionAggregate $aggregate): array
     {
-        $role = RoleModel::findOrFail(request('id'));
-        app(PermissionCacheInvalidator::class)->roleChanged($role);
-        
-        return response()->kompoMulti([
-            response()->closeModal(),
-            response()->kompoRun('() => { window.utils.setLoadingScreen() }'),
-            response()->kompoRedirect(route('roles.manage')),
-        ]);
+        $visible = $this->visiblePermissions($section);
+        $readOnlyCount = $visible->reject(fn($permission) => $permission->supportsType(PermissionTypeEnum::ALL))->count();
+        $filtered = $visible->count() < $section->permissions->count();
+
+        $note = $filtered
+            ? __('permissions-filter-active-applies-to', ['n' => $visible->count(), 'total' => $section->permissions->count()])
+            : __('permissions-concerned-count', ['n' => $visible->count()]);
+        $note .= $readOnlyCount ? ' ' . __('permissions-concerned-read-only', ['n' => $readOnlyCount]) : '';
+
+        $types = collect(PermissionTypeEnum::forSection($section))->map(fn($value) => PermissionTypeEnum::from($value));
+
+        return [
+            _Html(__('permissions-apply-to-section') . '<small>' . e($section->name) . ' · ' . e($role->name) . '</small>')->class('roles-menu-head'),
+            ...$types->map(fn($type) => $this->applyMenuItem($role, $section, $type, $aggregate->kind))->all(),
+            _Html()->class('roles-menu-sep'),
+            $this->applyMenuItem($role, $section, null, $aggregate->kind),
+            _Html($note)->class('roles-menu-note'),
+        ];
+    }
+
+    protected function applyMenuItem($role, $section, ?PermissionTypeEnum $type, string $currentKind)
+    {
+        $panelId = $this->sectionPanelId($section);
+        $code = $type?->code() ?? 'none';
+
+        return _Link($type ? $type->label() : 'permissions-remove-all-access')
+            ->icon('<span class="roles-menu-swatch perm-chip perm-' . $code . '"></span>')
+            ->class('roles-menu-item')->class($currentKind === $code ? 'is-current' : '')
+            ->onClick(fn($e) => $e->selfPost('changeRolePermissionSection', [
+                'role' => $role->id,
+                'permissionSection' => $section->id,
+                'type' => $type?->value ?? 0,
+            ])->withAllFormValues()->withLoadingIn($panelId)->inPanel($panelId));
+    }
+
+    protected function permissionRow($permission, $section)
+    {
+        return _Div(
+            _Div(
+                _Link($this->highlightedName($permission))->class('roles-permission-name')
+                    ->selfGet('getPermissionInfoModal', ['permission_id' => $permission->id])->inModal(),
+                $permission->supportsType(PermissionTypeEnum::ALL) ? null : _Html('permissions-read-only-permission')->class('roles-permission-tag'),
+            )->class('roles-cell roles-first'),
+            ...$this->roles()->map(fn($role) => $this->cell($role, $permission, $section))->all(),
+        )->class('roles-row roles-permission')->class($permission->object_type?->classes() ?? '');
+    }
+
+    protected function cell($role, $permission, $section)
+    {
+        $headerPanelId = $this->sectionHeadPanelId($section);
+
+        return _Div(
+            _CheckboxMultipleStates(
+                $role->id . '-' . $permission->id,
+                PermissionTypeEnum::forPermission($permission),
+                PermissionTypeEnum::cellClassesForPermission($permission),
+                $this->typeOf($role, $permission),
+                $this->canWrite,
+            )->config(['doesNotFill' => true])->class('!mb-0')
+            ->when($this->canWrite, fn($el) => $el->onChange(
+                fn($e) => $e->selfPost('changeRolePermission', ['role' => $role->id, 'permission' => $permission->id])
+                    ->withAllFormValues()->inPanel($headerPanelId)
+            )),
+        )->class('roles-cell');
+    }
+
+    protected function highlightedName($permission): string
+    {
+        $name = (string) $permission->permission_name;
+        $term = $this->search();
+        $position = $term === '' ? false : mb_stripos($name, $term);
+
+        if ($position === false) {
+            return e($name);
+        }
+
+        $length = mb_strlen($term);
+
+        return e(mb_substr($name, 0, $position))
+            . '<mark>' . e(mb_substr($name, $position, $length)) . '</mark>'
+            . e(mb_substr($name, $position + $length));
+    }
+
+    protected function emptyState(string $title, ?string $subtitle = null)
+    {
+        return _Rows(
+            _Html($title)->class('roles-empty-title'),
+            !$subtitle ? null : _Html($subtitle),
+        )->class('roles-empty');
     }
 }

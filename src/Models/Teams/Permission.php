@@ -46,6 +46,13 @@ class Permission extends Model implements OptsOutOfSecurity
         return $type->isSupportedBy((int) ($this->supported_types ?? PermissionTypeEnum::ALL->value));
     }
 
+    public function matchesName(?string $term): bool
+    {
+        $fold = fn($text) => \Str::lower(\Str::ascii((string) $text));
+
+        return !$term || str_contains($fold($this->permission_name), $fold($term));
+    }
+
     /** @var list<PermissionTypeEnum>|null */
     protected ?array $cachedSupportedTypes = null;
 

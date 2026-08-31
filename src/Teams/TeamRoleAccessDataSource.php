@@ -29,10 +29,10 @@ class TeamRoleAccessDataSource implements TeamRoleAccessDataSourceInterface
             ])
             ->where('team_roles.user_id', $user->id)
             ->whereHas('team')
-            ->whereHas('roleRelation', fn($query) => $query->when(
-                $profile !== null && $profile !== '',
-                fn($query) => $query->where('profile', $profile)
-            ))
+            // ->whereHas('roleRelation', fn($query) => $query->when(
+            //     $profile !== null && $profile !== '',
+            //     fn($query) => $query->where('profile', $profile)
+            // ))
             ->with([
                 'team' => fn($query) => $query->select($teamSelect),
                 'roleRelation' => fn($query) => $query->select(['roles.id', 'roles.name', 'roles.profile']),

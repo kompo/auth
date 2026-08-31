@@ -115,19 +115,10 @@ trait HasTeamsRelations
         );
     }
 
-    /**
-     * A Kompo action expects a kompo response — a 302 would be followed by the XHR and
-     * the login page swallowed as its payload. Everything else, including Kompo's own
-     * turbo navigation, expects HTML: TurboClick does a bare axios.get and feeds the
-     * body to DOMParser, so a JSON payload lands on the page as "[object Object]".
-     * expectsJson() cannot tell those two apart — both are XHRs — but only an action
-     * carries Kompo's headers.
-     */
+    /** Kept for overrides of noTeamRoleResponse(); the shaping lives in kompoAwareRedirect(). */
     protected static function redirectAfterLosingTeamRole(string $url)
     {
-        return request()->header(\Kompo\Core\KompoAction::$key)
-            ? response()->kompoRedirect($url)
-            : redirect()->to($url);
+        return kompoAwareRedirect($url);
     }
 
     public function ownedTeams()

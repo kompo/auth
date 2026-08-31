@@ -564,3 +564,17 @@ if (!function_exists('batchLoadFieldProtection')) {
         return HasSecurity::batchLoadFieldProtectionPermissions($models);
     }
 }
+
+/**
+ * A Kompo action expects a kompo response — a 302 would be followed by the XHR and the
+ * login page swallowed as its payload. Everything else, including Kompo's own turbo
+ * navigation, expects HTML. Only an action carries Kompo's header.
+ */
+if (!function_exists('kompoAwareRedirect')) {
+    function kompoAwareRedirect(string $url)
+    {
+        return request()->header(\Kompo\Core\KompoAction::$key)
+            ? response()->kompoRedirect($url)
+            : redirect()->to($url);
+    }
+}

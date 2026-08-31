@@ -2,8 +2,10 @@
 
 namespace Kompo\Auth;
 
+use Condoedge\Utils\Kompo\Common\Grid;
 use Condoedge\Utils\Kompo\Common\Modal;
 use Condoedge\Utils\Kompo\Common\Query;
+use Condoedge\Utils\Kompo\Common\Table;
 use Condoedge\Utils\Models\ModelBase;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -12,6 +14,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Kompo\Auth\Common\Plugins\HasAuthorizationUtils;
+use Kompo\Auth\Common\Plugins\RequiresAuthentication;
 use Kompo\Auth\Models\Plugins\HasSecurity;
 use Condoedge\Utils\Kompo\Common\Form;
 use Kompo\Auth\Commands\CleanupRedundantHierarchyRoles;
@@ -143,6 +146,14 @@ class KompoAuthServiceProvider extends ServiceProvider
             Query::setPlugins([HasAuthorizationUtils::class]);
             Form::setPlugins([HasAuthorizationUtils::class]);
             Modal::setPlugins([HasAuthorizationUtils::class]);
+
+            // Every utils base that carries HasComponentPlugins; PluginsManager does not
+            // climb from Table/Grid to Query (they descend from Kompo's, not utils').
+            Query::setPlugins([RequiresAuthentication::class]);
+            Table::setPlugins([RequiresAuthentication::class]);
+            Grid::setPlugins([RequiresAuthentication::class]);
+            Form::setPlugins([RequiresAuthentication::class]);
+            Modal::setPlugins([RequiresAuthentication::class]);
         }
 
         if (config('kompo-auth.include-auth-routes', true)) {

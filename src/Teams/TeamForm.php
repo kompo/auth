@@ -22,7 +22,9 @@ class TeamForm extends Modal
 
     public function beforeSave()
     {
-        //
+        if (!isSuperAdmin()) {
+            $this->model->active_at = $this->model->active_at ?: now();
+        }
     }
 
     public function afterSave()
@@ -86,10 +88,15 @@ class TeamForm extends Modal
 
     public function rules()
     {
-        return [
+        $rules = [
             'team_name' => 'required',
-            'active_at' => 'required|date',
-            'inactive_at' => 'nullable|date|after:active_at',
         ];
+
+        if (isSuperAdmin()) {
+            $rules['active_at'] = 'required|date';
+            $rules['inactive_at'] = 'nullable|date|after:active_at';
+        }
+
+        return $rules;
     }
 }

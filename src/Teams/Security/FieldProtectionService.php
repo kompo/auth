@@ -56,7 +56,9 @@ class FieldProtectionService implements FieldProtectionServiceInterface
     public function hideSensitiveFields($model, array $sensibleColumns): void
     {
         try {
-            $currentAttributes = $model->getRawOriginal();
+            // Strip from the CURRENT attributes, not getRawOriginal(): rebuilding
+            // from the original would restore columns a previous group already hid.
+            $currentAttributes = $model->getAttributes();
             $filteredAttributes = array_diff_key($currentAttributes, array_flip($sensibleColumns));
             $model->setRawAttributes($filteredAttributes);
         } catch (\Throwable $e) {

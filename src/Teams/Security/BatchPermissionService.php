@@ -138,6 +138,12 @@ class BatchPermissionService
      * The resolver caches the answer for the request; subsequent calls (and
      * other code paths that go through `User->hasPermission`) share the same
      * cached result.
+     *
+     * A model can sit in several team buckets (e.g. a Person active in three
+     * teams). One authorized team must win over the others denying — the
+     * ANY-of-teams semantics of `User->hasPermission($key, READ, $teamIds)` —
+     * and blocking is one-way, so grants are collected first and protection
+     * applied once at the end to the models no bucket authorized.
      */
     protected function batchProcessGroup($modelsCollection, array $group, int $userId, $user): void
     {
@@ -145,26 +151,33 @@ class BatchPermissionService
         $authorizedTeams = $this->getAuthorizedTeams($user, $group['key']);
         $processingPlan = $this->calculateProcessingPlan($teamModelMap, $authorizedTeams);
 
+        $authorizedModelIds = [];
+        foreach ($processingPlan['authorized_models'] as $model) {
+            $authorizedModelIds[spl_object_id($model)] = true;
+        }
+
+        $protectionCandidates = [];
         foreach ($processingPlan['needs_check'] as $teamKey => $models) {
             $teamId = $teamKey === 'no_team' ? null : (int) str_replace('team_', '', $teamKey);
 
             if ($this->resolverAllows($userId, $group['key'], $teamId)) {
+                foreach ($models as $model) {
+                    $authorizedModelIds[spl_object_id($model)] = true;
+                }
                 continue;
             }
 
             foreach ($models as $model) {
-                if (!$this->isModelBypassed($model)) {
-                    $this->applyGroupProtection($model, $group);
-                }
+                $protectionCandidates[spl_object_id($model)] = $model;
             }
         }
 
-        // unauthorized_models is populated only by legacy callers; calculateProcessingPlan
-        // does not currently fill it. Kept for forward compatibility.
-        foreach ($processingPlan['unauthorized_models'] as $model) {
-            if (!$this->isModelBypassed($model)) {
-                $this->applyGroupProtection($model, $group);
+        foreach ($protectionCandidates as $objectId => $model) {
+            if (isset($authorizedModelIds[$objectId]) || $this->isModelBypassed($model)) {
+                continue;
             }
+
+            $this->applyGroupProtection($model, $group);
         }
     }
 
@@ -268,7 +281,6 @@ class BatchPermissionService
     {
         $plan = [
             'authorized_models' => [],
-            'unauthorized_models' => [],
             'needs_check' => []
         ];
 

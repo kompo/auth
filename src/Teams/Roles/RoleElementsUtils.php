@@ -149,15 +149,17 @@ trait RoleElementsUtils
 
     /**
      * First expand fetches the rows; afterwards the loaded body is only shown/hidden (see toggleId).
+     * The arrow flips with the click instead of reading v-show: run() fires on $nextTick, which may
+     * land before Vue applies display:none, so observing the DOM gave a stale (inverted) state.
      */
     protected function sectionToggleJs(): string
     {
         return <<<'JS'
             ({ el }) => {
                 const section = el.element.closest('.roles-section');
-                const body = section.querySelector('.roles-section-body');
-                if (!body) return section.querySelector('.roles-section-fetch').click();
-                section.querySelector('.roles-section-header').dataset.expanded = body.style.display === 'none' ? '0' : '1';
+                if (!section.querySelector('.roles-section-body')) return section.querySelector('.roles-section-fetch').click();
+                const header = section.querySelector('.roles-section-header');
+                header.dataset.expanded = header.dataset.expanded === '1' ? '0' : '1';
             }
         JS;
     }

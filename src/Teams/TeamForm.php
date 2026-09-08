@@ -29,7 +29,7 @@ class TeamForm extends Modal
 
     public function afterSave()
     {
-        $this->model->createOrDeleteMainPhoneFromNumber(request('phone'));
+        $this->model->createOrDeleteMainPhoneFromNumber(request('phone'), request()->input('phone_ext', false));
         $this->model->createOrDeleteMainEmailFromAddress(request('email'));
     }
 
@@ -63,7 +63,8 @@ class TeamForm extends Modal
         return [
             $this->addressInput(),
             _InputEmail('team-email')->name('email', false)->default($this->model->getFirstValidEmailLabel())->class('mb-2'),
-            _InternationalPhoneInput('team-phone')->name('phone', false)->default($this->model->getFirstValidPhoneToInputs())->class('mb-2 whiteField'),
+            _InternationalPhoneInput('team-phone')->name('phone', false)->default($this->model->getFirstValidPhoneToInputs())
+                ->withExtension($this->model->getFirstValidPhoneExtension())->class('mb-2 whiteField'),
             _Input('team-facebook-url')->name('facebook_url')->class('mb-2'),
             _Input('team-instagram')->name('instagram')->class('mb-2'),
         ];

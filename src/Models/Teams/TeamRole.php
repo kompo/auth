@@ -121,6 +121,8 @@ class TeamRole extends Model implements ScopedToTeam, HasOwnedRecords
     public function scopeValid($query)
     {
         static::applyValidConditions($query);
+            
+        $query->withValidTeamAndRole();
     }
 
     /**

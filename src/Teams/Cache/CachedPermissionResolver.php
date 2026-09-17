@@ -31,7 +31,7 @@ class CachedPermissionResolver implements PermissionResolverInterface
         $teamIds = null
     ): bool {
         $version = $this->versions->get($userId);
-        $requestKey = 'user_permission_check.' . $userId . '.v' . $version . '.' . $permissionKey . '|' . $type->value . '|' . $this->teamIdsKey($teamIds);
+        $requestKey = 'user_permission_check.' . $userId . '.v' . $version . '.' . $permissionKey . '|' . $type->value . '|' . CacheKeyBuilder::teamIdsKey($teamIds);
 
         return $this->cache->rememberRequest($requestKey, function () use ($userId, $permissionKey, $type, $teamIds) {
             if (globalSecurityBypass()) {
@@ -103,7 +103,7 @@ class CachedPermissionResolver implements PermissionResolverInterface
     public function getUserActiveTeamRoles(int $userId, $teamIds = null): Collection
     {
         $version = $this->versions->get($userId);
-        $key = 'user_active_team_roles.' . $userId . '.v' . $version . '.' . $this->teamIdsKey($teamIds);
+        $key = 'user_active_team_roles.' . $userId . '.v' . $version . '.' . CacheKeyBuilder::teamIdsKey($teamIds);
 
         return $this->cache->remember(
             $key,
@@ -224,22 +224,5 @@ class CachedPermissionResolver implements PermissionResolverInterface
     private function userIsSuperAdmin(int $userId): bool
     {
         return $this->context->isSuperAdmin($userId, fn() => $this->inner->userIsSuperAdmin($userId));
-    }
-
-    private function teamIdsKey($teamIds): string
-    {
-        if ($teamIds === null) {
-            return 'global';
-        }
-
-        if ($teamIds instanceof Collection) {
-            $teamIds = $teamIds->all();
-        }
-
-        if (is_iterable($teamIds)) {
-            return md5(json_encode(collect($teamIds)->sort()->values()));
-        }
-
-        return (string) $teamIds;
     }
 }

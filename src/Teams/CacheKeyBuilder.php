@@ -49,13 +49,24 @@ class CacheKeyBuilder
      */
     public static function userPermissions(int|string $userId, $teamIds = null, int $version = 0): string
     {
-        $teamKey = $teamIds ?
-            md5(json_encode(collect($teamIds)->sort()->values())) :
-            'all';
+        $teamKey = static::teamIdsKey($teamIds);
 
         $versionSegment = $version > 0 ? "v{$version}." : '';
 
         return "user_permissions.{$userId}.{$versionSegment}{$teamKey}";
+    }
+
+    /**
+     * Single team segment for every per-team key: "5" and 5 share it, and only null is global
+     * (the resolver treats [] / "" as "no teams"). Mirrors PermissionResolver::normalizeIds().
+     */
+    public static function teamIdsKey($teamIds): string
+    {
+        if ($teamIds === null) {
+            return 'all';
+        }
+
+        return md5(json_encode(collect($teamIds)->map(fn ($id) => (int) $id)->filter()->unique()->sort()->values()));
     }
 
     /**
@@ -67,10 +78,7 @@ class CacheKeyBuilder
      */
     public static function userAllowSet(int|string $userId, int $version, $teamIds = null): string
     {
-        $teamKey = $teamIds
-            ? md5(json_encode(collect($teamIds)->sort()->values()))
-            : 'all';
-        return "user_allow.{$userId}.v{$version}.{$teamKey}";
+        return "user_allow.{$userId}.v{$version}." . static::teamIdsKey($teamIds);
     }
 
     /**
@@ -81,10 +89,7 @@ class CacheKeyBuilder
      */
     public static function userDenySet(int|string $userId, int $version, $teamIds = null): string
     {
-        $teamKey = $teamIds
-            ? md5(json_encode(collect($teamIds)->sort()->values()))
-            : 'all';
-        return "user_deny.{$userId}.v{$version}.{$teamKey}";
+        return "user_deny.{$userId}.v{$version}." . static::teamIdsKey($teamIds);
     }
 
     /**

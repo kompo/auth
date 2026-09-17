@@ -153,23 +153,12 @@ class UserPermissionSet
 
     private function readyKey(int|string $userId, int $version, $teamIds): string
     {
-        return 'user_permset_ready.' . $userId . '.v' . $version . '.' . $this->teamKey($teamIds);
-    }
-
-    private function teamKey($teamIds): string
-    {
-        if ($teamIds === null) {
-            return 'all';
-        }
-        if (is_iterable($teamIds)) {
-            return md5(json_encode(collect($teamIds)->sort()->values()));
-        }
-        return (string) $teamIds;
+        return 'user_permset_ready.' . $userId . '.v' . $version . '.' . CacheKeyBuilder::teamIdsKey($teamIds);
     }
 
     private function cacheSlot(int|string $userId, int $version, $teamIds): string
     {
-        return $userId . '.' . $version . '.' . $this->teamKey($teamIds);
+        return $userId . '.' . $version . '.' . CacheKeyBuilder::teamIdsKey($teamIds);
     }
 
     private function redis()

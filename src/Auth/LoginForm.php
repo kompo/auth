@@ -27,7 +27,9 @@ class LoginForm extends ImgFormLayout
             _ErrorField()->noInputWrapper()->name('error_field', false)->class('ErrorCard'),
 
 			_Input('auth-email')->name('email')->default($this->email)->required(),
-			_PasswordInput('auth-password')->name('password')->required(),
+			_PasswordInput('auth-password')->name('password')->required()
+                // Fix the non-redirect issue when hitting enter and logging in
+                ->onEnter->submit()->redirect($this->redirectTo),
             _Checkbox('auth-remember-me')->name('remember'),
 			_FlexEnd(
                 _Link('auth-forgot-your-password?')

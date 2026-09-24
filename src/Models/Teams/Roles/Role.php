@@ -167,29 +167,16 @@ class Role extends Model implements OptsOutOfSecurity
     }
 
     /**
-     * Strip any hierarchy component this role no longer permits from its existing
-     * team_roles. The role_hierarchy is otherwise only derived at assignment time
-     * (TeamRole::catchRightHiearchyBasedOnRole), so toggling roll-down/neighbours
-     * off would leave stale grants behind.
-     *
-     * Targeted (not a blanket recompute) so per-row values like DISABLED_BELOW and
-     * plain DIRECT are preserved. Idempotent: rows that don't over-grant never match.
+     * Re-derive the hierarchy of every assignment of this role from its roll flags, the same way
+     * a new assignment gets it (both directions). DISABLED_BELOW is an explicit per-row block, kept.
      */
-    public function clampTeamRolesHierarchyToRollFlags(): void
+    public function syncTeamRolesHierarchyToRollFlags(): void
     {
-        if (!$this->accept_roll_to_child) { // strip BELOW
-            $this->teamRolesAllStatuses()->where('role_hierarchy', RoleHierarchyEnum::DIRECT_AND_BELOW)
-                ->update(['role_hierarchy' => RoleHierarchyEnum::DIRECT]);                       // A -> B
-            $this->teamRolesAllStatuses()->where('role_hierarchy', RoleHierarchyEnum::DIRECT_AND_BELOW_AND_NEIGHBOURS)
-                ->update(['role_hierarchy' => RoleHierarchyEnum::DIRECT_AND_NEIGHBOURS]);         // E -> C
-        }
+        $hierarchy = TeamRole::catchRightHiearchyBasedOnRole($this);
 
-        if (!$this->accept_roll_to_neighbourg) { // strip NEIGHBOURS
-            $this->teamRolesAllStatuses()->where('role_hierarchy', RoleHierarchyEnum::DIRECT_AND_NEIGHBOURS)
-                ->update(['role_hierarchy' => RoleHierarchyEnum::DIRECT]);                        // C -> B (and E->C from above)
-            $this->teamRolesAllStatuses()->where('role_hierarchy', RoleHierarchyEnum::DIRECT_AND_BELOW_AND_NEIGHBOURS)
-                ->update(['role_hierarchy' => RoleHierarchyEnum::DIRECT_AND_BELOW]);              // E -> A
-        }
+        $this->teamRolesAllStatuses()
+            ->whereNotIn('role_hierarchy', [$hierarchy, RoleHierarchyEnum::DISABLED_BELOW])
+            ->update(['role_hierarchy' => $hierarchy]);
     }
 
     public function save(array $options = []): void

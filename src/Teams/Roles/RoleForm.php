@@ -38,8 +38,8 @@ class RoleForm extends Modal
 
     public function afterSave()
     {
-        // Team roles must be clamped before roleChanged() so its cache flush covers them too.
-        $this->model->clampTeamRolesHierarchyToRollFlags();
+        // Team roles must be synced before roleChanged() so its cache flush covers them too.
+        $this->model->syncTeamRolesHierarchyToRollFlags();
 
         app(PermissionCacheInvalidator::class)->roleChanged($this->model);
         RolesMatrixView::addRole($this->model->id);

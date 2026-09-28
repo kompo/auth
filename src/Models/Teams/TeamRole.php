@@ -46,7 +46,8 @@ class TeamRole extends Model implements ScopedToTeam, HasOwnedRecords
                 TeamRoleAssignmentGuardFacade::assertCanAssign(auth()->user(), $teamRole);
             }
 
-            if ($teamRole->isDirty('role')) {
+            // Hierarchy children keep the DIRECT set by createChildForHierarchy, or each visit widens access.
+            if ($teamRole->isDirty('role') && !$teamRole->parent_team_role_id) {
                 $role = RoleModel::find($teamRole->role);
                 $teamRole->role_hierarchy = $role
                     ? static::catchRightHiearchyBasedOnRole($role)
@@ -439,7 +440,7 @@ class TeamRole extends Model implements ScopedToTeam, HasOwnedRecords
 
     public function save(array $options = []): void
     {
-        if (!$this->id && static::exceedsRoleLimit($this->role, $this->team_id)) {
+        if (!$this->id && !$this->parent_team_role_id && static::exceedsRoleLimit($this->role, $this->team_id)) {
             abort(403, __('auth.with-values.role-limit-exceeded', ['role' => $this->roleRelation->name, 'max' => $this->roleRelation->max_assignments_per_team]));
 
             Log::warning('Role limit exceeded for role: ' . $this->roleRelation->name . ' in team: ' . $this->team->team_name);
@@ -456,7 +457,9 @@ class TeamRole extends Model implements ScopedToTeam, HasOwnedRecords
             return false;
         }
 
-        return $role->max_assignments_per_team <= static::where('role', $roleId)->where('team_id', $teamId)->asSystemOperation()->count();
+        // Hierarchy children are visitors from a parent team, not assignments of this team.
+        return $role->max_assignments_per_team <= static::where('role', $roleId)->where('team_id', $teamId)
+            ->whereNull('parent_team_role_id')->asSystemOperation()->count();
     }
 
     public static function checkIfIsWarningEls($roleId, $teamId)
@@ -468,7 +471,7 @@ class TeamRole extends Model implements ScopedToTeam, HasOwnedRecords
         $role = RoleModel::findOrFail($roleId);
 
         if (TeamRole::exceedsRoleLimit($roleId, $teamId)) {
-            $baseQuery = TeamRole::where('role', $roleId)->with('user')->where('team_id', $teamId);
+            $baseQuery = TeamRole::where('role', $roleId)->with('user')->where('team_id', $teamId)->whereNull('parent_team_role_id');
 
             return _Card(
                 _Html('auth-the-role-limit-exceeded')->class('text-lg'),

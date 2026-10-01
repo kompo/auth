@@ -54,8 +54,17 @@ if (!function_exists('_InputRegisterPasswords')) {
     {
         return _Rows(
             _PasswordInput('auth-my-password')->name('password'),
+            _PasswordRequirements(),
             _PasswordInput('auth-my-password-confirmation')->name('password_confirmation', false),
         );
+    }
+}
+
+if (!function_exists('_PasswordRequirements')) {
+    function _PasswordRequirements()
+    {
+        return _Html(__('auth-password-requirements') . ' ' . implode(', ', passwordRequirements()) . '.')
+            ->class('text-xs text-gray-600 mb-4');
     }
 }
 

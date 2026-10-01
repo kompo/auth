@@ -176,6 +176,12 @@ class User extends Authenticatable
         $this->must_reset_password_at = !$forceResetAfterXDays ? null : now()->addDays($forceResetAfterXDays);
     }
 
+    /** Laravel's default notification is English only; ours goes through the translation keys. */
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new \Kompo\Auth\Notifications\ResetPassword($token));
+    }
+
     /* IMPERSONATE PACKAGE */
     public function canImpersonate()
     {

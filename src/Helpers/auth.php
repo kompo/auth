@@ -472,6 +472,19 @@ if (!function_exists('passwordRules') && config('kompo-auth.root-security', true
     }
 }
 
+if (!function_exists('passwordRequirements')) {
+    /** What passwordRules() enforces, worded for the person choosing the password. */
+    function passwordRequirements(): array
+    {
+        return [
+            __('auth-password-requirement-length', ['length' => 8]),
+            __('auth-password-requirement-uppercase'),
+            __('auth-password-requirement-number'),
+            __('auth-password-requirement-special-character'),
+        ];
+    }
+}
+
 if (!function_exists('baseEmailRules') && config('kompo-auth.root-security', true)) {
     function baseEmailRules(): array
     {

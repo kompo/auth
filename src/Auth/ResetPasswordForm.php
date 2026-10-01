@@ -65,6 +65,7 @@ class ResetPasswordForm extends ImgFormLayout
             _Input('auth-email')->name('email')->value(request('email'))->required()
                 ->when(request('email'), fn($e) => $e->disabled()->attr(["disabled" => "disabled"])->class('opacity-70')),
             _PasswordInput('auth-password')->name('password'),
+            _PasswordRequirements(),
             _PasswordInput('auth-password-confirmation')->name('password_confirmation'),
 			_FlexEnd(
                 _SubmitButton('auth-reset-password')

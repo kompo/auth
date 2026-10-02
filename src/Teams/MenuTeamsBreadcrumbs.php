@@ -2,11 +2,12 @@
 
 namespace Kompo\Auth\Teams;
 
-use Kompo\Auth\Models\Teams\TeamRole;
-use Kompo\Form;
+use Condoedge\Utils\Kompo\Common\Form;
 
 class MenuTeamsBreadcrumbs extends Form
 {
+	protected $needsAuthentication = true;
+
 	public function render()
 	{
 		$team = currentTeam();

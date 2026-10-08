@@ -7,6 +7,7 @@ use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Support\ElementPermissionCache;
 use Kompo\Auth\Teams\Cache\UserContextCache;
 use Kompo\Auth\Teams\Contracts\PermissionResolverInterface;
+use Kompo\Auth\Teams\Security\SecurityBypassService;
 use Kompo\Date;
 use Kompo\Elements\Field;
 use Kompo\Place;
@@ -538,6 +539,29 @@ if (!function_exists('executeInBypassContext')) {
             if (!$wasInBypassContext) {
                 HasSecurity::exitBypassContext();
             }
+        }
+    }
+}
+
+/**
+ * Execute a callback without the console bypass (`security.bypass.console`).
+ * For a queue job doing a logged-in user's work (an export): reads, permission
+ * checks and field protection are that user's, as in their web request.
+ * `executeInBypassContext()` inside the callback still bypasses.
+ */
+if (!function_exists('executeWithoutConsoleBypass')) {
+    function executeWithoutConsoleBypass(callable $callback)
+    {
+        if (!app()->runningInConsole()) {
+            return $callback();
+        }
+
+        SecurityBypassService::suspendConsoleBypass();
+
+        try {
+            return $callback();
+        } finally {
+            SecurityBypassService::resumeConsoleBypass();
         }
     }
 }

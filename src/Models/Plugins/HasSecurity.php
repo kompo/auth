@@ -82,9 +82,25 @@ class HasSecurity extends ModelPlugin
             $this->setupBypassEvents();
 
             SecurityBypassService::trackModelBootedDuringBypass($this->modelClass);
+
+            // Booted under the console bypass (a bypass context re-boots its models when it ends): nothing below is
+            // registered, so executeWithoutConsoleBypass() registers it when a job drops that bypass.
+            if (!SecurityBypassService::isInBypassContext()) {
+                SecurityBypassService::deferRegistrationUntilConsoleBypassSuspended(fn () => $this->registerSecurity());
+            }
+
             return;
         }
 
+        $this->registerSecurity();
+    }
+
+    /**
+     * READ scope, WRITE and DELETE checks: each asks again, when it runs,
+     * whether security is bypassed.
+     */
+    protected function registerSecurity(): void
+    {
         $permissionKey = $this->getPermissionKey();
 
         // Apply READ security

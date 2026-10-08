@@ -171,7 +171,9 @@ class KompoAuthServiceProvider extends ServiceProvider
     {
         $this->app->singleton('kompo-auth.security-bypass', function ($app) {
             return function () {
-                if (app()->runningInConsole() && kompoAuthSecurityConfig('bypass.console', true)) {
+                // Not inside executeWithoutConsoleBypass(): a job doing a user's work keeps that user's security.
+                if (app()->runningInConsole() && kompoAuthSecurityConfig('bypass.console', true)
+                    && !SecurityBypassService::isConsoleBypassSuspended()) {
                     return true;
                 }
 

@@ -4,6 +4,9 @@ namespace Kompo\Auth\Teams\Security;
 
 use Condoedge\Utils\Contracts\Security\HasOwnedRecords;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
+use Kompo\Auth\Support\ElementPermissionCache;
+use Kompo\Auth\Teams\Cache\AuthCacheLayer;
+use Kompo\Auth\Teams\Cache\CachedFieldProtectionService;
 use Kompo\Auth\Teams\Security\Contracts\OwnedRecordsResolverInterface;
 use Kompo\Auth\Teams\Security\Contracts\TeamSecurityServiceInterface;
 use Illuminate\Support\Facades\Log;
@@ -38,6 +41,19 @@ class SecurityBypassService
      * Tracks models that were booted during bypass context and need rebooting
      */
     protected static $modelsBootedDuringBypass = [];
+
+    /**
+     * Depth of `executeWithoutConsoleBypass()`: while above zero the console
+     * bypass (`security.bypass.console`) is off. Not part of `clearTracking()`,
+     * which every `exitBypassContext()` calls.
+     */
+    protected static int $consoleBypassSuspensions = 0;
+
+    /**
+     * Security registrations of the models booted under the console bypass
+     * (`HasSecurity::onBoot` registers nothing then), run when it is suspended.
+     */
+    protected static array $registrationsDeferredByConsoleBypass = [];
 
     /**
      * Check if security is globally bypassed
@@ -88,6 +104,49 @@ class SecurityBypassService
         static::$modelsBootedDuringBypass = [];
 
         static::clearTracking();
+    }
+
+    public static function isConsoleBypassSuspended(): bool
+    {
+        return static::$consoleBypassSuspensions > 0;
+    }
+
+    public static function deferRegistrationUntilConsoleBypassSuspended(callable $register): void
+    {
+        static::$registrationsDeferredByConsoleBypass[] = $register;
+    }
+
+    /**
+     * Turn the console bypass off (`executeWithoutConsoleBypass()`). Safe to
+     * nest — each call must be paired with a `resumeConsoleBypass()`.
+     */
+    public static function suspendConsoleBypass(): void
+    {
+        static::$consoleBypassSuspensions++;
+
+        foreach (array_splice(static::$registrationsDeferredByConsoleBypass, 0) as $register) {
+            $register();
+        }
+
+        static::flushBypassDependentCaches();
+    }
+
+    public static function resumeConsoleBypass(): void
+    {
+        static::$consoleBypassSuspensions = max(0, static::$consoleBypassSuspensions - 1);
+
+        static::flushBypassDependentCaches();
+    }
+
+    /**
+     * Permission answers are cached for the process, "allowed because
+     * bypassed" included: none may outlive a change of the console bypass.
+     */
+    protected static function flushBypassDependentCaches(): void
+    {
+        app(AuthCacheLayer::class)->flushRequestCache();
+        ElementPermissionCache::clear();
+        CachedFieldProtectionService::flush();
     }
 
     /**

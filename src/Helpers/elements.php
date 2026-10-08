@@ -64,7 +64,7 @@ if (!function_exists('_PasswordRequirements')) {
     function _PasswordRequirements()
     {
         return _Html(__('auth-password-requirements') . ' ' . implode(', ', passwordRequirements()) . '.')
-            ->class('text-xs text-gray-600 mb-4');
+            ->class('text-xs mb-4');
     }
 }
 

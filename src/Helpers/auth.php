@@ -130,6 +130,11 @@ if (!function_exists('routeIsByPassed')) {
 
             if ($path == '_kompo') {
                 $referrerRoute = request()->headers->get('referer');
+
+                if (!$referrerRoute) {
+                    return false;
+                }
+
                 $currentRoute = app('router')->getRoutes()->match(app('request')->create($referrerRoute));
             }
 

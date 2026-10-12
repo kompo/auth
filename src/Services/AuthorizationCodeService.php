@@ -11,7 +11,17 @@ class AuthorizationCodeService
     protected $email;
     protected $phone;
 
-    public function getAvailableVias()
+    /** The channels that reach this person, among those the type allows. */
+    public function getAvailableVias($type = 'generic')
+    {
+        $allowed = AuthorizationCode::setting('vias', $type);
+
+        return collect($this->reachableVias())
+            ->filter(fn ($via) => !$allowed || in_array($via, $allowed, true))
+            ->values()->all();
+    }
+
+    protected function reachableVias()
     {
         if ($this->user) {
             return collect(NotifiableMethodsEnum::cases())
@@ -33,15 +43,19 @@ class AuthorizationCodeService
         return $vias;
     }
 
+    public function tooManySends($type = 'generic')
+    {
+        return AuthorizationCode::tooManySends($this->user?->id, $type, $this->email, $this->phone);
+    }
 
     /**
      * We should not use logic from AuthorizationCode, but at some point we'll refactor and at least
      * here we ensure the logic comes from a single place, that can have different implementations (also hidding the specific implementation since it's an extendable module).
      */
-    public function sendCode($type = 'generic', $via = NotifiableMethodsEnum::SMS)
+    public function sendCode($type = 'generic', $via = NotifiableMethodsEnum::SMS, array $context = [])
     {
         $authorizationCode = AuthorizationCode::createNew($this->user?->id, null, $type, $this->email, $this->phone);
-        $authorizationCode->send($via);
+        $authorizationCode->send($via, $context);
 
         return $authorizationCode;
     }

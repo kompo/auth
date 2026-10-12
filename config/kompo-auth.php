@@ -119,6 +119,21 @@ return [
 
     'default_authorization_via' => NotifiableMethodsEnum::SMS,
 
+    /*
+     * Authorization codes. A type (the $type a code is sent with) overrides any of the first
+     * five under 'authorization_code_types', e.g.
+     * 'p2p' => ['vias' => [NotifiableMethodsEnum::EMAIL], 'sender' => 'p2p', 'expiration' => 15].
+     */
+    'authorization_code_expiration' => 5,        // minutes
+    'authorization_code_max_tries' => 5,         // wrong codes before the code is void
+    'authorization_code_max_sends' => 5,         // codes sent to one destination within the expiration
+    'authorization_code_vias' => null,           // null: every NotifiableMethodsEnum case
+    'authorization_code_sender' => 'default',    // a key of authorization_code_senders
+    'authorization_code_senders' => [
+        'default' => \Kompo\Auth\Services\DefaultAuthorizationCodeSender::class,
+    ],
+    'authorization_code_types' => [],
+
     // Performance monitoring
     'monitor-performance' => env('KOMPO_AUTH_MONITOR_PERFORMANCE', false),
     'performance-thresholds' => [

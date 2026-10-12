@@ -152,6 +152,7 @@
 	"error-invalid-authorization-code": "Invalid authorization code",
 	"error-issue-with-sso": "There is an error with SSO. Try again later.",
 	"error-no-valid-contact-method": "No valid contact method",
+	"error-too-many-authorization-codes": "Too many codes requested. Try again in a few minutes.",
 	"error-role-already-assigned": "Role already assigned",
 	"file-type-audio": "Audio",
 	"file-type-compressed": "Archive",

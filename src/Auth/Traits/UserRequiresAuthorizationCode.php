@@ -41,18 +41,35 @@ trait UserRequiresAuthorizationCode
         return $service;
     }
 
+    /** The type of code this komponent asks for: its limits, channels and sender come from the config. */
+    protected function authorizationCodeType()
+    {
+        return 'generic';
+    }
+
+    /** Handed to the type's sender, e.g. what its email has to name. */
+    protected function authorizationCodeContext()
+    {
+        return [];
+    }
+
     protected function verifyAuthorizationCode()
     {
         $code = request('authorization_code');
-        $type = 'generic';
 
-        return $this->getFilledService()->verify($type, $code);
+        return $this->getFilledService()->verify($this->authorizationCodeType(), $code);
     }
 
     public function sendCode()
     {
         $service = $this->getFilledService();
-        $availableVias = $service->getAvailableVias();
+        $type = $this->authorizationCodeType();
+
+        if ($service->tooManySends($type)) {
+            return $this->tooManyCodesSent();
+        }
+
+        $availableVias = $service->getAvailableVias($type);
         $preferredVia = request('via') ?? config('kompo-auth.default_authorization_via')->value;
 
         $via = collect($availableVias)->firstWhere('value', $preferredVia) ?? collect($availableVias)->first();
@@ -61,7 +78,7 @@ trait UserRequiresAuthorizationCode
             abort(422, __('error-no-valid-contact-method'));
         }
 
-        $service->sendCode(via: $via);
+        $service->sendCode($type, $via, $this->authorizationCodeContext());
 
         // I don't like this that much, probably i'll find a better way later
         return $this->codeSentResponse($via->hiddenDestination($this->getAuthorizationUser() ?? (object)[
@@ -75,6 +92,17 @@ trait UserRequiresAuthorizationCode
         return _Html(__('auth-with-values-code-sent-to', ['destination' => $destination]))->class('code-sent text-white opacity-50');
     }
 
+    protected function tooManyCodesSent()
+    {
+        abort(429, __('error-too-many-authorization-codes'));
+    }
+
+    /** Restyle the field here; keep its name, verifyAuthorizationCode() reads it. */
+    protected function authorizationCodeInput()
+    {
+        return _Input()->placeholder('auth-enter-code')->name('authorization_code', false)->class('bigInput w-full darkgreen-input text-white !mb-0');
+    }
+
     protected function authorizationElement($preferredVia = null)
     {
         return _Rows(
@@ -85,7 +113,7 @@ trait UserRequiresAuthorizationCode
                         $this->sendAuthorizationCodeButtons(preferredVia: $preferredVia),
                     ),
                     _Panel()->id('authorization-code-panel'),
-                    _Input()->placeholder('auth-enter-code')->name('authorization_code', false)->class('bigInput w-full darkgreen-input text-white !mb-0'),
+                    $this->authorizationCodeInput(),
                 )->class('gap-2'),
             )->class(property_exists($this, 'authorizationCodeContainerClass') ? $this->authorizationCodeContainerClass : 'px-6 py-4 bg-greendark border-none'),
         );
@@ -95,7 +123,7 @@ trait UserRequiresAuthorizationCode
     {
         $service = $this->getFilledService();
         $defaultVia = config('kompo-auth.default_authorization_via');
-        $availableVias = $service->getAvailableVias();
+        $availableVias = $service->getAvailableVias($this->authorizationCodeType());
         $preferredVia = $preferredVia ?: request('via') ?: $defaultVia->value;
 
         if ($this->allowMultipleVias && count($availableVias) > 1) {

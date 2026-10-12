@@ -4,15 +4,14 @@ namespace Kompo\Auth\Models;
 
 use Condoedge\Utils\Models\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\RateLimiter;
 use Kompo\Auth\Models\Traits\BelongsToUserTrait;
-use Kompo\Auth\Mail\AuthorizationCodeMail;
+use Kompo\Auth\Services\AuthorizationCodeSender;
 
 class AuthorizationCode extends Model
 {
     use BelongsToUserTrait;
     use HasFactory;
-
-    public const EXPIRATION_TIME = 5;
 
     /* SCOPES */
     public function scopeUnused($query)
@@ -50,9 +49,42 @@ class AuthorizationCode extends Model
         return $query->where('phone', $phone)->where('type', $type);
     }
 
+    /* CALCULATED FIELDS */
+    /** The type's own setting, or the one every type shares: kompo-auth.authorization_code_*. */
+    public static function setting($key, $type = 'generic')
+    {
+        return config("kompo-auth.authorization_code_types.{$type}.{$key}") ?? config("kompo-auth.authorization_code_{$key}");
+    }
+
+    public static function tooManySends($userId = null, $type = 'generic', $email = null, $phone = null)
+    {
+        return RateLimiter::tooManyAttempts(self::limiterKey('sends', $userId, $type, $email, $phone), self::setting('max_sends', $type));
+    }
+
+    protected static function limiterKey($what, $userId, $type, $email, $phone)
+    {
+        $identifier = $userId ? 'user-' . $userId : ($email ?: $phone ?: request()->ip());
+
+        return 'authorization-code.' . $what . '.' . $type . '.' . sha1(strtolower((string) $identifier));
+    }
+
+    protected function sender(): AuthorizationCodeSender
+    {
+        return app(config('kompo-auth.authorization_code_senders.' . self::setting('sender', $this->type)));
+    }
+
     /* ACTIONS */
     public static function createNew($userId = null, $code = null, $type = 'generic', $email = null, $phone = null)
     {
+        if (self::tooManySends($userId, $type, $email, $phone)) {
+            abort(429, __('error-too-many-authorization-codes'));
+        }
+
+        $minutes = self::setting('expiration', $type);
+
+        RateLimiter::hit(self::limiterKey('sends', $userId, $type, $email, $phone), $minutes * 60);
+        RateLimiter::clear(self::limiterKey('tries', $userId, $type, $email, $phone));
+
         static::deleteExisting($userId, $type, $email, $phone);
 
         $code = $code ?? sprintf("%06d", mt_rand(1, 999999));
@@ -64,7 +96,7 @@ class AuthorizationCode extends Model
         $authorizationCode->phone = $phone;
         $authorizationCode->code = $code;
         $authorizationCode->type = $type;
-        $authorizationCode->expires_at = now()->addMinutes(self::EXPIRATION_TIME);
+        $authorizationCode->expires_at = now()->addMinutes($minutes);
         $authorizationCode->save();
 
         return $authorizationCode;
@@ -76,8 +108,17 @@ class AuthorizationCode extends Model
             ->delete();
     }
 
+    /** A right code works once; too many wrong ones void it. */
     public static function verify($userId = null, $code, $type = 'generic', $email = null, $phone = null)
     {
+        $tries = self::limiterKey('tries', $userId, $type, $email, $phone);
+
+        if (RateLimiter::tooManyAttempts($tries, self::setting('max_tries', $type))) {
+            static::deleteExisting($userId, $type, $email, $phone);
+
+            return false;
+        }
+
         $authCode = self::valid()
             ->findByIdentifier($userId, $email, $phone, $type)
             ->where('code', $code)
@@ -85,11 +126,15 @@ class AuthorizationCode extends Model
             ->first();
 
         if (!$authCode) {
+            RateLimiter::hit($tries, self::setting('expiration', $type) * 60);
+
             return false;
         }
 
         $authCode->used_at = now();
         $authCode->save();
+
+        RateLimiter::clear($tries);
 
         return true;
     }
@@ -104,47 +149,17 @@ class AuthorizationCode extends Model
         };
     }
 
-    public function send($via = null)
+    public function send($via = null, array $context = [])
     {
         $via = $via ?? ($this->email ? NotifiableMethodsEnum::EMAIL : NotifiableMethodsEnum::SMS);
 
-        switch ($via) {
-            case NotifiableMethodsEnum::SMS:
-                $this->sendSms();
-                break;
-            case NotifiableMethodsEnum::EMAIL:
-                $this->sendEmail();
-                break;
-        }
-    }
+        $destination = match ($via) {
+            NotifiableMethodsEnum::SMS => $this->phone,
+            NotifiableMethodsEnum::EMAIL => $this->email,
+        } ?? ($this->user ? $via->destination($this->user) : null);
 
-    protected function sendSms()
-    {
-        $phone = $this->phone ?? ($this->user ? NotifiableMethodsEnum::SMS->destination($this->user) : null);
-
-        if ($phone) {
-            $content = __('auth-your-coolecto-authorization-code-is', ['code' => $this->code]);
-            $content = mb_convert_encoding($content, 'UTF-8', 'UTF-8');
-
-            $vonage = app(\Vonage\Client::class);
-
-            $vonage->sms()->send(
-                new \Vonage\SMS\Message\SMS(
-                    $phone,
-                    config('services.vonage.sms_from'),
-                    $content
-                )
-            );
-        }
-    }
-
-    protected function sendEmail()
-    {
-        $email = $this->email ?? ($this->user ? NotifiableMethodsEnum::EMAIL->destination($this->user) : null);
-
-        if ($email) {
-            \Illuminate\Support\Facades\Mail::to($email)
-                ->send(new AuthorizationCodeMail($this));
+        if ($destination) {
+            $this->sender()->send($this, $via, $destination, $context);
         }
     }
 }

@@ -152,6 +152,7 @@
 	"error-invalid-authorization-code": "Code d'autorisation invalide",
 	"error-issue-with-sso": "Une erreur s'est produite lors de l'authentification unique. Réessayez plus tard.",
 	"error-no-valid-contact-method": "Pas de méthode de contact valide",
+	"error-too-many-authorization-codes": "Trop de codes demandés. Réessayez dans quelques minutes.",
 	"error-role-already-assigned": "Rôle déjà attribué",
 	"file-type-audio": "Audio",
 	"file-type-compressed": "Archive",

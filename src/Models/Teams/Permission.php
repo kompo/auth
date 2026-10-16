@@ -46,6 +46,19 @@ class Permission extends Model implements OptsOutOfSecurity
         return $type->isSupportedBy((int) ($this->supported_types ?? PermissionTypeEnum::ALL->value));
     }
 
+    /**
+     * Highest type not above the requested one that this permission accepts; null when none fits.
+     */
+    public function capToSupportedType(PermissionTypeEnum $requested): ?PermissionTypeEnum
+    {
+        if ($this->supportsType($requested)) {
+            return $requested;
+        }
+
+        return collect([PermissionTypeEnum::ALL, PermissionTypeEnum::WRITE, PermissionTypeEnum::READ])
+            ->first(fn($candidate) => $candidate->value < $requested->value && $this->supportsType($candidate));
+    }
+
     public function matchesName(?string $term): bool
     {
         $fold = fn($text) => \Str::lower(\Str::ascii((string) $text));
@@ -109,7 +122,19 @@ class Permission extends Model implements OptsOutOfSecurity
 
     public function dependencies()
     {
-        return $this->belongsToMany(static::class, 'permission_dependencies', 'permission_id', 'required_permission_id');
+        return $this->belongsToMany(static::class, 'permission_dependencies', 'permission_id', 'required_permission_id')->withPivot('dependency_type');
+    }
+
+    public function structuralDependencies()
+    {
+        return $this->belongsToMany(static::class, 'permission_dependencies', 'permission_id', 'required_permission_id')
+            ->withPivotValue('dependency_type', PermissionDependencyTypeEnum::STRUCTURAL->value)->withTimestamps();
+    }
+
+    public function recommendedDependencies()
+    {
+        return $this->belongsToMany(static::class, 'permission_dependencies', 'permission_id', 'required_permission_id')
+            ->withPivotValue('dependency_type', PermissionDependencyTypeEnum::RECOMMENDED->value)->withTimestamps();
     }
 
     /* CALCULATED FIELDS */

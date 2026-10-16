@@ -46,8 +46,11 @@ class EditPermissionInfo extends Modal
             _TranslatableEditor('auth-permission-read-desc-label')->name('permission_description_read'),
             _TranslatableEditor('auth-permission-write-desc-label')->name('permission_description_write'),
 
-            _MultiSelect('auth-permission-dependencies')->name('dependencies')
-                ->options($this->dependencyOptions()),
+            $this->structuralDependencies(),
+
+            _MultiSelect('auth-permission-dependency-recommended')->name('recommendedDependencies')
+                ->options($this->dependencyOptions())
+                ->comment('auth-permission-dependency-recommended-help'),
 
             _Rows(
                 new PermissionInfoSlidesTable(['permission_id' => $this->model->id]),
@@ -59,9 +62,25 @@ class EditPermissionInfo extends Modal
         );
     }
 
+    // Structural dependencies are declared in code and only listed here.
+    protected function structuralDependencies()
+    {
+        $deps = $this->model->structuralDependencies;
+
+        return $deps->isEmpty() ? null : _Rows(
+            _Html('auth-permission-dependency-structural')->class('text-sm font-medium mb-1'),
+            _Flex(
+                $deps->map(fn (Permission $p) => _Html($p->permission_name ?: $p->permission_key)
+                    ->icon(_Sax('lock', 14))->class('text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 border border-gray-300')),
+            )->class('gap-2 flex-wrap'),
+            _Html('auth-permission-dependency-structural-help')->class('text-xs text-gray-500 mt-1'),
+        )->class('mb-4');
+    }
+
     protected function dependencyOptions(): array
     {
         return Permission::where('id', '!=', $this->model->id)
+            ->whereNotIn('id', $this->model->structuralDependencies()->pluck('permissions.id'))
             ->orderBy('permission_key')
             ->get()
             ->mapWithKeys(fn (Permission $p) => [$p->id => ($p->permission_name ?: $p->permission_key)])

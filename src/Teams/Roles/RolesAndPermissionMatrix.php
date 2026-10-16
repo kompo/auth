@@ -7,6 +7,7 @@ use Kompo\Auth\Models\Teams\Permission;
 use Kompo\Auth\Models\Teams\PermissionSection;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
 use Kompo\Auth\Models\Teams\Roles\Role;
+use Illuminate\Support\Facades\DB;
 use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
 
 /**
@@ -39,6 +40,7 @@ class RolesAndPermissionMatrix extends Form
     {
         return _Rows(
             $this->canWrite ? null : $this->noWriteBanner(),
+            $this->dependenciesBanner(),
             $this->toolbar(RolesMatrixView::roles(), RolesMatrixView::search()),
             // Field::doesNotFill() only writes a server-side key; Vue reads the 'doesNotFill' config.
             _Hidden('grid_loader')->config(['doesNotFill' => true])
@@ -84,8 +86,17 @@ class RolesAndPermissionMatrix extends Form
         $role = Role::findOrFail(request('role'));
         $permission = Permission::findOrFail(request('permission'));
 
-        $this->applyPermissionType($role, $permission, PermissionTypeEnum::tryFrom((int) request($role->id . '-' . $permission->id)));
+        try {
+            $result = $this->applyPermissionType($role, $permission, PermissionTypeEnum::tryFrom((int) request($role->id . '-' . $permission->id)));
+        } catch (PermissionDependencyDeniedException $e) {
+            return $this->cellsWithAlert($role, [$permission->id], $e->getMessage(), 'vlAlertError');
+        }
+
         app(PermissionCacheInvalidator::class)->rolePermissionsChanged([$role->id]);
+
+        if ($result->hasSideEffects()) {
+            return $this->cellsWithAlert($role, [$permission->id, ...array_keys($result->changes)], $this->dependencySummary($result), 'vlAlertSuccess');
+        }
 
         return $this->display($this->sectionHeader($this->section($permission->permission_section_id), true));
     }
@@ -98,10 +109,29 @@ class RolesAndPermissionMatrix extends Form
         $section = $this->section(request('permissionSection'));
         $requested = PermissionTypeEnum::tryFrom((int) request('type'));
 
-        $this->visiblePermissions($section)->each(fn($permission) => $this->applyPermissionType($role, $permission, $requested));
+        try {
+            $result = DB::transaction(fn() => $this->visiblePermissions($section)->reduce(
+                fn(PermissionDependencyResult $carry, $permission) => $carry->merge($this->applyPermissionType($role, $permission, $requested)),
+                new PermissionDependencyResult,
+            ));
+        } catch (PermissionDependencyDeniedException $e) {
+            return $this->cellsWithAlert($role, $this->visiblePermissions($section)->pluck('id')->all(), $e->getMessage(), 'vlAlertError');
+        }
+
         app(PermissionCacheInvalidator::class)->rolePermissionsChanged([$role->id]);
 
+        $outside = array_diff(array_keys($result->changes), $this->visiblePermissions($section)->pluck('id')->all());
+
+        if ($outside || $result->skippedDenied) {
+            return $this->cellsWithAlert($role, [...$this->visiblePermissions($section)->pluck('id'), ...array_keys($result->changes)], $this->dependencySummary($result), 'vlAlertSuccess');
+        }
+
         return $this->display($this->sectionContent($section, in_array($section->id, $this->expandedIds())));
+    }
+
+    public function rememberWithRecommended()
+    {
+        RolesMatrixView::remember(['with_recommended' => (bool) request('with_recommended')]);
     }
 
     protected function roles()
@@ -188,27 +218,65 @@ class RolesAndPermissionMatrix extends Form
         return ['access' => $types->count() - $deny, 'deny' => $deny];
     }
 
-    protected function applyPermissionType($role, Permission $permission, ?PermissionTypeEnum $requested): void
+    protected function applyPermissionType($role, Permission $permission, ?PermissionTypeEnum $requested): PermissionDependencyResult
     {
-        $capped = $requested ? $this->capToSupportedTypes($requested, $permission) : null;
+        $capped = $requested ? $permission->capToSupportedType($requested) : null;
+        $withRecommended = RolesMatrixView::withRecommended();
 
-        if (!$capped) {
-            $role->permissions()->detach([$permission->id]);
-
-            return;
-        }
-
-        $role->createOrUpdatePermission($permission->id, $capped, false);
+        return $capped
+            ? $role->createOrUpdatePermission($permission->id, $capped, false, $withRecommended)
+            : $role->removePermission($permission->id, false, $withRecommended);
     }
 
-    protected function capToSupportedTypes(PermissionTypeEnum $requested, Permission $permission): ?PermissionTypeEnum
+    /**
+     * Dependencies may touch other sections: changed cells get their new state over the checkbox event bus and only the
+     * affected section headers are refilled. A posted expanded[id] means loaded, not visible, so arrows resync from the DOM.
+     */
+    protected function cellsWithAlert($role, array $permissionIds, string $message, string $alertClass)
     {
-        if ($permission->supportsType($requested)) {
-            return $requested;
-        }
+        $this->typeMap = null;
+        $permissions = Permission::whereIn('id', $permissionIds)->get();
+        $loaded = array_map('intval', array_keys((array) request('expanded')));
 
-        return collect([PermissionTypeEnum::ALL, PermissionTypeEnum::WRITE, PermissionTypeEnum::READ])
-            ->first(fn($candidate) => $candidate->value < $requested->value && $permission->supportsType($candidate));
+        $headers = $this->visibleSections()->whereIn('id', $permissions->pluck('permission_section_id'))->map(fn($section) => response()->panel(
+            $this->display($this->sectionHeader($section, in_array($section->id, $loaded))), $this->sectionHeadPanelId($section),
+        ))->values()->all();
+
+        return response()->kompoMulti([
+            ...$headers,
+            response()->kompoRun($this->syncCellsJs(), $permissions->mapWithKeys(fn($permission) => [
+                $this->cellGroup($role, $permission) => $this->typeOf($role, $permission),
+            ])),
+            response()->kompoAlert('', options: ['alertClass' => $alertClass, 'message' => $message]),
+        ]);
+    }
+
+    // The run payload arrives as ctx.response: buildJsCtx() overrides ctx.data with its reactive data helper.
+    protected function syncCellsJs(): string
+    {
+        return <<<'JS'
+            ({ response, $kompo }) => {
+                Object.entries(response || {}).forEach(([group, value]) => $kompo.events.$emit('mscb:section-cascade:' + group, value));
+                document.querySelectorAll('.roles-section').forEach(section => {
+                    const body = section.querySelector('.roles-section-body');
+                    section.querySelector('.roles-section-header').dataset.expanded = body && body.offsetParent ? '1' : '0';
+                });
+            }
+        JS;
+    }
+
+    protected function dependencySummary(PermissionDependencyResult $result): string
+    {
+        $names = fn(array $ids) => Permission::whereIn('id', $ids)->get()
+            ->map(fn($permission) => $permission->permission_name ?: $permission->permission_key)->implode(', ');
+
+        return collect([
+            'permissions-dependencies-also-granted' => array_diff($result->granted(), $result->grantedByRecommendation()),
+            'permissions-dependencies-also-granted-recommended' => $result->grantedByRecommendation(),
+            'permissions-dependencies-also-lowered' => $result->lowered(),
+            'permissions-dependencies-also-removed' => $result->removed(),
+            'permissions-dependencies-skipped-denied' => $result->skippedDenied,
+        ])->filter()->map(fn($ids, $key) => __($key, ['list' => $names($ids)]))->implode(' ');
     }
 
     protected function display($element)

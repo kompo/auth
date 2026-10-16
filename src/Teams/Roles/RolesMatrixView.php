@@ -28,6 +28,11 @@ final class RolesMatrixView
         return (array) session(self::KEY . '.expanded', []);
     }
 
+    public static function withRecommended(): bool
+    {
+        return (bool) session(self::KEY . '.with_recommended', false);
+    }
+
     public static function remember(array $patch): void
     {
         session()->put(self::KEY, array_merge((array) session(self::KEY, []), $patch));

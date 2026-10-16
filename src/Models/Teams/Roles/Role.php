@@ -11,6 +11,8 @@ use Kompo\Auth\Models\Teams\RoleHierarchyEnum;
 use Kompo\Auth\Models\Teams\TeamRole;
 use Kompo\Auth\Models\Traits\BelongsToManyPivotlessTrait;
 use Kompo\Auth\Teams\Cache\PermissionCacheInvalidator;
+use Kompo\Auth\Teams\Roles\PermissionDependencyResult;
+use Kompo\Auth\Teams\Roles\PermissionDependencyService;
 use Condoedge\Utils\Models\Traits\MemoizesResults;
 use Kompo\Auth\Teams\Roles\TeamRoleAssignmentGuardFacade;
 use Kompo\Database\HasTranslations;
@@ -201,19 +203,33 @@ class Role extends Model implements OptsOutOfSecurity
         parent::delete();
     }
 
-    public function createOrUpdatePermission($permissionId, $value, bool $invalidate = true)
+    /**
+     * Also grants what the permission structurally requires, and lowers its dependents to this level.
+     */
+    public function createOrUpdatePermission($permissionId, $value, bool $invalidate = true, bool $withRecommended = false): PermissionDependencyResult
     {
-        $permission = $this->permissions()->where('permissions.id', $permissionId)->first();
+        $type = $value instanceof PermissionTypeEnum ? $value : PermissionTypeEnum::from((int) $value);
 
-        if (!$permission) {
-            $this->permissions()->attach($permissionId, ['permission_type' => $value, 'added_by' => auth()->id(), 'modified_by' => auth()->id(), 'updated_at' => now(), 'created_at' => now()]);
-        } else {
-            $this->permissions()->updateExistingPivot($permissionId, ['permission_type' => $value, 'modified_by' => auth()->id(), 'updated_at' => now()]);
-        }
+        return $this->applyPermissionChange((int) $permissionId, $type, $invalidate, $withRecommended);
+    }
+
+    /**
+     * Also removes every permission that depends on this one.
+     */
+    public function removePermission($permissionId, bool $invalidate = true, bool $withRecommended = false): PermissionDependencyResult
+    {
+        return $this->applyPermissionChange((int) $permissionId, null, $invalidate, $withRecommended);
+    }
+
+    protected function applyPermissionChange(int $permissionId, ?PermissionTypeEnum $type, bool $invalidate, bool $withRecommended): PermissionDependencyResult
+    {
+        $result = app(PermissionDependencyService::class)->apply($this->id, $permissionId, $type, $withRecommended);
 
         if ($invalidate) {
             app(PermissionCacheInvalidator::class)->rolePermissionsChanged([$this->id]);
         }
+
+        return $result;
     }
 
     public static function getOrCreate($name)

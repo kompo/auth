@@ -14,6 +14,22 @@ trait RoleElementsUtils
         )->class('mb-4');
     }
 
+    protected function dependenciesBanner()
+    {
+        return _Flex(
+            _Sax('info-circle', 24)->class('text-info shrink-0'),
+            _Rows(
+                _Html('permissions-dependencies-banner-title')->class('font-medium mb-1'),
+                _Html('permissions-dependencies-banner-structural')->class('text-sm text-gray-700'),
+                _Html('permissions-dependencies-banner-recommended')->class('text-sm text-gray-700'),
+            )->class('flex-1'),
+            !$this->canWrite ? null : _Toggle('permissions-dependencies-apply-recommended')
+                ->name('with_recommended', false)->value(RolesMatrixView::withRecommended())
+                ->class('!mb-0 shrink-0')
+                ->onChange(fn($e) => $e->selfPost('rememberWithRecommended')->withAllFormValues()),
+        )->class('gap-4 !items-start bg-info/10 border border-info p-4 rounded-lg mb-3');
+    }
+
     protected function toolbar(array $selectedRoles, string $search)
     {
         return _Flex(
@@ -246,12 +262,20 @@ trait RoleElementsUtils
                 PermissionTypeEnum::cellClassesForPermission($permission),
                 $this->typeOf($role, $permission),
                 $this->canWrite,
-            )->config(['doesNotFill' => true])->class('!mb-0')
+            )->config(['doesNotFill' => true, 'group' => $this->cellGroup($role, $permission), 'permission_id' => $permission->id])->class('!mb-0')
             ->when($this->canWrite, fn($el) => $el->onChange(
                 fn($e) => $e->selfPost('changeRolePermission', ['role' => $role->id, 'permission' => $permission->id])
                     ->withAllFormValues()->inPanel($headerPanelId)
             )),
         )->class('roles-cell');
+    }
+
+    /**
+     * Per-cell event group: the server repaints a cell by emitting mscb:section-cascade:{group} (see VlMultiStateCheckbox).
+     */
+    protected function cellGroup($role, $permission): string
+    {
+        return $role->id . '-' . $permission->id;
     }
 
     protected function highlightedName($permission): string

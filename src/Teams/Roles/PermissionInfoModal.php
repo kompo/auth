@@ -5,6 +5,7 @@ namespace Kompo\Auth\Teams\Roles;
 use Condoedge\Utils\Kompo\Common\Modal;
 use Illuminate\Support\Collection;
 use Kompo\Auth\Models\Teams\Permission;
+use Kompo\Auth\Models\Teams\PermissionDependencyTypeEnum;
 use Kompo\Auth\Models\Teams\PermissionInfoMediaTypeEnum;
 use Kompo\Auth\Models\Teams\PermissionInfoSlide;
 use Kompo\Auth\Models\Teams\PermissionTypeEnum;
@@ -87,10 +88,14 @@ class PermissionInfoModal extends Modal
 
         return _Rows(
             _Html('auth-permission-dependencies')->class('text-xs font-bold uppercase tracking-wider mb-2 text-gray-600'),
-            _Flex(
-                $deps->map(fn ($dep) => _Html($dep->permission_name ?: $dep->permission_key)
-                    ->class('text-xs px-2 py-1 rounded bg-gray-500 bg-opacity-10 text-gray-700 border border-gray-300')),
-            )->class('gap-2 flex-wrap'),
+            ...$deps->groupBy(fn ($dep) => (int) $dep->pivot->dependency_type)->sortKeys()
+                ->map(fn ($group, $type) => _Rows(
+                    _Html(PermissionDependencyTypeEnum::from($type)->label())->class('text-xs text-gray-500 mb-1'),
+                    _Flex(
+                        $group->map(fn ($dep) => _Html($dep->permission_name ?: $dep->permission_key)
+                            ->class('text-xs px-2 py-1 rounded bg-gray-500 bg-opacity-10 text-gray-700 border border-gray-300')),
+                    )->class('gap-2 flex-wrap'),
+                )->class('mb-2'))->values()->all(),
         )->class('p-4 rounded bg-gray-500 bg-opacity-5');
     }
 

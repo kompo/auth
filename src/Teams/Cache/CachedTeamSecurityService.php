@@ -17,9 +17,9 @@ use Kompo\Auth\Teams\Security\TeamSecurityService;
  *   instance for the request lifetime avoids the N+1.
  *
  * What is cached:
- *   `getTeamOwnersIdsSafe($model)` only — keyed by `get_class($model)` +
- *   `spl_object_hash($model)`. The other interface methods are class-level
- *   decisions and either trivial or short — proxy straight through.
+ *   `getTeamOwnersIdsSafe($model)` only — per class, in a WeakMap keyed by the
+ *   model itself. The other interface methods are class-level decisions and
+ *   either trivial or short — proxy straight through.
  *
  * Cache lifetime:
  *   One request. Flushed by `KompoAuthServiceProvider::registerRequestLifecycleCleanup`
@@ -34,9 +34,9 @@ class CachedTeamSecurityService implements TeamSecurityServiceInterface
 {
     /**
      * Per-request cache for `getTeamOwnersIdsSafe`.
-     * Format: ['App\Models\Foo' => ['spl_object_hash' => result]]
+     * Format: ['App\Models\Foo' => WeakMap(model => [result])]
      *
-     * @var array<class-string, array<string, mixed>>
+     * @var array<class-string, \WeakMap>
      */
     protected static array $teamOwnersCache = [];
 
@@ -46,15 +46,20 @@ class CachedTeamSecurityService implements TeamSecurityServiceInterface
 
     public function getTeamOwnersIdsSafe($model)
     {
-        $class = get_class($model);
-        $hash  = spl_object_hash($model);
+        $cache = static::cacheFor(get_class($model));
 
-        if (isset(static::$teamOwnersCache[$class][$hash])
-            || array_key_exists($hash, static::$teamOwnersCache[$class] ?? [])) {
-            return static::$teamOwnersCache[$class][$hash];
+        if (isset($cache[$model])) {
+            return $cache[$model][0];
         }
 
-        return static::$teamOwnersCache[$class][$hash] = $this->inner->getTeamOwnersIdsSafe($model);
+        return ($cache[$model] = [$this->inner->getTeamOwnersIdsSafe($model)])[0];
+    }
+
+    // Keyed by the model itself, so an entry goes with its model: an object hash is reused once its object is freed.
+    // Each result is boxed, as a WeakMap entry holding null reads as absent.
+    protected static function cacheFor(string $class): \WeakMap
+    {
+        return static::$teamOwnersCache[$class] ??= new \WeakMap();
     }
 
     /**
@@ -64,8 +69,8 @@ class CachedTeamSecurityService implements TeamSecurityServiceInterface
      *
      * Groups models by class. For each class that implements
      * `BulkResolvableTeamOwners`, asks the class for the whole batch in one
-     * call and stores results indexed by `spl_object_hash` (the same key
-     * `getTeamOwnersIdsSafe` uses). Classes that don't implement the bulk
+     * call and stores results in the same cache `getTeamOwnersIdsSafe`
+     * reads. Classes that don't implement the bulk
      * contract are left alone — they fall back to the per-instance path.
      */
     public function prewarmTeamOwners(iterable $models): void
@@ -81,13 +86,8 @@ class CachedTeamSecurityService implements TeamSecurityServiceInterface
 
         foreach ($byClass as $class => $instances) {
             // Skip classes whose instances are already fully cached.
-            $missing = [];
-            foreach ($instances as $instance) {
-                $hash = spl_object_hash($instance);
-                if (!array_key_exists($hash, static::$teamOwnersCache[$class] ?? [])) {
-                    $missing[] = $instance;
-                }
-            }
+            $cache = static::cacheFor($class);
+            $missing = array_values(array_filter($instances, fn ($instance) => !isset($cache[$instance])));
             if (empty($missing)) {
                 continue;
             }
@@ -109,9 +109,7 @@ class CachedTeamSecurityService implements TeamSecurityServiceInterface
             SecurityBypassService::exitBypassContext();
 
             foreach ($missing as $instance) {
-                $hash = spl_object_hash($instance);
-                $key = $instance->getKey();
-                static::$teamOwnersCache[$class][$hash] = $resolved[$key] ?? [];
+                $cache[$instance] = [$resolved[$instance->getKey()] ?? []];
             }
         }
     }

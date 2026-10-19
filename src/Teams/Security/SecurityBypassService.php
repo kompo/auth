@@ -22,9 +22,10 @@ use Illuminate\Support\Facades\Log;
 class SecurityBypassService
 {
     /**
-     * Tracks models that have bypassed security for the current request.
+     * Tracks models that have bypassed security for the current request. Keyed by the model itself, so a mark goes
+     * with its model: an object hash is reused once its object is freed.
      */
-    protected static $bypassedModels = [];
+    protected static ?\WeakMap $bypassedModels = null;
 
     /**
      * Reference-counted bypass depth.
@@ -155,7 +156,7 @@ class SecurityBypassService
     public function markModelAsBypassed($model): void
     {
         $model->offsetUnset('_bypassSecurity');
-        static::$bypassedModels[spl_object_hash($model)] = true;
+        static::bypassedModels()[$model] = true;
     }
 
     /**
@@ -232,7 +233,7 @@ class SecurityBypassService
     protected function hasBypassByFlag($model): bool
     {
         return $model->getAttribute('_bypassSecurity') == true
-            || (static::$bypassedModels[spl_object_hash($model)] ?? false);
+            || isset(static::bypassedModels()[$model]);
     }
 
     /**
@@ -315,7 +316,7 @@ class SecurityBypassService
      */
     public static function clearTracking(): void
     {
-        static::$bypassedModels = [];
+        static::$bypassedModels = null;
         static::$modelsBootedDuringBypass = [];
         static::$bypassDepth = 0;
     }
@@ -325,7 +326,7 @@ class SecurityBypassService
      */
     public static function getBypassedCount(): int
     {
-        return count(static::$bypassedModels);
+        return count(static::bypassedModels());
     }
 
     /**
@@ -333,7 +334,11 @@ class SecurityBypassService
      */
     public function cleanupModelBypass($model): void
     {
-        $objectHash = spl_object_hash($model);
-        unset(static::$bypassedModels[$objectHash]);
+        unset(static::bypassedModels()[$model]);
+    }
+
+    protected static function bypassedModels(): \WeakMap
+    {
+        return static::$bypassedModels ??= new \WeakMap();
     }
 }

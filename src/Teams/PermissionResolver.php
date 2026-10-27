@@ -609,6 +609,11 @@ class PermissionResolver implements PermissionResolverInterface
         $query->where(function ($q) use ($alias, $scope, $directRolesOnly) {
             $q->whereIn($alias . '.team_id', $scope['targets'] ?: [0]);
 
+            // Hierarchy children are navigation rows created on team switch, not assignments.
+            if ($directRolesOnly) {
+                $q->whereNull($alias . '.parent_team_role_id');
+            }
+
             if ($scope['ancestors'] && !$directRolesOnly) {
                 $q->orWhere(fn ($sub) => $sub
                     ->whereIn($alias . '.role_hierarchy', $this->hierarchiesGranting(fn ($c) => $c->accessGrantBelow()))

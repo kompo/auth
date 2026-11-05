@@ -53,9 +53,10 @@ trait UserRequiresAuthorizationCode
         return [];
     }
 
+    /** Typed or pasted with a space or a dash: only the digits count. */
     protected function verifyAuthorizationCode()
     {
-        $code = request('authorization_code');
+        $code = preg_replace('/\D/', '', (string) request('authorization_code'));
 
         return $this->getFilledService()->verify($this->authorizationCodeType(), $code);
     }
@@ -100,7 +101,9 @@ trait UserRequiresAuthorizationCode
     /** Restyle the field here; keep its name, verifyAuthorizationCode() reads it. */
     protected function authorizationCodeInput()
     {
-        return _Input()->placeholder('auth-enter-code')->name('authorization_code', false)->class('bigInput w-full darkgreen-input text-white !mb-0');
+        return _Input()->placeholder('auth-enter-code')->name('authorization_code', false)
+            ->attr(['inputmode' => 'numeric', 'autocomplete' => 'one-time-code', 'maxlength' => 7])
+            ->class('bigInput w-full darkgreen-input text-white !mb-0');
     }
 
     protected function authorizationElement($preferredVia = null)

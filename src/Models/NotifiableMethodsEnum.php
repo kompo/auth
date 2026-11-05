@@ -28,7 +28,8 @@ enum NotifiableMethodsEnum: string
     public function destination($notifiable)
     {
         return match ($this) {
-            self::SMS => $notifiable->phone ?? $notifiable->phone_number,
+            // A host can have `phone` as a relation: only a string is a number.
+            self::SMS => is_string($notifiable->phone ?? null) ? $notifiable->phone : ($notifiable->phone_number ?? null),
             self::EMAIL => $notifiable->email,
         };
     }

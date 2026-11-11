@@ -2,6 +2,7 @@
 
 namespace Kompo\Auth\Auth\Traits;
 
+use Condoedge\Utils\Kompo\Elements\CodeInput;
 use Kompo\Auth\Services\AuthorizationCodeService;
 
 trait UserRequiresAuthorizationCode
@@ -98,12 +99,11 @@ trait UserRequiresAuthorizationCode
         abort(429, __('error-too-many-authorization-codes'));
     }
 
-    /** Restyle the field here; keep its name, verifyAuthorizationCode() reads it. */
+    /** Swap the element in 'kompo-auth.authorization_code_input'; keep its name, verifyAuthorizationCode() reads it. */
     protected function authorizationCodeInput()
     {
-        return _Input()->placeholder('auth-enter-code')->name('authorization_code', false)
-            ->attr(['inputmode' => 'numeric', 'autocomplete' => 'one-time-code', 'maxlength' => 7])
-            ->class('bigInput w-full darkgreen-input text-white !mb-0');
+        return config('kompo-auth.authorization_code_input', CodeInput::class)::form()
+            ->name('authorization_code', false)->class('!mb-0');
     }
 
     protected function authorizationElement($preferredVia = null)

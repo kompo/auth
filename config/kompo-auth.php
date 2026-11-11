@@ -133,6 +133,7 @@ return [
         'default' => \Kompo\Auth\Services\DefaultAuthorizationCodeSender::class,
     ],
     'authorization_code_types' => [],
+    'authorization_code_input' => \Condoedge\Utils\Kompo\Elements\CodeInput::class, // the field the code is typed in
 
     // Performance monitoring
     'monitor-performance' => env('KOMPO_AUTH_MONITOR_PERFORMANCE', false),

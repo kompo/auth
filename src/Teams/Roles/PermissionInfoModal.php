@@ -80,7 +80,7 @@ class PermissionInfoModal extends Modal
 
     protected function dependenciesCard()
     {
-        $deps = $this->model->dependencies;
+        $deps = $this->model->getDependenciesTree();
 
         if ($deps->isEmpty()) {
             return null;
@@ -88,14 +88,12 @@ class PermissionInfoModal extends Modal
 
         return _Rows(
             _Html('auth-permission-dependencies')->class('text-xs font-bold uppercase tracking-wider mb-2 text-gray-600'),
-            ...$deps->groupBy(fn ($dep) => (int) $dep->pivot->dependency_type)->sortKeys()
-                ->map(fn ($group, $type) => _Rows(
-                    _Html(PermissionDependencyTypeEnum::from($type)->label())->class('text-xs text-gray-500 mb-1'),
-                    _Flex(
-                        $group->map(fn ($dep) => _Html($dep->permission_name ?: $dep->permission_key)
-                            ->class('text-xs px-2 py-1 rounded bg-gray-500 bg-opacity-10 text-gray-700 border border-gray-300')),
-                    )->class('gap-2 flex-wrap'),
-                )->class('mb-2'))->values()->all(),
+            ...$deps->map(fn ($dep) => _Flex(
+                $dep->depth > 1 ? _Html('└')->class('text-gray-400 leading-none') : null,
+                _Html($dep->permission_name ?: $dep->permission_key)
+                    ->class('text-xs px-2 py-1 rounded bg-gray-500 bg-opacity-10 text-gray-700 border border-gray-300'),
+                _Html(PermissionDependencyTypeEnum::from((int) $dep->dependency_type)->label())->class('text-xs text-gray-400'),
+            )->class('gap-2 items-center mb-1')->style('padding-left: ' . (($dep->depth - 1) * 1.25) . 'rem;'))->all(),
         )->class('p-4 rounded bg-gray-500 bg-opacity-5');
     }
 

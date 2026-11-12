@@ -193,6 +193,43 @@ class Permission extends Model implements OptsOutOfSecurity
             ->get();
     }
 
+    /**
+     * Every permission this one requires, directly or through its requirements, in depth-first order.
+     * Each row carries `depth` (1 = direct), `dependency_type` of its own edge and `path` (ids from this permission down).
+     * A permission reached through two parents is listed under each. Cycles are cut by the path guard:
+     * recommended edges are admin-edited, so nothing else prevents them.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, static>
+     */
+    public function getDependenciesTree()
+    {
+        $sql = '
+            WITH RECURSIVE dependency_tree AS (
+                SELECT d.required_permission_id AS id, d.dependency_type, 1 AS depth,
+                    CAST(CONCAT(d.permission_id, ",", d.required_permission_id) AS CHAR(1000)) AS path
+                FROM permission_dependencies d
+                INNER JOIN permissions p ON p.id = d.required_permission_id AND p.deleted_at IS NULL
+                WHERE d.permission_id = ?
+
+                UNION ALL
+
+                SELECT d.required_permission_id, d.dependency_type, t.depth + 1,
+                    CONCAT(t.path, ",", d.required_permission_id)
+                FROM permission_dependencies d
+                INNER JOIN dependency_tree t ON d.permission_id = t.id
+                INNER JOIN permissions p ON p.id = d.required_permission_id AND p.deleted_at IS NULL
+                WHERE t.depth < 20  -- keeps path inside CHAR(1000)
+                  AND NOT FIND_IN_SET(d.required_permission_id, t.path)  -- avoid infinite loops
+            )
+            SELECT p.*, t.dependency_type, t.depth, t.path
+            FROM dependency_tree t
+            INNER JOIN permissions p ON p.id = t.id
+            ORDER BY t.path
+        ';
+
+        return static::hydrate(\DB::select($sql, [$this->id]));
+    }
+
     // SCOPES 
     public function scopeForSection($query, $sectionId)
     {

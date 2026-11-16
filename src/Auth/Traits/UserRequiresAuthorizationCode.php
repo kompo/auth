@@ -89,9 +89,13 @@ trait UserRequiresAuthorizationCode
         ]));
     }
 
+    /** Fills 'authorization-code-panel' once a code is out: there is nothing to type before that, so the field comes with it. */
     protected function codeSentResponse($destination)
     {
-        return _Html(__('auth-with-values-code-sent-to', ['destination' => $destination]))->class('code-sent text-white opacity-50');
+        return _Rows(
+            _Html(__('auth-with-values-code-sent-to', ['destination' => $destination]))->class('code-sent text-white opacity-50'),
+            $this->authorizationCodeInput(),
+        )->class('gap-2');
     }
 
     protected function tooManyCodesSent()
@@ -116,7 +120,6 @@ trait UserRequiresAuthorizationCode
                         $this->sendAuthorizationCodeButtons(preferredVia: $preferredVia),
                     ),
                     _Panel()->id('authorization-code-panel'),
-                    $this->authorizationCodeInput(),
                 )->class('gap-2'),
             )->class(property_exists($this, 'authorizationCodeContainerClass') ? $this->authorizationCodeContainerClass : 'px-6 py-4 bg-greendark border-none'),
         );

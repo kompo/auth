@@ -38,7 +38,7 @@ class NotificationsController extends Controller
     	}
 
     	$notification->status = 1;
-    	$notification->reminder_at = Carbon::now()->addDays($reminderDays);
+    	$notification->reminder_at = Carbon::now()->addDays((int) $reminderDays);
     	$notification->save();
     }
 

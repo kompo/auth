@@ -173,7 +173,7 @@ class User extends Authenticatable
     {
         $forceResetAfterXDays = config('kompo-auth.force-to-reset-password-after-x-days', null);
 
-        $this->must_reset_password_at = !$forceResetAfterXDays ? null : now()->addDays($forceResetAfterXDays);
+        $this->must_reset_password_at = !$forceResetAfterXDays ? null : now()->addDays((int) $forceResetAfterXDays);
     }
 
     /** Laravel's default notification is English only; ours goes through the translation keys. */

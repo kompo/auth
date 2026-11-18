@@ -48,7 +48,7 @@ class AdminMailPreviewTable extends Table
     {
         return _TableRow(
         	_Html($file->getBasename())->style('max-width:400px')->class('break-all'),
-        	_Html(Carbon::createFromTimestamp($file->getMTime())->translatedFormat('d M Y H:i')),
+        	_Html(Carbon::createFromTimestamp($file->getMTime(), config('app.timezone'))->translatedFormat('d M Y H:i')),
         	$this->getEmailLink('messaging.view-html', $file, 'html'),
         	$this->getEmailLink('messaging.download-eml', $file, 'eml'),
         );
